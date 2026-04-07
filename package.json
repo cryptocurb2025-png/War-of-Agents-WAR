@@ -4,7 +4,7 @@
   "description": "War of Agents v1 — Alliance vs Iron Horde MOBA",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "./node_modules/.bin/tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "dev": "tsc && node dist/server.js"
   },

@@ -5,7 +5,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
-RUN npx tsc
+RUN ./node_modules/.bin/tsc -p tsconfig.json
 
 # Stage 2: Production
 FROM node:20-alpine

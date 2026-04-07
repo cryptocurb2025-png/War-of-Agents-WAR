@@ -406,8 +406,11 @@
   }
   #chat-header {
     font-size: 9px; color: #C8960C; letter-spacing: 0.12em; text-transform: uppercase;
-    padding: 4px 8px; border-bottom: 1px solid #5A4A2A44;
+    padding: 4px 8px; border-bottom: 1px solid #5A4A2A44; cursor: pointer; user-select: none;
   }
+  #chat-header:hover { color: #F0C040; }
+  #chat-panel.collapsed #chat-messages,
+  #chat-panel.collapsed #chat-input-row { display: none; }
   #chat-messages {
     height: 140px; overflow-y: auto; padding: 4px 8px; font-size: 11px; color: #AAA080;
   }
@@ -793,7 +796,10 @@ function updateEventTicker(gs) {
   if (gs.kills.length < _lastTickerKillCount) _lastTickerKillCount = 0;
 }
 
-// ─── Chat ────────────────────────────────────────────────────
+// ─── Chat (collapsible) ──────────────────────────────────────
+document.getElementById('chat-header').onclick = () => {
+  document.getElementById('chat-panel').classList.toggle('collapsed');
+};
 const chatName = 'Spectator' + Math.floor(Math.random() * 999);
 document.getElementById('chat-send').onclick = () => {
   const inp = document.getElementById('chat-input');

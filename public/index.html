@@ -1110,15 +1110,26 @@ function pUpdate() {
     graphics.lineStyle(3, 0xFF4400, 0.3);
   }
 
-  // Fire pit circles (glowing red)
-  const firePits = [{x:2700,y:400}, {x:3300,y:250}, {x:3900,y:500}, {x:4400,y:350}];
+  // Fire pit circles (animated glowing red)
+  const firePits = [{x:2700,y:400}, {x:3300,y:250}, {x:3900,y:500}, {x:4400,y:350},
+    {x:2800,y:1700}, {x:3400,y:1850}, {x:4000,y:1750}];
   for (const fp of firePits) {
-    graphics.fillStyle(0xFF2200, 0.06 + Math.sin(t * 0.05 + fp.x * 0.01) * 0.03);
-    graphics.fillCircle(fp.x, fp.y, 50);
-    graphics.fillStyle(0xFF4400, 0.1);
-    graphics.fillCircle(fp.x, fp.y, 25);
-    graphics.fillStyle(0xFFAA00, 0.15);
-    graphics.fillCircle(fp.x, fp.y, 10);
+    const flicker = Math.sin(t * 0.08 + fp.x * 0.01) * 0.04;
+    graphics.fillStyle(0xFF2200, 0.08 + flicker);
+    graphics.fillCircle(fp.x, fp.y, 55 + Math.sin(t * 0.06 + fp.y) * 5);
+    graphics.fillStyle(0xFF4400, 0.15 + flicker);
+    graphics.fillCircle(fp.x, fp.y, 30);
+    graphics.fillStyle(0xFFAA00, 0.2 + flicker);
+    graphics.fillCircle(fp.x, fp.y, 12);
+    graphics.fillStyle(0xFFDD44, 0.15);
+    graphics.fillCircle(fp.x, fp.y, 5);
+    // Ember particles rising
+    for (let e = 0; e < 3; e++) {
+      const ex = fp.x + Math.sin(t * 0.1 + e * 2 + fp.x) * 20;
+      const ey = fp.y - 20 - ((t * 0.5 + e * 30 + fp.x) % 60);
+      graphics.fillStyle(0xFF6600, 0.3 - ((t * 0.5 + e * 30 + fp.x) % 60) / 60 * 0.3);
+      graphics.fillCircle(ex, ey, 2);
+    }
   }
 
   // Dead twisted trees — dark #1A0A0A with red tint tips
@@ -1502,24 +1513,67 @@ function pUpdate() {
     window._prevGoldMap[h.id] = h.gold;
   }
 
-  // ─── DEATH EFFECTS ─────────────────────────────────────────
+  // ─── DEATH EFFECTS — dramatic explosion ─────────────────────
   deathEffects = deathEffects.filter(fx => {
     fx.age++;
     const prog = fx.age / fx.maxAge, alpha = 1 - prog;
-    graphics.lineStyle(3 - prog * 2, fx.color, alpha * 0.7);
-    graphics.strokeCircle(fx.x, fx.y, 10 + prog * 50);
-    graphics.fillStyle(0xffffff, alpha * 0.3);
-    graphics.fillCircle(fx.x, fx.y, 6 * (1 - prog));
+
+    // Expanding shockwave rings
+    graphics.lineStyle(4 - prog * 3, fx.color, alpha * 0.6);
+    graphics.strokeCircle(fx.x, fx.y, 10 + prog * 60);
+    graphics.lineStyle(2, fx.color, alpha * 0.3);
+    graphics.strokeCircle(fx.x, fx.y, 5 + prog * 40);
+
+    // Inner flash
+    graphics.fillStyle(0xffffff, alpha * 0.5);
+    graphics.fillCircle(fx.x, fx.y, 10 * (1 - prog));
+
+    // Scatter particles (8 directions)
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + fx.age * 0.08;
+      const dist = prog * 55;
+      const px = fx.x + Math.cos(angle) * dist;
+      const py = fx.y + Math.sin(angle) * dist;
+      graphics.fillStyle(fx.color, alpha * 0.7);
+      graphics.fillCircle(px, py, 3 * (1 - prog));
+    }
+
+    // Skull flash at center for hero deaths
+    if (fx.age < 10) {
+      graphics.fillStyle(0xD4C8A0, (10 - fx.age) / 10 * 0.4);
+      graphics.fillCircle(fx.x, fx.y, 15);
+    }
+
     return fx.age < fx.maxAge;
   });
 
-  // Level Up Effects
+  // ─── Level Up — golden burst with rising text ──────────────
   levelUpEffects = levelUpEffects.filter(fx => {
     fx.age++;
-    const prog = fx.age / 30, alpha = 1 - prog;
-    graphics.lineStyle(2, 0xffd700, alpha);
-    graphics.strokeCircle(fx.x, fx.y, 5 + prog * 35);
-    return fx.age < 30;
+    const prog = fx.age / 40, alpha = 1 - prog;
+
+    // Golden expanding ring
+    graphics.lineStyle(3, 0xffd700, alpha * 0.8);
+    graphics.strokeCircle(fx.x, fx.y, 8 + prog * 45);
+    // Second ring
+    graphics.lineStyle(1.5, 0xF0C040, alpha * 0.4);
+    graphics.strokeCircle(fx.x, fx.y, 15 + prog * 30);
+
+    // Rising golden stars
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 + fx.age * 0.12;
+      const r = 12 + prog * 30;
+      graphics.fillStyle(0xffd700, alpha * 0.7);
+      graphics.fillCircle(fx.x + Math.cos(angle) * r, fx.y + Math.sin(angle) * r - prog * 20, 2.5);
+    }
+
+    // "LEVEL UP" flash
+    if (fx.age < 15) {
+      graphics.fillStyle(0xffd700, (15 - fx.age) / 15 * 0.3);
+      graphics.fillCircle(fx.x, fx.y, 25);
+    }
+
+    return fx.age < 40;
   });
 
   // ─── NIGHT OVERLAY ─────────────────────────────────────────

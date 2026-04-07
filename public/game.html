@@ -1111,10 +1111,7 @@ function pUpdate() {
   graphics.fillStyle(grassBase, 1);
   graphics.fillRect(0, 0, halfW, MAP_H);
 
-  // Grass grid seams
-  graphics.lineStyle(1, isNight ? 0x122808 : 0x1A3A0A, 0.3);
-  for (let gx = 36; gx < halfW; gx += 36) graphics.lineBetween(gx, 0, gx, MAP_H);
-  for (let gy = 36; gy < MAP_H; gy += 36) graphics.lineBetween(0, gy, halfW, gy);
+  // Grid seams removed for performance
 
   // Lighter grass patches for variety
   graphics.fillStyle(isNight ? 0x1e3812 : 0x3A6A2A, 0.15);
@@ -1219,10 +1216,7 @@ function pUpdate() {
     graphics.fillCircle(mt.x + 32, mt.y - 34, 6);
   }
 
-  // Subtle scorched earth seams
-  graphics.lineStyle(1, 0x0A0500, 0.3);
-  for (let gx = halfW + 60; gx < MAP_W; gx += 60) graphics.lineBetween(gx, 0, gx, MAP_H);
-  for (let gy = 60; gy < MAP_H; gy += 60) graphics.lineBetween(halfW, gy, MAP_W, gy);
+  // Seams removed for performance
 
   // Thin red danger border at very bottom of Horde side
   graphics.fillStyle(0x880000, 0.6);
@@ -1289,7 +1283,7 @@ function pUpdate() {
   }
 
   // ─── 30 TREES — TOP AREA (Y 80 to 380, above top lane) ──
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 15; i++) {
     const tx = 60 + ((i * 97 + 31) % (MAP_W - 120));
     const ty = 80 + ((i * 193 + 59) % 280);
     const th = 60 + ((i * 7) % 30); // 60-90px tall
@@ -1322,7 +1316,7 @@ function pUpdate() {
   }
 
   // ─── 30 TREES — BOTTOM AREA (Y 2020 to 2350, below bot lane) ─
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 15; i++) {
     const tx = 60 + ((i * 109 + 43) % (MAP_W - 120));
     const ty = 2020 + ((i * 181 + 71) % 320);
     const th = 60 + ((i * 11) % 30);
@@ -1417,16 +1411,15 @@ function pUpdate() {
   graphics.fillStyle(isNight ? 0x0A1825 : 0x1A3050, 0.6);
   graphics.fillRect(halfW - 30, 0, 60, MAP_H);
 
-  // Flowing water segments with animated wave
-  for (let ry = 0; ry < MAP_H; ry += 6) {
+  // Flowing water (optimized — fewer segments)
+  for (let ry = 0; ry < MAP_H; ry += 20) {
     const wave = Math.sin(ry * 0.02 + t * 0.04) * 8;
-    const alpha = 0.25 + Math.sin(ry * 0.01 + t * 0.03) * 0.08;
-    graphics.fillStyle(isNight ? 0x1A3055 : 0x2A5080, alpha);
-    graphics.fillRect(halfW - 18 + wave, ry, 36, 6);
+    graphics.fillStyle(isNight ? 0x1A3055 : 0x2A5080, 0.25);
+    graphics.fillRect(halfW - 18 + wave, ry, 36, 20);
   }
 
-  // Water highlights / shimmer
-  for (let ry = 0; ry < MAP_H; ry += 25) {
+  // Water highlights
+  for (let ry = 0; ry < MAP_H; ry += 60) {
     const sx2 = halfW + Math.sin(ry * 0.04 + t * 0.05) * 10;
     graphics.fillStyle(isNight ? 0x3060A0 : 0x5090CC, 0.2);
     graphics.fillRect(sx2 - 3, ry, 6, 3);
@@ -1438,8 +1431,8 @@ function pUpdate() {
   graphics.fillStyle(0xF0C040, 0.7);
   graphics.fillRect(halfW - 1, 0, 2, MAP_H);
 
-  // Floating magical particles along the river
-  for (let ry = 0; ry < MAP_H; ry += 40) {
+  // Floating magical particles along the river (sparse)
+  for (let ry = 0; ry < MAP_H; ry += 100) {
     const px = halfW + Math.sin(ry * 0.03 + t * 0.06) * 12;
     const py = ry + Math.cos(ry * 0.02 + t * 0.04) * 8;
     const pAlpha = 0.3 + Math.sin(ry * 0.05 + t * 0.08) * 0.2;
@@ -1675,7 +1668,7 @@ function pUpdate() {
     nightOverlay.fillStyle(0x1a2a5a, 0.06);
     nightOverlay.fillCircle(MAP_W / 2, MAP_H / 2, 600);
     // Stars
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 15; i++) {
       const sx2 = (i * 127 + 31) % MAP_W;
       const sy2 = (i * 83 + 17) % (MAP_H * 0.4);
       const twinkle = 0.2 + Math.sin(t * 0.03 + i * 0.7) * 0.15;

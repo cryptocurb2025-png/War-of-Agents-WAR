@@ -723,7 +723,27 @@ const loadInterval = setInterval(() => {
 
 // ─── Kill Announcements ─────────────────────────────────────
 let _lastAnnounceKills = {};
+let _firstBloodShown = false;
 function checkKillAnnouncements(gs) {
+  // First blood
+  if (!_firstBloodShown && gs.kills.length > 0) {
+    _firstBloodShown = true;
+    const k = gs.kills[0];
+    const killer = gs.heroes.find(h => h.id === k.killerId);
+    if (killer) {
+      const container = document.getElementById('kill-announce');
+      const fColor = killer.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+      container.innerHTML = `
+        <div class="announce-text streak5" style="color:#CC0000">FIRST BLOOD</div>
+        <div class="announce-sub"><span style="color:${fColor}">${killer.heroClass.toUpperCase()}</span> draws first blood!</div>
+      `;
+      setTimeout(() => { container.innerHTML = ''; }, 3000);
+    }
+  }
+  // Reset on game reset
+  if (gs.kills.length === 0) _firstBloodShown = false;
+
+  // Kill streaks
   for (const h of gs.heroes) {
     const prev = _lastAnnounceKills[h.id] || 0;
     if (h.killStreak > prev && h.killStreak >= 3) {
@@ -2096,9 +2116,32 @@ function updateUI() {
   if (!gameState) return;
   const gs = gameState;
 
-  // Kill announcements + event ticker
+  // Kill announcements + event ticker + structure events
   checkKillAnnouncements(gs);
   updateEventTicker(gs);
+
+  // Tower/base destroyed announcements
+  if (!window._prevStructures) window._prevStructures = {};
+  for (const s of gs.structures) {
+    const wasAlive = window._prevStructures[s.id];
+    if (wasAlive === true && !s.alive) {
+      const ticker = document.getElementById('event-ticker');
+      const ev = document.createElement('div');
+      ev.className = 'ticker-event';
+      const fColor = s.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+      const name = s.structureType === 'base' ? 'BASE' : s.structureType.toUpperCase().replace('_', ' ');
+      ev.innerHTML = `<span style="color:${fColor}">${s.faction.toUpperCase()}</span> <span style="color:#C8960C">${name} DESTROYED</span>`;
+      ticker.appendChild(ev);
+      setTimeout(() => { if (ev.parentNode) ev.remove(); }, 6000);
+      // Big announce for base
+      if (s.structureType === 'base') {
+        const container = document.getElementById('kill-announce');
+        container.innerHTML = `<div class="announce-text streak7">${s.faction === 'alliance' ? 'ALLIANCE' : 'HORDE'} BASE DESTROYED</div>`;
+        setTimeout(() => { container.innerHTML = ''; }, 4000);
+      }
+    }
+    window._prevStructures[s.id] = s.alive;
+  }
 
   // Top bar scores
   const aKills = gs.heroes.filter(h=>h.faction==='alliance').reduce((s,h)=>s+h.kills,0);
@@ -2235,11 +2278,11 @@ function updateUI() {
   ctx.fillStyle = '#1a100a';
   ctx.fillRect(80, 0, 80, 160);
 
-  // 3 lane paths on minimap
+  // Mid lane on minimap
   ctx.fillStyle = '#3A2A18';
-  for (const lane of [{y:400,h:200},{y:1040,h:320},{y:1800,h:200}]) {
-    ctx.fillRect(0, lane.y * sy, 160, lane.h * sy);
-  }
+  ctx.fillRect(0, 1040 * sy, 80, 320 * sy);
+  ctx.fillStyle = '#2A1500';
+  ctx.fillRect(80, 1040 * sy, 80, 320 * sy);
 
   // Jungle camps on minimap
   if (gs.camps) {

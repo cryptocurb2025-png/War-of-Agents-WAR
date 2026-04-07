@@ -1412,6 +1412,10 @@ app.get('/api/admin/stats', (_req, res) => {
   });
 });
 
+app.get('/landing', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'landing.html'));
+});
+
 app.get('/admin', (_req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">

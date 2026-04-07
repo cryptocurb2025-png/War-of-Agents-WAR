@@ -1449,6 +1449,29 @@ function pUpdate() {
     graphics.fillCircle(px + 8, py + 12, 1.5);
   }
 
+  // ─── Stone bridge at lane crossing ──────────────────────
+  const bridgeY = 1200; // mid lane center
+  // Bridge deck
+  graphics.fillStyle(isNight ? 0x3A3028 : 0x6A5A48, 1);
+  graphics.fillRect(halfW - 45, bridgeY - 80, 90, 160);
+  // Bridge rails
+  graphics.fillStyle(isNight ? 0x2A2418 : 0x5A4A38, 1);
+  graphics.fillRect(halfW - 48, bridgeY - 82, 96, 6);
+  graphics.fillRect(halfW - 48, bridgeY + 76, 96, 6);
+  // Bridge pillars
+  graphics.fillStyle(isNight ? 0x2A2218 : 0x4A3A28, 1);
+  graphics.fillRect(halfW - 48, bridgeY - 82, 8, 164);
+  graphics.fillRect(halfW + 40, bridgeY - 82, 8, 164);
+  // Stone texture on bridge
+  graphics.lineStyle(1, isNight ? 0x2A2010 : 0x4A3A28, 0.3);
+  for (let by = bridgeY - 75; by < bridgeY + 75; by += 18) {
+    graphics.lineBetween(halfW - 42, by, halfW + 42, by);
+  }
+  // Gold trim on bridge edges
+  graphics.lineStyle(1, 0xC8960C, 0.3);
+  graphics.lineBetween(halfW - 48, bridgeY - 82, halfW + 48, bridgeY - 82);
+  graphics.lineBetween(halfW - 48, bridgeY + 82, halfW + 48, bridgeY + 82);
+
   // River bank edges
   graphics.lineStyle(2, isNight ? 0x1A2A10 : 0x3A4A2A, 0.5);
   graphics.lineBetween(halfW - 30, 0, halfW - 30, MAP_H);
@@ -1637,19 +1660,58 @@ function pUpdate() {
     return fx.age < 40;
   });
 
-  // ─── NIGHT OVERLAY ─────────────────────────────────────────
+  // ─── ATMOSPHERIC EFFECTS ────────────────────────────────────
   nightOverlay.clear();
   if (isNight) {
+    // Dark blue overlay
     nightOverlay.fillStyle(0x000022, 0.4);
     nightOverlay.fillRect(0, 0, MAP_W, MAP_H);
+    // Vignette edges
     nightOverlay.fillStyle(0x000010, 0.15);
     nightOverlay.fillRect(0, 0, MAP_W, 200);
     nightOverlay.fillRect(0, MAP_H - 200, MAP_W, 200);
+    // Moonlight
     nightOverlay.fillStyle(0x1a2a5a, 0.06);
     nightOverlay.fillCircle(MAP_W / 2, MAP_H / 2, 600);
+    // Stars
+    for (let i = 0; i < 40; i++) {
+      const sx2 = (i * 127 + 31) % MAP_W;
+      const sy2 = (i * 83 + 17) % (MAP_H * 0.4);
+      const twinkle = 0.2 + Math.sin(t * 0.03 + i * 0.7) * 0.15;
+      nightOverlay.fillStyle(0xFFFFFF, twinkle);
+      nightOverlay.fillCircle(sx2, sy2, 1 + (i % 3 === 0 ? 1 : 0));
+    }
+  } else {
+    // Day — subtle dust motes floating on Horde side
+    for (let i = 0; i < 15; i++) {
+      const dx = halfW + ((i * 311 + t * 0.3) % (halfW - 100)) + 50;
+      const dy = ((i * 197 + t * 0.2) % MAP_H);
+      graphics.fillStyle(0xAA8844, 0.06);
+      graphics.fillCircle(dx, dy, 2);
+    }
+    // Holy light rays on Alliance side (subtle)
+    graphics.fillStyle(0xFFFFCC, 0.015);
+    for (let i = 0; i < 5; i++) {
+      const rx = 200 + i * 400;
+      graphics.fillRect(rx - 15, 0, 30, MAP_H * 0.6);
+    }
   }
   sunMoonText.setText(isNight ? '\uD83C\uDF19' : '\u2600\uFE0F');
   sunMoonText.setPosition(cam.scrollX + cam.width / cam.zoom - 60, cam.scrollY + 10);
+
+  // ─── BASE ATTACK WARNING ──────────────────────────────────
+  if (!window._prevBaseHP) window._prevBaseHP = {};
+  for (const s of gs.structures) {
+    if (s.structureType !== 'base') continue;
+    const prev = window._prevBaseHP[s.id];
+    if (prev && s.hp < prev - 100) {
+      // Flash screen edge red/blue when base takes big damage
+      const warnColor = s.faction === 'alliance' ? 0x4A8FE0 : 0xCC2222;
+      graphics.fillStyle(warnColor, 0.06);
+      graphics.fillRect(0, 0, MAP_W, MAP_H);
+    }
+    window._prevBaseHP[s.id] = s.hp;
+  }
 }
 
 // ─── Track all rendered positions for label proximity check ──────

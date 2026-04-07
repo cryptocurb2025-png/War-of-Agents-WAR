@@ -887,7 +887,13 @@ function pUpdate() {
   const grassBase = isNight ? 0x1a3010 : 0x2D5A1B;
   const dirtBase  = isNight ? 0x2a1808 : 0x3A2010;
   const treeColor = 0x1A3A0A;
-  const laneY = MAP_H/2 - 160, laneH = 320;
+  // 3 lanes: top (400-600), mid (1040-1360), bot (1800-2000)
+  const LANES = [
+    { name: 'top', y: 400, h: 200 },
+    { name: 'mid', y: 1040, h: 320 },
+    { name: 'bot', y: 1800, h: 200 },
+  ];
+  const laneY = 1040, laneH = 320; // mid lane for backward compat
 
   // Left grass half
   graphics.fillStyle(grassBase, 1);
@@ -969,25 +975,68 @@ function pUpdate() {
   graphics.fillStyle(0xCC0000, 0.3);
   graphics.fillRect(halfW, MAP_H - 20, halfW, 20);
 
-  // ─── Lane road — Alliance side tan, Horde side scorched ─
-  // Alliance half of lane
-  graphics.fillStyle(isNight ? 0x3a3018 : 0x6B5A3A, 1);
-  graphics.fillRect(0, laneY, halfW, laneH);
-  // Horde half — darker scorched earth with red tint #2A1500
-  graphics.fillStyle(isNight ? 0x1a0a00 : 0x2A1500, 1);
-  graphics.fillRect(halfW, laneY, halfW, laneH);
-  // Road seam lines
-  graphics.lineStyle(1, isNight ? 0x2a2010 : 0x5A4A2A, 0.3);
-  for (let ry = laneY + 30; ry < laneY + laneH; ry += 50) graphics.lineBetween(0, ry, MAP_W, ry);
-  // Road edges
-  graphics.lineStyle(2, isNight ? 0x1a1508 : 0x4A3A1A, 0.6);
-  graphics.lineBetween(0, laneY, MAP_W, laneY);
-  graphics.lineBetween(0, laneY + laneH, MAP_W, laneY + laneH);
+  // ─── 3 LANE ROADS ──────────────────────────────────────────
+  for (const lane of LANES) {
+    // Alliance half
+    graphics.fillStyle(isNight ? 0x3a3018 : 0x6B5A3A, 1);
+    graphics.fillRect(0, lane.y, halfW, lane.h);
+    // Horde half — scorched
+    graphics.fillStyle(isNight ? 0x1a0a00 : 0x2A1500, 1);
+    graphics.fillRect(halfW, lane.y, halfW, lane.h);
+    // Road seam lines
+    graphics.lineStyle(1, isNight ? 0x2a2010 : 0x5A4A2A, 0.25);
+    for (let ry = lane.y + 20; ry < lane.y + lane.h; ry += 40) graphics.lineBetween(0, ry, MAP_W, ry);
+    // Road edges
+    graphics.lineStyle(2, isNight ? 0x1a1508 : 0x4A3A1A, 0.5);
+    graphics.lineBetween(0, lane.y, MAP_W, lane.y);
+    graphics.lineBetween(0, lane.y + lane.h, MAP_W, lane.y + lane.h);
+    // Lane label
+    graphics.fillStyle(0xC8960C, 0.15);
+  }
 
-  // ─── 50 TREES — TOP AREA (Y 80 to 980) ────────────────
-  for (let i = 0; i < 50; i++) {
+  // ─── JUNGLE CAMPS (between lanes) ─────────────────────────
+  if (gs.camps) {
+    for (const camp of gs.camps) {
+      // Camp ground circle
+      const campAlive = camp.monsters && camp.monsters.some(m => m.alive);
+      if (campAlive) {
+        graphics.fillStyle(0x2A4A1A, 0.3);
+        graphics.fillCircle(camp.x, camp.y, 50);
+        graphics.lineStyle(1, 0x4A6A2A, 0.3);
+        graphics.strokeCircle(camp.x, camp.y, 50);
+        // Monster dots
+        for (const m of camp.monsters) {
+          if (!m.alive) continue;
+          graphics.fillStyle(camp.isBoss ? 0xCC8800 : 0x88AA44, 0.9);
+          graphics.fillCircle(m.x, m.y, camp.isBoss ? 14 : 10);
+          graphics.fillStyle(0x000000, 0.3);
+          graphics.fillCircle(m.x, m.y, camp.isBoss ? 6 : 4);
+          // HP bar
+          if (m.hp < m.maxHp) {
+            const mPct = m.hp / m.maxHp;
+            graphics.fillStyle(0x0D1520, 0.8);
+            graphics.fillRect(m.x - 12, m.y - 18, 24, 4);
+            graphics.fillStyle(0x44AA22, 0.9);
+            graphics.fillRect(m.x - 12, m.y - 18, 24 * mPct, 4);
+          }
+        }
+        // Camp label
+        if (camp.isBoss) {
+          graphics.fillStyle(0xCC8800, 0.25);
+          graphics.fillCircle(camp.x, camp.y, 65);
+        }
+      } else {
+        // Cleared camp — dim circle
+        graphics.fillStyle(0x1A1A0A, 0.15);
+        graphics.fillCircle(camp.x, camp.y, 30);
+      }
+    }
+  }
+
+  // ─── 30 TREES — TOP AREA (Y 80 to 380, above top lane) ──
+  for (let i = 0; i < 30; i++) {
     const tx = 60 + ((i * 97 + 31) % (MAP_W - 120));
-    const ty = 120 + ((i * 193 + 59) % 820);
+    const ty = 80 + ((i * 193 + 59) % 280);
     const th = 60 + ((i * 7) % 30); // 60-90px tall
     const tw = 20 + ((i * 3) % 20); // 20-40px wide
     const isAlliance = tx < 2400;
@@ -1017,10 +1066,10 @@ function pUpdate() {
     }
   }
 
-  // ─── 50 TREES — BOTTOM AREA (Y 1420 to 2320) ─────────
-  for (let i = 0; i < 50; i++) {
+  // ─── 30 TREES — BOTTOM AREA (Y 2020 to 2350, below bot lane) ─
+  for (let i = 0; i < 30; i++) {
     const tx = 60 + ((i * 109 + 43) % (MAP_W - 120));
-    const ty = 1420 + ((i * 181 + 71) % 860);
+    const ty = 2020 + ((i * 181 + 71) % 320);
     const th = 60 + ((i * 11) % 30);
     const tw = 20 + ((i * 5) % 20);
     const isAlliance = tx < 2400;
@@ -1041,6 +1090,32 @@ function pUpdate() {
       graphics.lineBetween(tx - tw * 0.7, ty - th * 0.6, tx - tw, ty - th * 0.85);
       graphics.lineBetween(tx + tw * 0.6, ty - th * 0.5, tx + tw * 0.8, ty - th * 0.8);
     }
+  }
+
+  // ─── JUNGLE TREES (between lanes) ──────────────────────
+  // Between top and mid lanes (Y 620-1020)
+  for (let i = 0; i < 25; i++) {
+    const tx = 100 + ((i * 191 + 37) % (MAP_W - 200));
+    const ty = 640 + ((i * 157 + 53) % 360);
+    const th = 50 + ((i * 7) % 25);
+    const tw = 18 + ((i * 3) % 14);
+    const isAlliance = tx < 2400;
+    graphics.fillStyle(isAlliance ? 0x1A4A0A : 0x2A1A0A, isNight ? 0.4 : 0.55);
+    graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
+    graphics.fillStyle(isAlliance ? 0x0A2A0A : 0x1A0A0A, 0.4);
+    graphics.fillRect(tx - 2, ty, 4, 8);
+  }
+  // Between mid and bot lanes (Y 1380-1780)
+  for (let i = 0; i < 25; i++) {
+    const tx = 100 + ((i * 173 + 41) % (MAP_W - 200));
+    const ty = 1400 + ((i * 163 + 67) % 360);
+    const th = 50 + ((i * 11) % 25);
+    const tw = 18 + ((i * 5) % 14);
+    const isAlliance = tx < 2400;
+    graphics.fillStyle(isAlliance ? 0x1A4A0A : 0x2A1A0A, isNight ? 0.4 : 0.55);
+    graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
+    graphics.fillStyle(isAlliance ? 0x0A2A0A : 0x1A0A0A, 0.4);
+    graphics.fillRect(tx - 2, ty, 4, 8);
   }
 
   // ─── MAGICAL RIVER DIVIDER at x=2400 ──────────────────
@@ -1249,8 +1324,10 @@ function renderSprite(id, texKey, entity, t, isHero) {
   const isA = entity.faction === 'alliance';
   const bob = Math.sin(t * 0.08 + (entity.x || 0) * 0.01) * 3;
 
-  // HARD CLAMP — force every unit into lane, no exceptions
-  const LANE_TOP = 1040, LANE_BOT = 1360;
+  // HARD CLAMP — per-lane bounds based on entity's lane assignment
+  const LANE_BOUNDS = { top: [400, 600], mid: [1040, 1360], bot: [1800, 2000] };
+  const eLane = entity.lane || 'mid';
+  const [LANE_TOP, LANE_BOT] = LANE_BOUNDS[eLane] || [1040, 1360];
   const clampedY = Math.max(LANE_TOP, Math.min(LANE_BOT, entity.y));
 
   // Create or reuse sprite
@@ -1846,9 +1923,28 @@ function updateUI() {
   ctx.fillStyle = '#1a100a';
   ctx.fillRect(80, 0, 80, 160);
 
-  // Gold divider
-  ctx.fillStyle = '#C8960C';
+  // 3 lane paths on minimap
+  ctx.fillStyle = '#3A2A18';
+  for (const lane of [{y:400,h:200},{y:1040,h:320},{y:1800,h:200}]) {
+    ctx.fillRect(0, lane.y * sy, 160, lane.h * sy);
+  }
+
+  // Jungle camps on minimap
+  if (gs.camps) {
+    for (const camp of gs.camps) {
+      const alive = camp.monsters && camp.monsters.some(m => m.alive);
+      ctx.fillStyle = alive ? (camp.isBoss ? '#CC8800' : '#4A6A2A') : '#1A1A0A';
+      ctx.beginPath();
+      ctx.arc(camp.x * sx, camp.y * sy, alive ? 3 : 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Gold divider / river
+  ctx.fillStyle = '#2A5080';
   ctx.fillRect(79, 0, 2, 160);
+  ctx.fillStyle = '#C8960C';
+  ctx.fillRect(79.5, 0, 1, 160);
 
   // Structures
   for (const s of gs.structures) {

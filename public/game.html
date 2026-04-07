@@ -1741,16 +1741,20 @@ function renderSprite(id, texKey, entity, t, isHero) {
     }).setOrigin(0.5, 0).setDepth(22);
   }
 
-  // Update position — always clamped
-  sp.setPosition(entity.x, clampedY + bob);
+  // Update position — smooth interpolation (lerp) for fluid movement
+  const targetX = entity.x, targetY = clampedY + bob;
+  const lerpSpeed = 0.3; // 0-1, higher = snappier
+  const newX = sp.x + (targetX - sp.x) * lerpSpeed;
+  const newY = sp.y + (targetY - sp.y) * lerpSpeed;
+  sp.setPosition(newX, newY);
   sp.setFlipX(!isA);
   sp.setScale(isHero ? 4.0 : 3.0);
   sp.setAlpha(1);
   sp.setAngle(0);
 
-  // Glow — small and subtle
+  // Glow follows smoothly
   if (sp._glow) {
-    sp._glow.setPosition(entity.x, clampedY + 42);
+    sp._glow.setPosition(newX, newY + 42 - bob);
     sp._glow.setAlpha(0.2);
   }
 
@@ -1765,7 +1769,7 @@ function renderSprite(id, texKey, entity, t, isHero) {
       sp._label.setVisible(false);
     } else {
       sp._label.setVisible(true);
-      sp._label.setPosition(entity.x, clampedY + 52 + bob);
+      sp._label.setPosition(newX, newY + 52);
     }
   }
   _renderedPositions.push({ x: entity.x, y: clampedY });
@@ -1790,11 +1794,11 @@ function renderSprite(id, texKey, entity, t, isHero) {
   }
   const pct = Math.max(0, hp / maxHp);
   const barColor = pct < 0.3 ? 0xff3333 : 0x44AA22;
-  bar.bg.setPosition(entity.x, clampedY - 80 + bob);
-  bar.fill.setPosition(entity.x - barW/2, clampedY - 80 + bob);
+  bar.bg.setPosition(newX, newY - 48);
+  bar.fill.setPosition(newX - barW/2, newY - 48);
   bar.fill.displayWidth = barW * pct;
   bar.fill.setFillStyle(barColor);
-  bar.lvl.setPosition(entity.x, clampedY - 104 + bob);
+  bar.lvl.setPosition(newX, newY - 72);
   bar.lvl.setText(entity.level !== undefined ? `${entity.level}` : '');
 }
 

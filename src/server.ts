@@ -59,7 +59,7 @@ function prepareStmt(sql: string) {
 // ─── Constants ───────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const TICK_RATE = 20;
-const BROADCAST_RATE = 10;
+const BROADCAST_RATE = 20;
 const MAP_W = 4800;
 const MAP_H = 2400;
 const TICK_MS = 1000 / TICK_RATE;

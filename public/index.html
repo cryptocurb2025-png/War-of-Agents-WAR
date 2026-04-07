@@ -21,24 +21,26 @@
 
   /* ─── TOP BAR ──────────────────────────────────────── */
   #top-bar {
-    height: 40px;
-    background: #0A1A30;
-    border-bottom: 1px solid #C8960C55;
+    height: 42px;
+    background: linear-gradient(180deg, #12100A, #0A0804);
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg, #5A4A2A, #C8960C, #F0C040, #C8960C, #5A4A2A) 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
     z-index: 10;
     flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
   }
 
   #top-bar .title {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 900;
     color: #C8960C;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    text-shadow: 0 0 8px rgba(200,150,12,0.3);
+    text-shadow: 0 0 10px rgba(200,150,12,0.4), 0 1px 2px rgba(0,0,0,0.5);
     min-width: 180px;
   }
 
@@ -487,9 +489,122 @@
     animation: pulseGold 2s infinite;
   }
   #winner-overlay h2 { font-size: 24px; color: #d4c08a; }
+  /* ─── KILL ANNOUNCEMENTS ────────────────────────────── */
+  #kill-announce {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 90;
+    pointer-events: none;
+    text-align: center;
+  }
+  .announce-text {
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    animation: announceIn 0.3s ease, announceOut 0.5s ease 2s forwards;
+    text-shadow: 0 0 20px rgba(255,215,0,0.6), 0 2px 4px rgba(0,0,0,0.8);
+    margin-bottom: 4px;
+  }
+  .announce-text.streak3 { color: #F0C040; }
+  .announce-text.streak5 { color: #FF6600; font-size: 42px; }
+  .announce-text.streak7 { color: #FF2222; font-size: 48px; }
+  .announce-text.streak10 { color: #FF00FF; font-size: 54px; }
+  .announce-sub { color: #AAA080; font-size: 14px; letter-spacing: 0.1em; animation: announceIn 0.3s ease, announceOut 0.5s ease 2s forwards; }
+  @keyframes announceIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+  @keyframes announceOut { from { opacity: 1; } to { opacity: 0; transform: scale(1.2); } }
+
+  /* ─── LOADING SCREEN ───────────────────────────────── */
+  #loading-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(180deg, #0A0804, #1A1208, #0A0804);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.8s ease;
+  }
+  #loading-screen.hidden { opacity: 0; pointer-events: none; }
+  #loading-title {
+    font-size: 42px;
+    color: #C8960C;
+    text-shadow: 0 0 30px rgba(200,150,12,0.5);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+  #loading-subtitle {
+    font-size: 14px;
+    color: #8A7A5A;
+    letter-spacing: 0.15em;
+    margin-bottom: 30px;
+  }
+  #loading-bar-bg {
+    width: 300px;
+    height: 6px;
+    background: #1A1208;
+    border: 1px solid #5A4A2A;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #loading-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #8B6914, #C8960C, #F0C040);
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  #loading-tip {
+    margin-top: 16px;
+    color: #5A4A2A;
+    font-size: 11px;
+    font-style: italic;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── GAME EVENT TICKER (top center) ───────────────── */
+  #event-ticker {
+    position: fixed;
+    top: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .ticker-event {
+    background: #0A0804cc;
+    border: 1px solid #5A4A2A55;
+    border-radius: 3px;
+    padding: 2px 12px;
+    font-size: 11px;
+    color: #AAA080;
+    animation: fadeIn 0.3s ease, announceOut 0.5s ease 4s forwards;
+    white-space: nowrap;
+  }
 </style>
 </head>
 <body>
+
+<!-- ─── LOADING SCREEN ────────────────────────────────── -->
+<div id="loading-screen">
+  <div id="loading-title">WAR OF AGENTS</div>
+  <div id="loading-subtitle">ALLIANCE VS IRON HORDE</div>
+  <div id="loading-bar-bg"><div id="loading-bar-fill"></div></div>
+  <div id="loading-tip">Preparing the battlefield...</div>
+</div>
+
+<!-- ─── KILL ANNOUNCEMENTS ────────────────────────────── -->
+<div id="kill-announce"></div>
+
+<!-- ─── EVENT TICKER ──────────────────────────────────── -->
+<div id="event-ticker"></div>
 
 <!-- ─── TOP BAR ──────────────────────────────────────── -->
 <div id="top-bar">
@@ -584,6 +699,77 @@ const CLASS_CARD_COLORS = {
 
 // ─── WebSocket ───────────────────────────────────────────────────
 const ws = new WebSocket(`ws://${location.host}`);
+// ─── Loading Screen ──────────────────────────────────────────
+const loadingTips = [
+  'Sharpening Alliance swords...',
+  'Feeding the Horde war beasts...',
+  'Polishing the gold divider...',
+  'Summoning hero spirits...',
+  'Fortifying tower defenses...',
+  'Brewing mana potions...',
+  'The Lich King watches...',
+];
+document.getElementById('loading-tip').textContent = loadingTips[Math.floor(Math.random() * loadingTips.length)];
+let loadProg = 0;
+const loadInterval = setInterval(() => {
+  loadProg += 8 + Math.random() * 12;
+  if (loadProg > 100) loadProg = 100;
+  document.getElementById('loading-bar-fill').style.width = loadProg + '%';
+  if (loadProg >= 100) {
+    clearInterval(loadInterval);
+    setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
+  }
+}, 200);
+
+// ─── Kill Announcements ─────────────────────────────────────
+let _lastAnnounceKills = {};
+function checkKillAnnouncements(gs) {
+  for (const h of gs.heroes) {
+    const prev = _lastAnnounceKills[h.id] || 0;
+    if (h.killStreak > prev && h.killStreak >= 3) {
+      showKillAnnounce(h);
+    }
+    _lastAnnounceKills[h.id] = h.killStreak;
+  }
+}
+
+function showKillAnnounce(hero) {
+  const container = document.getElementById('kill-announce');
+  const streakNames = { 3:'KILLING SPREE', 4:'DOMINATING', 5:'MEGA KILL', 6:'UNSTOPPABLE', 7:'WICKED SICK', 8:'MONSTER KILL', 9:'GODLIKE', 10:'BEYOND GODLIKE' };
+  const name = streakNames[Math.min(hero.killStreak, 10)] || 'RAMPAGE';
+  const cls = hero.killStreak >= 10 ? 'streak10' : hero.killStreak >= 7 ? 'streak7' : hero.killStreak >= 5 ? 'streak5' : 'streak3';
+  const fColor = hero.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+
+  container.innerHTML = `
+    <div class="announce-text ${cls}">${name}</div>
+    <div class="announce-sub"><span style="color:${fColor}">${hero.heroClass.toUpperCase()}</span> is on a ${hero.killStreak}-kill streak!</div>
+  `;
+  setTimeout(() => { container.innerHTML = ''; }, 3000);
+}
+
+// ─── Event Ticker ────────────────────────────────────────────
+let _lastTickerKillCount = 0;
+function updateEventTicker(gs) {
+  if (gs.kills.length <= _lastTickerKillCount) return;
+  const ticker = document.getElementById('event-ticker');
+  for (let i = _lastTickerKillCount; i < gs.kills.length; i++) {
+    const k = gs.kills[i];
+    const killer = gs.heroes.find(h => h.id === k.killerId);
+    const victim = gs.heroes.find(h => h.id === k.victimId);
+    if (!killer || !victim) continue;
+    const kC = killer.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    const vC = victim.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    const ev = document.createElement('div');
+    ev.className = 'ticker-event';
+    ev.innerHTML = `<span style="color:${kC}">${killer.heroClass}</span> <span style="color:#C8960C">\u2694</span> <span style="color:${vC}">${victim.heroClass}</span>`;
+    ticker.appendChild(ev);
+    setTimeout(() => { if (ev.parentNode) ev.remove(); }, 5000);
+    while (ticker.children.length > 5) ticker.removeChild(ticker.firstChild);
+  }
+  _lastTickerKillCount = gs.kills.length;
+  if (gs.kills.length < _lastTickerKillCount) _lastTickerKillCount = 0;
+}
+
 // ─── Chat ────────────────────────────────────────────────────
 const chatName = 'Spectator' + Math.floor(Math.random() * 999);
 document.getElementById('chat-send').onclick = () => {
@@ -1112,6 +1298,45 @@ function pUpdate() {
     graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
     graphics.fillStyle(isAlliance ? 0x0A2A0A : 0x1A0A0A, 0.4);
     graphics.fillRect(tx - 2, ty, 4, 8);
+  }
+
+  // ─── TERRAIN DECORATIONS — rocks, bushes, flowers ──────
+  // Alliance side — rocks and bushes
+  const allianceDecos = [
+    {x:300,y:200,t:'rock'},{x:800,y:150,t:'bush'},{x:1200,y:300,t:'rock'},
+    {x:1700,y:180,t:'bush'},{x:500,y:2200,t:'rock'},{x:1000,y:2100,t:'bush'},
+    {x:1500,y:2250,t:'rock'},{x:2000,y:2150,t:'bush'},
+    {x:400,y:700,t:'bush'},{x:900,y:800,t:'rock'},{x:1400,y:750,t:'bush'},
+    {x:600,y:1500,t:'rock'},{x:1100,y:1600,t:'bush'},{x:1800,y:1550,t:'rock'},
+  ];
+  for (const d of allianceDecos) {
+    if (d.t === 'rock') {
+      graphics.fillStyle(isNight ? 0x2A3A2A : 0x4A5A4A, 0.5);
+      graphics.fillCircle(d.x, d.y, 12);
+      graphics.fillStyle(isNight ? 0x3A4A3A : 0x5A6A5A, 0.3);
+      graphics.fillCircle(d.x - 3, d.y - 3, 6);
+    } else {
+      graphics.fillStyle(isNight ? 0x1A3A1A : 0x2A5A2A, 0.5);
+      graphics.fillCircle(d.x, d.y, 10);
+      graphics.fillCircle(d.x + 8, d.y + 4, 8);
+      graphics.fillCircle(d.x - 6, d.y + 3, 7);
+    }
+  }
+
+  // Horde side — skulls and bones scattered
+  const hordeDecos = [
+    {x:2700,y:200},{x:3200,y:300},{x:3700,y:150},{x:4200,y:280},
+    {x:2800,y:2200},{x:3300,y:2100},{x:3800,y:2250},{x:4300,y:2150},
+    {x:2900,y:700},{x:3400,y:800},{x:3900,y:750},
+    {x:3000,y:1500},{x:3500,y:1600},{x:4000,y:1550},
+  ];
+  for (const d of hordeDecos) {
+    // Small bone/skull
+    graphics.fillStyle(0xD4C8A0, 0.2);
+    graphics.fillCircle(d.x, d.y, 6);
+    graphics.fillStyle(0x1A0A00, 0.3);
+    graphics.fillCircle(d.x - 2, d.y - 1, 1.5);
+    graphics.fillCircle(d.x + 2, d.y - 1, 1.5);
   }
 
   // ─── MAGICAL RIVER DIVIDER at x=2400 ──────────────────
@@ -1785,11 +2010,19 @@ function updateUI() {
   if (!gameState) return;
   const gs = gameState;
 
+  // Kill announcements + event ticker
+  checkKillAnnouncements(gs);
+  updateEventTicker(gs);
+
   // Top bar scores
   const aKills = gs.heroes.filter(h=>h.faction==='alliance').reduce((s,h)=>s+h.kills,0);
   const hKills = gs.heroes.filter(h=>h.faction==='horde').reduce((s,h)=>s+h.kills,0);
-  document.getElementById('alliance-score').textContent = `ALLIANCE: ${aKills}`;
-  document.getElementById('horde-score').textContent = `HORDE: ${hKills}`;
+  const aAlive = gs.heroes.filter(h=>h.faction==='alliance'&&h.alive).length;
+  const hAlive = gs.heroes.filter(h=>h.faction==='horde'&&h.alive).length;
+  const aDots = gs.heroes.filter(h=>h.faction==='alliance').map(h=>`<span style="color:${h.alive?'#4A8FE0':'#333'}">\u25CF</span>`).join('');
+  const hDots = gs.heroes.filter(h=>h.faction==='horde').map(h=>`<span style="color:${h.alive?'#E24B4A':'#333'}">\u25CF</span>`).join('');
+  document.getElementById('alliance-score').innerHTML = `${aDots} ALLIANCE: ${aKills}`;
+  document.getElementById('horde-score').innerHTML = `HORDE: ${hKills} ${hDots}`;
   document.getElementById('wave-count').textContent = gs.waveCount;
 
   // Phase

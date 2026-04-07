@@ -1,0 +1,2493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="War of Agents — AI Agent MOBA Arena. Alliance vs Iron Horde.">
+<meta name="theme-color" content="#C8960C">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<title>War of Agents — Alliance vs Iron Horde</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { overflow: hidden !important; }
+  body {
+    background: #050a14;
+    color: #d4c08a;
+    font-family: 'Cinzel', serif;
+    overflow: hidden !important;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── TOP BAR ──────────────────────────────────────── */
+  #top-bar {
+    height: 42px;
+    background: linear-gradient(180deg, #12100A, #0A0804);
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg, #5A4A2A, #C8960C, #F0C040, #C8960C, #5A4A2A) 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 10;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+
+  #top-bar .title {
+    font-size: 15px;
+    font-weight: 900;
+    color: #C8960C;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(200,150,12,0.4), 0 1px 2px rgba(0,0,0,0.5);
+    min-width: 180px;
+  }
+
+  .score-display {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .score-alliance { color: #4A8FE0; }
+  .score-horde { color: #E24B4A; }
+  .score-sep { color: #C8960C33; font-size: 16px; }
+  .score-wave { color: #C8960C; font-size: 12px; }
+
+  .phase-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 180px;
+    justify-content: flex-end;
+  }
+
+  .phase-icon { font-size: 16px; }
+  .phase-badge {
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .phase-day { background: #1a1808; color: #C8960C; border: 1px solid #C8960C44; }
+  .phase-night { background: #0a1020; color: #6688cc; border: 1px solid #334488; }
+  .match-timer { color: #666; font-size: 11px; font-weight: 400; }
+
+  /* ─── MAIN AREA ────────────────────────────────────── */
+  #main-area {
+    flex: 1;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #game-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #game-container canvas { display: block; }
+
+  /* ─── COMBAT LOG (top right overlay) ────────────────── */
+  #kill-feed {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 320px;
+    z-index: 20;
+    pointer-events: none;
+    background: #050E1Acc;
+    border-left: 3px solid #C8960C;
+    border-radius: 0 0 0 4px;
+    padding: 4px 0;
+  }
+
+  #kill-feed-header {
+    color: #C8960C;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    padding: 2px 10px;
+    opacity: 0.8;
+  }
+
+  .kill-entry {
+    border: none;
+    border-radius: 0;
+    padding: 5px 10px;
+    margin-bottom: 0;
+    font-size: 11px;
+    animation: fadeIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    position: relative;
+    pointer-events: auto;
+    transition: opacity 0.8s ease;
+  }
+  .kill-entry:nth-child(even) { background: #0A1228; }
+  .kill-entry:nth-child(odd) { background: #060E1A; }
+  .kill-entry.fading { opacity: 0; }
+  .kill-entry.rampage { background: #1A1500; color: #ffd700; border-left: 2px solid #C8960C; }
+  .kill-entry .dmg-num { color: #F0C040; font-weight: 700; }
+  .kill-entry .kill-sword { color: #C8960C; font-size: 10px; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes pulseGold { 0%,100% { text-shadow: 0 0 6px rgba(255,215,0,0.3); } 50% { text-shadow: 0 0 14px rgba(255,215,0,0.8); } }
+
+  /* ═══════════════════════════════════════════════════════
+     WARCRAFT-THEMED BOTTOM PANEL
+     ═══════════════════════════════════════════════════════ */
+
+  /* ─── BOTTOM PANEL — dark stone slab with gold trim ─── */
+  #bottom-panel {
+    height: 190px;
+    background: linear-gradient(180deg, #0E0A06 0%, #1A1208 40%, #0A0804 100%);
+    border-top: 3px solid;
+    border-image: linear-gradient(90deg, #8B6914, #F0C040, #C8960C, #F0C040, #8B6914) 1;
+    display: flex;
+    flex-shrink: 0;
+    z-index: 10;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+  }
+
+  /* ─── MINIMAP — stone-framed scrying orb ─────────────── */
+  #minimap-panel {
+    width: 180px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 1px solid #5A4A2A;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, #0E0A04, #1A1208);
+  }
+
+  #minimap-label {
+    font-size: 10px;
+    color: #C8960C;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    text-shadow: 0 0 4px rgba(200,150,12,0.4);
+  }
+
+  #minimap-wrap {
+    width: 160px;
+    height: 160px;
+    border: 2px solid #8B6914;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(200,150,12,0.25), inset 0 0 6px rgba(0,0,0,0.5);
+    background: #050804;
+  }
+
+  #minimap-wrap canvas { width: 100%; height: 100%; display: block; }
+
+  /* ─── HERO CARDS — ornate parchment frames ───────────── */
+  #heroes-panel {
+    flex: 1;
+    display: flex;
+    gap: 5px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    align-items: flex-start;
+  }
+
+  .hero-card {
+    min-width: 152px;
+    background: linear-gradient(170deg, #1A1408 0%, #0E0A04 50%, #12100A 100%);
+    border: 1px solid #5A4A2A;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(200,150,12,0.08), 0 2px 6px rgba(0,0,0,0.4);
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .hero-card:hover {
+    box-shadow: inset 0 1px 0 rgba(200,150,12,0.15), 0 0 14px rgba(200,150,12,0.15), 0 3px 8px rgba(0,0,0,0.5);
+    border-color: #C8960C;
+  }
+  .hero-card.alliance {
+    border-color: #4A6A8A;
+    border-left: 3px solid #4A8FE0;
+    box-shadow: inset 0 1px 0 rgba(74,143,224,0.06), 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .hero-card.alliance:hover { border-color: #4A8FE0; box-shadow: 0 0 12px rgba(74,143,224,0.15); }
+  .hero-card.horde {
+    border-color: #5A2A1A;
+    border-left: 3px solid #CC3322;
+    box-shadow: inset 0 1px 0 rgba(204,51,34,0.06), 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .hero-card.horde:hover { border-color: #CC3322; box-shadow: 0 0 12px rgba(204,51,34,0.15); }
+  .hero-card.dead { border-color: #2A2A2A; opacity: 1; }
+  .hero-card::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: 10%;
+    height: 80%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, #C8960C66, transparent);
+  }
+  .hero-card { position: relative; }
+
+  .hero-card .hero-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+  }
+
+  .hero-card .class-icon {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    box-shadow: 0 0 4px rgba(200,150,12,0.2);
+  }
+
+  .hero-card .name {
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .hero-card.alliance .name { color: #F0C040; text-shadow: 0 0 6px rgba(240,192,64,0.25); }
+  .hero-card.horde .name { color: #E24B4A; text-shadow: 0 0 6px rgba(226,75,74,0.25); }
+
+  .hero-card .agent-label {
+    font-size: 9px;
+    color: #8A7A5A;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+  }
+
+  .hero-card .faction-label { font-size: 10px; font-weight: 500; }
+  .hero-card .faction-label.alliance { color: #4A8FE0; }
+  .hero-card .faction-label.horde { color: #E24B4A; }
+
+  .hero-card .level-badge {
+    display: inline-block;
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 9px;
+    font-weight: 700;
+    margin-left: 4px;
+    color: #F0C040;
+    text-shadow: 0 0 3px rgba(240,192,64,0.3);
+  }
+  .hero-card.alliance .level-badge { background: #0A1A2A; border: 1px solid #4A8FE033; }
+  .hero-card.horde .level-badge { background: #1A0808; border: 1px solid #E24B4A33; }
+
+  .hero-card .stats { color: #8A7A5A; line-height: 1.4; font-size: 10px; }
+  .hero-card .kda { color: #AAA080; font-weight: 700; font-size: 11px; }
+  .hero-card .items-row { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
+  .hero-card .item-pill {
+    background: linear-gradient(135deg, #1A1400, #2A1E08);
+    color: #C8960C;
+    border: 1px solid #5A4A2A;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 10px;
+    white-space: nowrap;
+    box-shadow: inset 0 1px 0 rgba(200,150,12,0.08);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .hero-card .item-pill:hover {
+    border-color: #C8960C;
+    box-shadow: 0 0 6px rgba(200,150,12,0.2);
+  }
+  .hero-card .abilities-row { color: #5A4A3A; font-size: 8px; margin-top: 1px; }
+
+  .hp-bar {
+    width: 100%;
+    height: 6px;
+    background: #0A0804;
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 2px 0;
+    border: 1px solid #2A2218;
+  }
+  .hp-bar-fill { height: 100%; border-radius: 2px; transition: width 0.1s; }
+  .hp-alliance { background: linear-gradient(90deg, #1A6A1A, #44AA44, #66CC66); box-shadow: 0 0 4px rgba(68,170,68,0.3); }
+  .hp-horde { background: linear-gradient(90deg, #1A6A1A, #44AA44, #66CC66); box-shadow: 0 0 4px rgba(68,170,68,0.3); }
+  .mana-bar-fill { height: 100%; background: linear-gradient(90deg, #0A3A8A, #2266CC, #4488EE); border-radius: 2px; transition: width 0.1s; box-shadow: 0 0 4px rgba(34,102,204,0.3); }
+
+  .streak-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #8B6914, #FFD700, #C8960C);
+    color: #1A0E04;
+    padding: 0 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    margin-left: 3px;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+    box-shadow: 0 0 6px rgba(255,215,0,0.3);
+  }
+
+  /* ─── STATS PANEL — iron-bound ledger ──────────────── */
+  #stats-panel {
+    width: 160px;
+    padding: 8px 10px;
+    border-left: 1px solid #5A4A2A;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+    font-size: 10px;
+    background: linear-gradient(180deg, #0E0A04, #1A1208);
+  }
+
+  #stats-label {
+    font-size: 10px;
+    color: #C8960C;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    text-shadow: 0 0 4px rgba(200,150,12,0.4);
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 3px 5px;
+    border-radius: 2px;
+  }
+  .stat-row:nth-child(odd) { background: rgba(200,150,12,0.03); }
+  .stat-row:nth-child(even) { background: transparent; }
+
+  .stat-row .stat-label { color: #8A7A5A; font-size: 11px; }
+  .stat-row .stat-val { font-weight: 700; font-size: 14px; }
+  .stat-row .stat-val.blue { color: #4A8FE0; font-size: 14px; text-shadow: 0 0 4px rgba(74,143,224,0.2); }
+  .stat-row .stat-val.red { color: #E24B4A; font-size: 14px; text-shadow: 0 0 4px rgba(226,75,74,0.2); }
+  .stat-row .stat-val.gold { color: #F0C040; font-size: 20px; font-weight: 900; text-shadow: 0 0 8px rgba(240,192,64,0.4); }
+  .stat-row .stat-val.silver { color: #CCCCCC; font-size: 14px; }
+
+  .stats-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #5A4A2A, transparent);
+    margin: 2px 0;
+  }
+
+  /* ─── SPECTATOR CHAT ────────────────────────────────── */
+  #chat-panel {
+    position: fixed;
+    bottom: 200px;
+    left: 8px;
+    width: 240px;
+    background: #0A0804ee;
+    border: 1px solid #5A4A2A;
+    border-radius: 6px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  #chat-header {
+    font-size: 9px; color: #C8960C; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 8px; border-bottom: 1px solid #5A4A2A44; cursor: pointer; user-select: none;
+  }
+  #chat-header:hover { color: #F0C040; }
+  #chat-panel.collapsed #chat-messages,
+  #chat-panel.collapsed #chat-input-row { display: none; }
+  #chat-messages {
+    height: 140px; overflow-y: auto; padding: 4px 8px; font-size: 11px; color: #AAA080;
+  }
+  #chat-messages div { margin-bottom: 3px; line-height: 1.3; }
+  #chat-messages .chat-name { color: #C8960C; font-weight: 700; }
+  #chat-input-row { display: flex; border-top: 1px solid #5A4A2A44; }
+  #chat-input {
+    flex: 1; background: #0A0804; border: none; color: #d4c08a; padding: 5px 8px;
+    font-family: 'Cinzel', serif; font-size: 11px; outline: none;
+  }
+  #chat-send {
+    background: linear-gradient(135deg, #5A4A2A, #8B6914); color: #F0C040; border: none;
+    padding: 5px 10px; font-family: 'Cinzel', serif; font-size: 10px; cursor: pointer;
+    font-weight: 700; letter-spacing: 0.05em;
+  }
+  #chat-send:hover { background: linear-gradient(135deg, #8B6914, #C8960C); }
+
+  /* ─── MOBILE RESPONSIVE ─────────────────────────────── */
+  @media (max-width: 768px) {
+    #top-bar { height: 32px; padding: 0 8px; }
+    #top-bar .title { font-size: 11px; min-width: auto; }
+    .score-display { font-size: 11px; gap: 8px; }
+    .phase-info { min-width: auto; gap: 6px; }
+    .match-timer { font-size: 9px; }
+    .phase-badge { font-size: 8px; padding: 1px 6px; }
+
+    #bottom-panel { height: 160px; }
+    #minimap-panel { width: 120px; padding: 4px; }
+    #minimap-wrap { width: 108px; height: 108px; }
+    #minimap-label { font-size: 8px; }
+
+    .hero-card { min-width: 120px; padding: 5px; font-size: 9px; }
+    .hero-card .name { font-size: 11px; }
+    .hero-card .class-icon { width: 20px; height: 20px; font-size: 12px; }
+
+    #stats-panel { width: 110px; padding: 4px 6px; }
+    #stats-label { font-size: 8px; }
+    .stat-row { font-size: 9px; }
+    .stat-row .stat-val.gold { font-size: 14px; }
+
+    #kill-feed { width: 220px; }
+    .kill-entry { font-size: 9px; padding: 3px 6px; }
+
+    #chat-panel { width: 180px; bottom: 170px; }
+    #chat-messages { height: 100px; font-size: 10px; }
+  }
+
+  @media (max-width: 480px) {
+    #minimap-panel { display: none; }
+    #stats-panel { display: none; }
+    #bottom-panel { height: 130px; }
+    .hero-card { min-width: 100px; }
+    .hero-card .items-row { display: none; }
+    .hero-card .abilities-row { display: none; }
+    #kill-feed { width: 180px; }
+    #chat-panel { width: 160px; bottom: 140px; }
+  }
+
+  /* Touch-friendly tap targets */
+  @media (pointer: coarse) {
+    #chat-input { font-size: 16px; padding: 8px; }
+    #chat-send { padding: 8px 14px; }
+  }
+
+  /* ─── WINNER OVERLAY ───────────────────────────────── */
+  #winner-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+  #winner-overlay.show { display: flex; }
+  #winner-overlay h1 {
+    font-size: 52px;
+    text-shadow: 0 0 40px rgba(255,215,0,0.8);
+    color: #ffd700;
+    margin-bottom: 10px;
+    animation: pulseGold 2s infinite;
+  }
+  #winner-overlay h2 { font-size: 24px; color: #d4c08a; }
+  /* ─── KILL ANNOUNCEMENTS ────────────────────────────── */
+  #kill-announce {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 90;
+    pointer-events: none;
+    text-align: center;
+  }
+  .announce-text {
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    animation: announceIn 0.3s ease, announceOut 0.5s ease 2s forwards;
+    text-shadow: 0 0 20px rgba(255,215,0,0.6), 0 2px 4px rgba(0,0,0,0.8);
+    margin-bottom: 4px;
+  }
+  .announce-text.streak3 { color: #F0C040; }
+  .announce-text.streak5 { color: #FF6600; font-size: 42px; }
+  .announce-text.streak7 { color: #FF2222; font-size: 48px; }
+  .announce-text.streak10 { color: #FF00FF; font-size: 54px; }
+  .announce-sub { color: #AAA080; font-size: 14px; letter-spacing: 0.1em; animation: announceIn 0.3s ease, announceOut 0.5s ease 2s forwards; }
+  @keyframes announceIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+  @keyframes announceOut { from { opacity: 1; } to { opacity: 0; transform: scale(1.2); } }
+
+  /* ─── LOADING SCREEN ───────────────────────────────── */
+  #loading-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(180deg, #0A0804, #1A1208, #0A0804);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.8s ease;
+  }
+  #loading-screen.hidden { opacity: 0; pointer-events: none; }
+  #loading-title {
+    font-size: 42px;
+    color: #C8960C;
+    text-shadow: 0 0 30px rgba(200,150,12,0.5);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+  #loading-subtitle {
+    font-size: 14px;
+    color: #8A7A5A;
+    letter-spacing: 0.15em;
+    margin-bottom: 30px;
+  }
+  #loading-bar-bg {
+    width: 300px;
+    height: 6px;
+    background: #1A1208;
+    border: 1px solid #5A4A2A;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #loading-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #8B6914, #C8960C, #F0C040);
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  #loading-tip {
+    margin-top: 16px;
+    color: #5A4A2A;
+    font-size: 11px;
+    font-style: italic;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── GAME EVENT TICKER (top center) ───────────────── */
+  #event-ticker {
+    position: fixed;
+    top: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .ticker-event {
+    background: #0A0804cc;
+    border: 1px solid #5A4A2A55;
+    border-radius: 3px;
+    padding: 2px 12px;
+    font-size: 11px;
+    color: #AAA080;
+    animation: fadeIn 0.3s ease, announceOut 0.5s ease 4s forwards;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── LOADING SCREEN ────────────────────────────────── -->
+<div id="loading-screen">
+  <div id="loading-title">WAR OF AGENTS</div>
+  <div id="loading-subtitle">ALLIANCE VS IRON HORDE</div>
+  <div id="loading-bar-bg"><div id="loading-bar-fill"></div></div>
+  <div id="loading-tip">Preparing the battlefield...</div>
+</div>
+
+<!-- ─── KILL ANNOUNCEMENTS ────────────────────────────── -->
+<div id="kill-announce"></div>
+
+<!-- ─── EVENT TICKER ──────────────────────────────────── -->
+<div id="event-ticker"></div>
+
+<!-- ─── TOP BAR ──────────────────────────────────────── -->
+<div id="top-bar">
+  <div class="title">WAR OF AGENTS</div>
+  <div class="score-display">
+    <span class="score-alliance" id="alliance-score">ALLIANCE: 0</span>
+    <span class="score-sep">|</span>
+    <span class="score-wave">WAVE <span id="wave-count">0</span></span>
+    <span class="score-sep">|</span>
+    <span class="score-horde" id="horde-score">HORDE: 0</span>
+  </div>
+  <div class="phase-info">
+    <span class="match-timer" id="match-timer">0:00</span>
+    <span class="phase-icon" id="phase-icon">&#9788;</span>
+    <span id="phase-badge" class="phase-badge phase-day">DAY</span>
+  </div>
+</div>
+
+<!-- ─── MAIN GAME AREA ───────────────────────────────── -->
+<div id="main-area">
+  <div id="game-container"></div>
+  <div id="kill-feed">
+    <div id="kill-feed-header">COMBAT LOG</div>
+  </div>
+</div>
+
+<!-- ─── BOTTOM PANEL ─────────────────────────────────── -->
+<div id="bottom-panel">
+  <div id="minimap-panel">
+    <div id="minimap-label">MINIMAP</div>
+    <div id="minimap-wrap"><canvas id="minimap-canvas"></canvas></div>
+  </div>
+  <div id="heroes-panel"></div>
+  <div id="stats-panel">
+    <div id="stats-label">BATTLE STATS</div>
+    <div class="stat-row"><span class="stat-label">Wave</span><span class="stat-val gold" id="st-wave">0</span></div>
+    <div class="stats-divider"></div>
+    <div class="stat-row"><span class="stat-label">Alliance Units</span><span class="stat-val blue" id="st-a-units">0</span></div>
+    <div class="stat-row"><span class="stat-label">Horde Units</span><span class="stat-val red" id="st-h-units">0</span></div>
+    <div class="stats-divider"></div>
+    <div class="stat-row"><span class="stat-label">Alliance Kills</span><span class="stat-val blue" id="st-a-kills">0</span></div>
+    <div class="stat-row"><span class="stat-label">Horde Kills</span><span class="stat-val red" id="st-h-kills">0</span></div>
+    <div class="stats-divider"></div>
+    <div class="stat-row"><span class="stat-label">Match Time</span><span class="stat-val silver" id="st-time">0:00</span></div>
+  </div>
+</div>
+
+<!-- ─── SPECTATOR CHAT ──────────────────────────────── -->
+<div id="chat-panel">
+  <div id="chat-header">CHAT</div>
+  <div id="chat-messages"></div>
+  <div id="chat-input-row">
+    <input id="chat-input" type="text" placeholder="Type message..." maxlength="120" autocomplete="off">
+    <button id="chat-send">Send</button>
+  </div>
+</div>
+
+<div id="winner-overlay">
+  <h1 id="winner-text">VICTORY</h1>
+  <h2 id="winner-faction"></h2>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// WAR OF AGENTS — Phaser 3 Sprite-Based Renderer
+// ═══════════════════════════════════════════════════════════════
+const MAP_W = 4800, MAP_H = 2400;
+const TOP_H = 40, BOT_H = 190;
+let gameState = null;
+let lastKillCount = 0;
+let deathEffects = [];
+let levelUpEffects = [];
+let phaserScene = null;
+
+// ─── Class visual config ─────────────────────────────────────────
+const CLASS_CFG = {
+  knight:      { icon: '\u2694', color: { alliance: 0x5599ee, horde: 0xee5544 }, accent: 0xccccdd, shape: 'shield', size: 24 },
+  ranger:      { icon: '\uD83C\uDFF9', color: { alliance: 0x44bb66, horde: 0xbb6644 }, accent: 0x66dd88, shape: 'diamond', size: 22 },
+  mage:        { icon: '\u2728', color: { alliance: 0x8855ee, horde: 0xee5588 }, accent: 0xbb77ff, shape: 'star', size: 22 },
+  priest:      { icon: '\u2720', color: { alliance: 0xdddd44, horde: 0xddaa33 }, accent: 0xffffaa, shape: 'cross', size: 22 },
+  siegemaster: { icon: '\uD83D\uDCA3', color: { alliance: 0xdd8833, horde: 0xdd4422 }, accent: 0xff9944, shape: 'hexagon', size: 26 },
+};
+
+const CLASS_ICONS = {
+  knight: '\u2694\uFE0F', ranger: '\uD83C\uDFF9', mage: '\u2728',
+  priest: '\u2720\uFE0F', siegemaster: '\uD83D\uDCA3',
+};
+
+const CLASS_CARD_COLORS = {
+  knight: '#4A8FE0', ranger: '#4a4', mage: '#a4f', priest: '#dd4', siegemaster: '#d84',
+};
+
+// ─── WebSocket ───────────────────────────────────────────────────
+const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const ws = new WebSocket(`${wsProto}//${location.host}`);
+// ─── Loading Screen ──────────────────────────────────────────
+const loadingTips = [
+  'Sharpening Alliance swords...',
+  'Feeding the Horde war beasts...',
+  'Polishing the gold divider...',
+  'Summoning hero spirits...',
+  'Fortifying tower defenses...',
+  'Brewing mana potions...',
+  'The Lich King watches...',
+];
+document.getElementById('loading-tip').textContent = loadingTips[Math.floor(Math.random() * loadingTips.length)];
+let loadProg = 0;
+const loadInterval = setInterval(() => {
+  loadProg += 8 + Math.random() * 12;
+  if (loadProg > 100) loadProg = 100;
+  document.getElementById('loading-bar-fill').style.width = loadProg + '%';
+  if (loadProg >= 100) {
+    clearInterval(loadInterval);
+    setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
+  }
+}, 200);
+
+// ─── Kill Announcements ─────────────────────────────────────
+let _lastAnnounceKills = {};
+let _firstBloodShown = false;
+function checkKillAnnouncements(gs) {
+  // First blood
+  if (!_firstBloodShown && gs.kills.length > 0) {
+    _firstBloodShown = true;
+    const k = gs.kills[0];
+    const killer = gs.heroes.find(h => h.id === k.killerId);
+    if (killer) {
+      const container = document.getElementById('kill-announce');
+      const fColor = killer.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+      container.innerHTML = `
+        <div class="announce-text streak5" style="color:#CC0000">FIRST BLOOD</div>
+        <div class="announce-sub"><span style="color:${fColor}">${killer.heroClass.toUpperCase()}</span> draws first blood!</div>
+      `;
+      setTimeout(() => { container.innerHTML = ''; }, 3000);
+    }
+  }
+  // Reset on game reset
+  if (gs.kills.length === 0) _firstBloodShown = false;
+
+  // Kill streaks
+  for (const h of gs.heroes) {
+    const prev = _lastAnnounceKills[h.id] || 0;
+    if (h.killStreak > prev && h.killStreak >= 3) {
+      showKillAnnounce(h);
+    }
+    _lastAnnounceKills[h.id] = h.killStreak;
+  }
+}
+
+function showKillAnnounce(hero) {
+  const container = document.getElementById('kill-announce');
+  const streakNames = { 3:'KILLING SPREE', 4:'DOMINATING', 5:'MEGA KILL', 6:'UNSTOPPABLE', 7:'WICKED SICK', 8:'MONSTER KILL', 9:'GODLIKE', 10:'BEYOND GODLIKE' };
+  const name = streakNames[Math.min(hero.killStreak, 10)] || 'RAMPAGE';
+  const cls = hero.killStreak >= 10 ? 'streak10' : hero.killStreak >= 7 ? 'streak7' : hero.killStreak >= 5 ? 'streak5' : 'streak3';
+  const fColor = hero.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+
+  container.innerHTML = `
+    <div class="announce-text ${cls}">${name}</div>
+    <div class="announce-sub"><span style="color:${fColor}">${hero.heroClass.toUpperCase()}</span> is on a ${hero.killStreak}-kill streak!</div>
+  `;
+  setTimeout(() => { container.innerHTML = ''; }, 3000);
+}
+
+// ─── Event Ticker ────────────────────────────────────────────
+let _lastTickerKillCount = 0;
+function updateEventTicker(gs) {
+  if (gs.kills.length <= _lastTickerKillCount) return;
+  const ticker = document.getElementById('event-ticker');
+  for (let i = _lastTickerKillCount; i < gs.kills.length; i++) {
+    const k = gs.kills[i];
+    const killer = gs.heroes.find(h => h.id === k.killerId);
+    const victim = gs.heroes.find(h => h.id === k.victimId);
+    if (!killer || !victim) continue;
+    const kC = killer.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    const vC = victim.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    const ev = document.createElement('div');
+    ev.className = 'ticker-event';
+    ev.innerHTML = `<span style="color:${kC}">${killer.heroClass}</span> <span style="color:#C8960C">\u2694</span> <span style="color:${vC}">${victim.heroClass}</span>`;
+    ticker.appendChild(ev);
+    setTimeout(() => { if (ev.parentNode) ev.remove(); }, 5000);
+    while (ticker.children.length > 5) ticker.removeChild(ticker.firstChild);
+  }
+  _lastTickerKillCount = gs.kills.length;
+  if (gs.kills.length < _lastTickerKillCount) _lastTickerKillCount = 0;
+}
+
+// ─── Chat (collapsible) ──────────────────────────────────────
+document.getElementById('chat-header').onclick = () => {
+  document.getElementById('chat-panel').classList.toggle('collapsed');
+};
+const chatName = 'Spectator' + Math.floor(Math.random() * 999);
+document.getElementById('chat-send').onclick = () => {
+  const inp = document.getElementById('chat-input');
+  const txt = inp.value.trim();
+  if (txt && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'chat', name: chatName, text: txt }));
+    addChatMsg(chatName, txt);
+    inp.value = '';
+  }
+};
+document.getElementById('chat-input').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('chat-send').click(); };
+function addChatMsg(name, text) {
+  const div = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+  msg.innerHTML = `<span class="chat-name">${name}:</span> ${text}`;
+  div.appendChild(msg);
+  div.scrollTop = div.scrollHeight;
+  while (div.children.length > 50) div.removeChild(div.firstChild);
+}
+
+ws.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  if (msg.type === 'chat') { addChatMsg(msg.name, msg.text); return; }
+  if (msg.type === 'state') {
+    const prev = gameState;
+    gameState = msg.data;
+    if (prev) {
+      const prevMap = {};
+      for (const h of prev.heroes) prevMap[h.id] = h;
+      for (const h of gameState.heroes) {
+        if (prevMap[h.id] && prevMap[h.id].alive && !h.alive) {
+          deathEffects.push({ x: h.x, y: h.y, color: h.faction === 'alliance' ? 0x4488ff : 0xff4444, age: 0, maxAge: 40 });
+          sfxDeath();
+        }
+        if (prevMap[h.id] && h.level > prevMap[h.id].level) {
+          levelUpEffects.push({ x: h.x, y: h.y, age: 0 });
+        }
+      }
+    }
+    updateUI();
+  }
+};
+ws.onclose = () => setTimeout(() => location.reload(), 3000);
+
+// ─── Sound Effects (Web Audio API) ───────────────────────────
+let audioCtx = null;
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+document.addEventListener('click', initAudio, { once: true });
+
+function playTone(freq, dur, vol, type) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(vol || 0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+function sfxAttack() { playTone(200, 0.08, 0.06, 'sawtooth'); }
+function sfxKill() { playTone(600, 0.15, 0.1, 'square'); playTone(800, 0.2, 0.08, 'sine'); }
+function sfxGold() { playTone(1200, 0.1, 0.05, 'sine'); setTimeout(() => playTone(1500, 0.1, 0.04, 'sine'), 80); }
+function sfxDeath() { playTone(100, 0.3, 0.08, 'sawtooth'); }
+function sfxRampage() { playTone(400, 0.1, 0.12, 'square'); setTimeout(() => playTone(600, 0.1, 0.1, 'square'), 100); setTimeout(() => playTone(900, 0.2, 0.08, 'square'), 200); }
+
+// ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game-container',
+  width: window.innerWidth,
+  height: window.innerHeight - BOT_H - TOP_H,
+  backgroundColor: '#000000',
+  scene: { preload: pPreload, create: pCreate, update: pUpdate },
+  scale: { mode: Phaser.Scale.NONE },
+};
+
+const game = new Phaser.Game(config);
+let cam, graphics;
+// Sprite pools keyed by entity id
+const spritePool = {};
+const hpBarPool = {};
+const dmgTexts = []; // floating damage numbers
+let terrainDrawn = false;
+let terrainGfx, nightOverlay, sunMoonText;
+let prevHpMap = {}; // track HP changes for damage numbers
+
+// ─── Generate textures programmatically ─────────────────────────
+function pPreload() {
+  const scene = this;
+
+  // Helper: draw into a texture
+  function genTex(key, w, h, drawFn) {
+    const g = scene.make.graphics({ x: 0, y: 0, add: false });
+    drawFn(g, w, h);
+    g.generateTexture(key, w, h);
+    g.destroy();
+  }
+
+  // ─── UNIT TEXTURES (52x52) ────────────────────────
+  const S = 52;
+
+  // Alliance Knight — blue armored warrior with sword + shield (64x64)
+  genTex('a_knight', S, S, (g) => {
+    const c = S/2; // center = 32
+    g.fillStyle(0x4A7ABF, 1); g.fillRect(c-10, c-12, 20, 26);
+    g.fillStyle(0x2A4A7A, 1); g.fillRect(c-16, c-12, 12, 10); g.fillRect(c+4, c-12, 12, 10);
+    g.fillStyle(0xBBCCDD, 1); g.fillCircle(c, c-18, 10);
+    g.fillStyle(0xDDB88A, 1); g.fillRect(c-5, c-20, 10, 6);
+    g.fillStyle(0x2A4A7A, 1); g.fillRect(c-7, c+14, 6, 14); g.fillRect(c+1, c+14, 6, 14);
+    g.fillStyle(0x4A7ABF, 1); g.fillRoundedRect(3, c-14, 14, 26, 4);
+    g.lineStyle(2, 0xffd700, 0.7); g.strokeRoundedRect(3, c-14, 14, 26, 4);
+    g.lineStyle(3, 0xCCCCDD, 1); g.lineBetween(S-12, c-22, S-12, c+10);
+    g.lineStyle(2, 0xBB9933, 1); g.lineBetween(S-18, c-4, S-6, c-4);
+  });
+
+  // Horde Knight — red orc warrior with battle axe (64x64)
+  genTex('h_knight', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0x8B3A2A, 1); g.fillRect(c-10, c-12, 20, 26);
+    g.fillStyle(0x5A2218, 1); g.fillRect(c-16, c-12, 12, 10); g.fillRect(c+4, c-12, 12, 10);
+    g.fillStyle(0x5A8A3A, 1); g.fillCircle(c, c-18, 12);
+    g.fillStyle(0x3A5A2A, 1); g.fillRect(c-5, c-20, 10, 6);
+    g.fillStyle(0x5A2218, 1); g.fillRect(c-7, c+14, 6, 14); g.fillRect(c+1, c+14, 6, 14);
+    g.lineStyle(4, 0x5A3A1A, 1); g.lineBetween(S-10, c-24, S-10, c+14);
+    g.fillStyle(0x888888, 1);
+    g.fillTriangle(S-10, c-22, S-18, c-14, S-10, c-6);
+    g.fillTriangle(S-10, c-22, S-2, c-14, S-10, c-6);
+  });
+
+  // Alliance Ranger — green hooded archer with bow (64x64)
+  genTex('a_ranger', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0x2E6030, 1); g.fillTriangle(c, c-8, c-14, c+18, c+14, c+18);
+    g.fillStyle(0x1A3A1A, 1); g.fillTriangle(c, c-24, c-12, c-6, c+12, c-6);
+    g.fillStyle(0xDDB88A, 1); g.fillCircle(c, c-14, 5);
+    g.fillStyle(0x1A3A1A, 1); g.fillRect(c-4, c+18, 4, 10); g.fillRect(c, c+18, 4, 10);
+    g.lineStyle(3, 0x6B4A1A, 1);
+    g.beginPath(); g.arc(S-10, c, 18, -1.2, 1.2); g.strokePath();
+    g.lineStyle(1, 0xDDDDDD, 0.6);
+    g.lineBetween(S-10+Math.cos(-1.2)*18, c+Math.sin(-1.2)*18, S-10+Math.cos(1.2)*18, c+Math.sin(1.2)*18);
+    g.lineStyle(2, 0x888888, 0.8); g.lineBetween(c-4, c, S-2, c);
+  });
+
+  // Horde Ranger — dark troll with bow (64x64)
+  genTex('h_ranger', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0x5A3A1A, 1); g.fillTriangle(c, c-8, c-14, c+18, c+14, c+18);
+    g.fillStyle(0x3A2210, 1); g.fillTriangle(c, c-24, c-12, c-6, c+12, c-6);
+    g.fillStyle(0x3A7A5A, 1); g.fillCircle(c, c-14, 5);
+    g.fillStyle(0x3A2210, 1); g.fillRect(c-4, c+18, 4, 10); g.fillRect(c, c+18, 4, 10);
+    g.lineStyle(3, 0x4A2A0A, 1);
+    g.beginPath(); g.arc(10, c, 18, Math.PI-1.2, Math.PI+1.2); g.strokePath();
+    g.lineStyle(2, 0x888888, 0.8); g.lineBetween(c+4, c, 2, c);
+  });
+
+  // Alliance Mage — purple robed wizard with staff + orb (64x64)
+  genTex('a_mage', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0x5A3AAA, 1); g.fillTriangle(c, c-10, c-16, c+20, c+16, c+20);
+    g.fillStyle(0x2A1A6A, 1); g.fillCircle(c, c-16, 9);
+    g.fillStyle(0xDDB88A, 1); g.fillCircle(c, c-16, 5);
+    g.fillStyle(0x2A1A6A, 1); g.fillRect(c-4, c+18, 4, 8); g.fillRect(c, c+18, 4, 8);
+    g.lineStyle(3, 0x5A3A1A, 1); g.lineBetween(S-10, c+20, S-10, c-26);
+    g.fillStyle(0x8866FF, 0.8); g.fillCircle(S-10, c-28, 7);
+    g.fillStyle(0xBB99FF, 1); g.fillCircle(S-10, c-28, 3);
+  });
+
+  // Horde Mage — orc shaman with skull staff (64x64)
+  genTex('h_mage', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0x6A2A4A, 1); g.fillTriangle(c, c-10, c-16, c+20, c+16, c+20);
+    g.fillStyle(0x3A0A2A, 1); g.fillCircle(c, c-16, 9);
+    g.fillStyle(0x5A8A3A, 1); g.fillCircle(c, c-16, 5);
+    g.fillStyle(0x3A0A2A, 1); g.fillRect(c-4, c+18, 4, 8); g.fillRect(c, c+18, 4, 8);
+    g.lineStyle(3, 0x3A2A0A, 1); g.lineBetween(10, c+20, 10, c-26);
+    g.fillStyle(0xDDDDCC, 0.9); g.fillCircle(10, c-28, 7);
+    g.fillStyle(0x000000, 0.7); g.fillCircle(8, c-29, 2); g.fillCircle(12, c-29, 2);
+  });
+
+  // Alliance Priest — white/gold healer (64x64)
+  genTex('a_priest', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0xC8D8F0, 1); g.fillTriangle(c, c-10, c-16, c+20, c+16, c+20);
+    g.fillStyle(0xEEEEFF, 1); g.fillCircle(c, c-16, 9);
+    g.fillStyle(0xDDB88A, 1); g.fillCircle(c, c-16, 5);
+    g.fillStyle(0xAABBCC, 1); g.fillRect(c-4, c+18, 4, 8); g.fillRect(c, c+18, 4, 8);
+    g.fillStyle(0xffd700, 0.9); g.fillRect(c-3, c-4, 6, 20); g.fillRect(c-10, c+2, 20, 6);
+  });
+
+  // Horde Priest — witch doctor (64x64)
+  genTex('h_priest', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0xAA8833, 1); g.fillTriangle(c, c-10, c-16, c+20, c+16, c+20);
+    g.fillStyle(0x887722, 1); g.fillCircle(c, c-16, 9);
+    g.fillStyle(0x5A8A3A, 1); g.fillCircle(c, c-16, 5);
+    g.fillStyle(0x665520, 1); g.fillRect(c-4, c+18, 4, 8); g.fillRect(c, c+18, 4, 8);
+    g.lineStyle(3, 0xDDDDCC, 1); g.lineBetween(10, c+20, 10, c-20);
+    g.fillStyle(0xDDDDCC, 0.9); g.fillCircle(10, c-22, 4);
+    g.fillStyle(0xDDDDCC, 0.8); g.fillCircle(8, c-12, 3); g.fillCircle(12, c-4, 3);
+  });
+
+  // Alliance Siegemaster — dwarf engineer with cannon (64x64)
+  genTex('a_siege', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0xAA8833, 1); g.fillRect(c-12, c-6, 24, 18);
+    g.fillStyle(0x6A5520, 1); g.fillRect(c-8, c+12, 7, 12); g.fillRect(c+1, c+12, 7, 12);
+    g.fillStyle(0xDDB88A, 1); g.fillCircle(c, c-12, 9);
+    g.fillStyle(0x886633, 1); g.fillRect(c-6, c-6, 5, 5);
+    g.fillStyle(0x555555, 1); g.fillRect(c+12, c-2, 18, 8);
+    g.fillStyle(0x333333, 1); g.fillCircle(c+12, c+2, 5);
+    g.lineStyle(1.5, 0xffd700, 0.5); g.strokeRect(c+12, c-2, 18, 8);
+  });
+
+  // Horde Siegemaster — orc with catapult (64x64)
+  genTex('h_siege', S, S, (g) => {
+    const c = S/2;
+    g.fillStyle(0x8A4422, 1); g.fillRect(c-12, c-6, 24, 18);
+    g.fillStyle(0x5A2A10, 1); g.fillRect(c-8, c+12, 7, 12); g.fillRect(c+1, c+12, 7, 12);
+    g.fillStyle(0x5A8A3A, 1); g.fillCircle(c, c-12, 10);
+    g.lineStyle(4, 0x5A3A1A, 1); g.lineBetween(4, c+14, 4, c-16);
+    g.lineStyle(3, 0x5A3A1A, 1); g.lineBetween(4, c-16, 14, c-22);
+    g.fillStyle(0x555555, 1); g.fillCircle(14, c-22, 5);
+    g.fillStyle(0x5A3A1A, 1); g.fillRect(0, c+14, 18, 8);
+  });
+
+  // Glow ring textures (scaled up for 64px sprites)
+  genTex('glow_blue', 80, 40, (g) => {
+    g.fillStyle(0x4A8FE0, 0.18); g.fillEllipse(40, 20, 76, 30);
+    g.lineStyle(2, 0x4A8FE0, 0.35); g.strokeEllipse(40, 20, 72, 26);
+  });
+  genTex('glow_red', 80, 40, (g) => {
+    g.fillStyle(0xE24B4A, 0.18); g.fillEllipse(40, 20, 76, 30);
+    g.lineStyle(2, 0xE24B4A, 0.35); g.strokeEllipse(40, 20, 72, 26);
+  });
+}
+
+function pCreate() {
+  phaserScene = this;
+  cam = this.cameras.main;
+  cam.setBounds(0, 0, MAP_W, MAP_H);
+
+  // Zoom: fit full 4800 world width into screen width
+  const zoom = this.scale.width / 4800;
+  cam.setZoom(zoom);
+  cam.centerOn(2400, 1200);
+
+  // Dynamic layer for everything
+  graphics = this.add.graphics();
+  graphics.setDepth(5);
+
+  // Night overlay
+  nightOverlay = this.add.graphics();
+  nightOverlay.setDepth(100);
+
+  // Sun/Moon text
+  sunMoonText = this.add.text(MAP_W - 80, 20, '\u2600', { fontSize: '32px', color: '#FFD700' });
+  sunMoonText.setDepth(101).setScrollFactor(0);
+
+  // No pan/scroll — full map always visible. Camera is locked.
+}
+
+// ─── Texture key lookup ─────────────────────────────────────────
+function unitTexKey(unitType, faction) {
+  const isA = faction === 'alliance';
+  const map = {
+    footman: 'a_knight', ironwarrior: 'h_knight',
+    archer: 'a_ranger', shredder: 'h_ranger',
+    gryphon: isA ? 'a_knight' : 'h_knight',
+    warlock: isA ? 'a_mage' : 'h_mage',
+    ballista: 'a_siege', colossus: 'h_siege',
+  };
+  return map[unitType] || (isA ? 'a_knight' : 'h_knight');
+}
+
+function heroTexKey(heroClass, faction) {
+  const isA = faction === 'alliance';
+  const map = {
+    knight: isA ? 'a_knight' : 'h_knight',
+    ranger: isA ? 'a_ranger' : 'h_ranger',
+    mage: isA ? 'a_mage' : 'h_mage',
+    priest: isA ? 'a_priest' : 'h_priest',
+    siegemaster: isA ? 'a_siege' : 'h_siege',
+  };
+  return map[heroClass] || (isA ? 'a_knight' : 'h_knight');
+}
+
+function pUpdate() {
+  if (!gameState || !graphics) return;
+  graphics.clear();
+
+  const gs = gameState;
+  const isNight = gs.phase === 'night';
+  const t = gs.tick;
+
+  const halfW = MAP_W / 2;
+
+  // ─── TERRAIN (drawn on dynamic graphics every frame — simple & reliable) ───
+  const grassBase = isNight ? 0x1a3010 : 0x2D5A1B;
+  const dirtBase  = isNight ? 0x2a1808 : 0x3A2010;
+  const treeColor = 0x1A3A0A;
+  // Single mid lane (multi-lane infrastructure kept server-side for future)
+  const LANES = [{ name: 'mid', y: 1040, h: 320 }];
+  const laneY = 1040, laneH = 320;
+
+  // Left grass half — Alliance lush terrain
+  graphics.fillStyle(grassBase, 1);
+  graphics.fillRect(0, 0, halfW, MAP_H);
+
+  // Grass grid seams
+  graphics.lineStyle(1, isNight ? 0x122808 : 0x1A3A0A, 0.3);
+  for (let gx = 36; gx < halfW; gx += 36) graphics.lineBetween(gx, 0, gx, MAP_H);
+  for (let gy = 36; gy < MAP_H; gy += 36) graphics.lineBetween(0, gy, halfW, gy);
+
+  // Lighter grass patches for variety
+  graphics.fillStyle(isNight ? 0x1e3812 : 0x3A6A2A, 0.15);
+  const grassPatches = [{x:400,y:300,r:60},{x:1000,y:200,r:45},{x:1600,y:400,r:55},
+    {x:800,y:700,r:50},{x:1400,y:800,r:40},{x:300,y:1600,r:55},
+    {x:900,y:1800,r:45},{x:1500,y:1700,r:50},{x:2000,y:2100,r:40}];
+  for (const p of grassPatches) graphics.fillCircle(p.x, p.y, p.r);
+
+  // Small ponds (blue water patches)
+  const ponds = [{x:600,y:250,r:25},{x:1800,y:350,r:20},{x:400,y:2050,r:22},{x:1200,y:1750,r:18}];
+  for (const p of ponds) {
+    graphics.fillStyle(isNight ? 0x0A1520 : 0x1A3050, 0.4);
+    graphics.fillCircle(p.x, p.y, p.r);
+    graphics.fillStyle(isNight ? 0x1A3060 : 0x3060A0, 0.15);
+    graphics.fillCircle(p.x - 3, p.y - 3, p.r * 0.5);
+  }
+
+  // Flower clusters
+  const flowerSpots = [{x:350,y:200},{x:900,y:180},{x:1500,y:320},{x:700,y:750},
+    {x:1300,y:680},{x:500,y:1850},{x:1100,y:2000},{x:1800,y:1800}];
+  for (const f of flowerSpots) {
+    for (let i = 0; i < 6; i++) {
+      const fx = f.x - 10 + ((i * 7) & 19), fy = f.y - 8 + ((i * 11) & 15);
+      const colors = [0xFFFF66, 0xFFFFFF, 0xFF99CC, 0xFFCC44];
+      graphics.fillStyle(colors[i % 4], isNight ? 0.15 : 0.35);
+      graphics.fillCircle(fx, fy, 2 + (i & 1));
+    }
+  }
+
+  // Light fog/mist on Alliance upper area (holy glow)
+  graphics.fillStyle(isNight ? 0x0A1A3A : 0x4A8FE0, 0.03);
+  graphics.fillRect(0, 0, halfW, 400);
+
+  // Right half — Mordor dark earth #1A0A00
+  graphics.fillStyle(isNight ? 0x0A0500 : 0x1A0A00, 1);
+  graphics.fillRect(halfW, 0, halfW, MAP_H);
+
+  // Dark red fog overlay on upper Horde area
+  graphics.fillStyle(0x330000, 0.2);
+  graphics.fillRect(halfW, 0, halfW, 800);
+
+  // Lava crack lines (orange #FF4400 at low opacity)
+  graphics.lineStyle(3, 0xFF4400, 0.3);
+  const lavaCracks = [
+    [2500,300,2700,500], [2800,100,3000,400], [3200,600,3500,300],
+    [3600,200,3800,500], [4000,400,4200,100], [4300,300,4500,600],
+    [2600,1600,2900,1900], [3100,1700,3400,2000], [3800,1500,4100,1800],
+    [4300,1700,4600,2100],
+  ];
+  for (const [x1,y1,x2,y2] of lavaCracks) {
+    graphics.lineBetween(x1, y1, x2, y2);
+    // Glow around crack
+    graphics.lineStyle(8, 0xFF4400, 0.08);
+    graphics.lineBetween(x1, y1, x2, y2);
+    graphics.lineStyle(3, 0xFF4400, 0.3);
+  }
+
+  // Fire pit circles (animated glowing red)
+  const firePits = [{x:2700,y:400}, {x:3300,y:250}, {x:3900,y:500}, {x:4400,y:350},
+    {x:2800,y:1700}, {x:3400,y:1850}, {x:4000,y:1750}];
+  for (const fp of firePits) {
+    const flicker = Math.sin(t * 0.08 + fp.x * 0.01) * 0.04;
+    graphics.fillStyle(0xFF2200, 0.08 + flicker);
+    graphics.fillCircle(fp.x, fp.y, 55 + Math.sin(t * 0.06 + fp.y) * 5);
+    graphics.fillStyle(0xFF4400, 0.15 + flicker);
+    graphics.fillCircle(fp.x, fp.y, 30);
+    graphics.fillStyle(0xFFAA00, 0.2 + flicker);
+    graphics.fillCircle(fp.x, fp.y, 12);
+    graphics.fillStyle(0xFFDD44, 0.15);
+    graphics.fillCircle(fp.x, fp.y, 5);
+    // Ember particles rising
+    for (let e = 0; e < 3; e++) {
+      const ex = fp.x + Math.sin(t * 0.1 + e * 2 + fp.x) * 20;
+      const ey = fp.y - 20 - ((t * 0.5 + e * 30 + fp.x) % 60);
+      graphics.fillStyle(0xFF6600, 0.3 - ((t * 0.5 + e * 30 + fp.x) % 60) / 60 * 0.3);
+      graphics.fillCircle(ex, ey, 2);
+    }
+  }
+
+  // Dead twisted trees — dark #1A0A0A with red tint tips
+  const mordorTrees = [
+    {x:2600,y:200}, {x:2900,y:550}, {x:3200,y:150}, {x:3500,y:450},
+    {x:3800,y:250}, {x:4100,y:600}, {x:4500,y:300}, {x:4700,y:500},
+  ];
+  for (const mt of mordorTrees) {
+    const th = 50 + ((mt.x * 7) & 30);
+    // Red glow at base of each dead tree
+    graphics.fillStyle(0x660000, 0.12);
+    graphics.fillCircle(mt.x, mt.y + th, 30);
+    // Trunk — higher opacity for visibility
+    graphics.fillStyle(0x1A0A0A, 1);
+    graphics.fillRect(mt.x - 5, mt.y, 10, th);
+    // Branches — thicker and more visible
+    graphics.lineStyle(4, 0x1A0A0A, 0.85);
+    graphics.lineBetween(mt.x, mt.y + 8, mt.x - 24, mt.y - 18);
+    graphics.lineBetween(mt.x, mt.y + 14, mt.x + 22, mt.y - 12);
+    graphics.lineBetween(mt.x - 24, mt.y - 18, mt.x - 34, mt.y - 36);
+    graphics.lineBetween(mt.x + 22, mt.y - 12, mt.x + 32, mt.y - 34);
+    // Red tint on branch tips
+    graphics.fillStyle(0x550000, 0.5);
+    graphics.fillCircle(mt.x - 34, mt.y - 36, 6);
+    graphics.fillCircle(mt.x + 32, mt.y - 34, 6);
+  }
+
+  // Subtle scorched earth seams
+  graphics.lineStyle(1, 0x0A0500, 0.3);
+  for (let gx = halfW + 60; gx < MAP_W; gx += 60) graphics.lineBetween(gx, 0, gx, MAP_H);
+  for (let gy = 60; gy < MAP_H; gy += 60) graphics.lineBetween(halfW, gy, MAP_W, gy);
+
+  // Thin red danger border at very bottom of Horde side
+  graphics.fillStyle(0x880000, 0.6);
+  graphics.fillRect(halfW, MAP_H - 6, halfW, 6);
+  graphics.fillStyle(0xCC0000, 0.3);
+  graphics.fillRect(halfW, MAP_H - 20, halfW, 20);
+
+  // ─── 3 LANE ROADS ──────────────────────────────────────────
+  for (const lane of LANES) {
+    // Alliance half
+    graphics.fillStyle(isNight ? 0x3a3018 : 0x6B5A3A, 1);
+    graphics.fillRect(0, lane.y, halfW, lane.h);
+    // Horde half — scorched
+    graphics.fillStyle(isNight ? 0x1a0a00 : 0x2A1500, 1);
+    graphics.fillRect(halfW, lane.y, halfW, lane.h);
+    // Road seam lines
+    graphics.lineStyle(1, isNight ? 0x2a2010 : 0x5A4A2A, 0.25);
+    for (let ry = lane.y + 20; ry < lane.y + lane.h; ry += 40) graphics.lineBetween(0, ry, MAP_W, ry);
+    // Road edges
+    graphics.lineStyle(2, isNight ? 0x1a1508 : 0x4A3A1A, 0.5);
+    graphics.lineBetween(0, lane.y, MAP_W, lane.y);
+    graphics.lineBetween(0, lane.y + lane.h, MAP_W, lane.y + lane.h);
+    // Lane label
+    graphics.fillStyle(0xC8960C, 0.15);
+  }
+
+  // ─── JUNGLE CAMPS (between lanes) ─────────────────────────
+  if (gs.camps) {
+    for (const camp of gs.camps) {
+      // Camp ground circle
+      const campAlive = camp.monsters && camp.monsters.some(m => m.alive);
+      if (campAlive) {
+        graphics.fillStyle(0x2A4A1A, 0.3);
+        graphics.fillCircle(camp.x, camp.y, 50);
+        graphics.lineStyle(1, 0x4A6A2A, 0.3);
+        graphics.strokeCircle(camp.x, camp.y, 50);
+        // Monster dots
+        for (const m of camp.monsters) {
+          if (!m.alive) continue;
+          graphics.fillStyle(camp.isBoss ? 0xCC8800 : 0x88AA44, 0.9);
+          graphics.fillCircle(m.x, m.y, camp.isBoss ? 14 : 10);
+          graphics.fillStyle(0x000000, 0.3);
+          graphics.fillCircle(m.x, m.y, camp.isBoss ? 6 : 4);
+          // HP bar
+          if (m.hp < m.maxHp) {
+            const mPct = m.hp / m.maxHp;
+            graphics.fillStyle(0x0D1520, 0.8);
+            graphics.fillRect(m.x - 12, m.y - 18, 24, 4);
+            graphics.fillStyle(0x44AA22, 0.9);
+            graphics.fillRect(m.x - 12, m.y - 18, 24 * mPct, 4);
+          }
+        }
+        // Camp label
+        if (camp.isBoss) {
+          graphics.fillStyle(0xCC8800, 0.25);
+          graphics.fillCircle(camp.x, camp.y, 65);
+        }
+      } else {
+        // Cleared camp — dim circle
+        graphics.fillStyle(0x1A1A0A, 0.15);
+        graphics.fillCircle(camp.x, camp.y, 30);
+      }
+    }
+  }
+
+  // ─── 30 TREES — TOP AREA (Y 80 to 380, above top lane) ──
+  for (let i = 0; i < 30; i++) {
+    const tx = 60 + ((i * 97 + 31) % (MAP_W - 120));
+    const ty = 80 + ((i * 193 + 59) % 280);
+    const th = 60 + ((i * 7) % 30); // 60-90px tall
+    const tw = 20 + ((i * 3) % 20); // 20-40px wide
+    const isAlliance = tx < 2400;
+
+    if (isAlliance) {
+      // Bright green healthy tree #2A6A1A
+      graphics.fillStyle(0x2A6A1A, isNight ? 0.5 : 0.75);
+      graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
+      // Second canopy layer
+      graphics.fillStyle(0x2A6A1A, isNight ? 0.35 : 0.55);
+      graphics.fillTriangle(tx, ty - th - 15, tx - tw * 0.7, ty - th * 0.4, tx + tw * 0.7, ty - th * 0.4);
+      // Trunk
+      graphics.fillStyle(isNight ? 0x1A2A0A : 0x2A3A1A, 0.6);
+      graphics.fillRect(tx - 3, ty, 6, 12);
+    } else {
+      // Dead twisted tree — dark #3A2A0A + purple tint
+      graphics.fillStyle(0x3A2A0A, isNight ? 0.5 : 0.75);
+      graphics.fillRect(tx - 4, ty - th * 0.3, 8, th * 0.85);
+      // Purple corruption at base
+      graphics.fillStyle(0x2A1A2A, 0.2);
+      graphics.fillCircle(tx, ty + 5, tw * 0.5);
+      graphics.lineStyle(3, 0x3A2A0A, isNight ? 0.45 : 0.65);
+      graphics.lineBetween(tx, ty - th * 0.2, tx - tw * 0.7, ty - th * 0.6);
+      graphics.lineBetween(tx, ty - th * 0.15, tx + tw * 0.6, ty - th * 0.5);
+      graphics.lineBetween(tx - tw * 0.7, ty - th * 0.6, tx - tw, ty - th * 0.85);
+      graphics.lineBetween(tx + tw * 0.6, ty - th * 0.5, tx + tw * 0.8, ty - th * 0.8);
+    }
+  }
+
+  // ─── 30 TREES — BOTTOM AREA (Y 2020 to 2350, below bot lane) ─
+  for (let i = 0; i < 30; i++) {
+    const tx = 60 + ((i * 109 + 43) % (MAP_W - 120));
+    const ty = 2020 + ((i * 181 + 71) % 320);
+    const th = 60 + ((i * 11) % 30);
+    const tw = 20 + ((i * 5) % 20);
+    const isAlliance = tx < 2400;
+
+    if (isAlliance) {
+      graphics.fillStyle(0x2A6A1A, isNight ? 0.5 : 0.75);
+      graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
+      graphics.fillStyle(0x2A6A1A, isNight ? 0.35 : 0.55);
+      graphics.fillTriangle(tx, ty - th - 15, tx - tw * 0.7, ty - th * 0.4, tx + tw * 0.7, ty - th * 0.4);
+      graphics.fillStyle(isNight ? 0x1A2A0A : 0x2A3A1A, 0.6);
+      graphics.fillRect(tx - 3, ty, 6, 12);
+    } else {
+      graphics.fillStyle(0x4A2A0A, isNight ? 0.45 : 0.7);
+      graphics.fillRect(tx - 3, ty - th * 0.3, 6, th * 0.8);
+      graphics.lineStyle(3, 0x4A2A0A, isNight ? 0.4 : 0.6);
+      graphics.lineBetween(tx, ty - th * 0.2, tx - tw * 0.7, ty - th * 0.6);
+      graphics.lineBetween(tx, ty - th * 0.15, tx + tw * 0.6, ty - th * 0.5);
+      graphics.lineBetween(tx - tw * 0.7, ty - th * 0.6, tx - tw, ty - th * 0.85);
+      graphics.lineBetween(tx + tw * 0.6, ty - th * 0.5, tx + tw * 0.8, ty - th * 0.8);
+    }
+  }
+
+  // ─── JUNGLE TREES (between lanes) ──────────────────────
+  // Between top and mid lanes (Y 620-1020)
+  for (let i = 0; i < 25; i++) {
+    const tx = 100 + ((i * 191 + 37) % (MAP_W - 200));
+    const ty = 640 + ((i * 157 + 53) % 360);
+    const th = 50 + ((i * 7) % 25);
+    const tw = 18 + ((i * 3) % 14);
+    const isAlliance = tx < 2400;
+    graphics.fillStyle(isAlliance ? 0x1A4A0A : 0x2A1A0A, isNight ? 0.4 : 0.55);
+    graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
+    graphics.fillStyle(isAlliance ? 0x0A2A0A : 0x1A0A0A, 0.4);
+    graphics.fillRect(tx - 2, ty, 4, 8);
+  }
+  // Between mid and bot lanes (Y 1380-1780)
+  for (let i = 0; i < 25; i++) {
+    const tx = 100 + ((i * 173 + 41) % (MAP_W - 200));
+    const ty = 1400 + ((i * 163 + 67) % 360);
+    const th = 50 + ((i * 11) % 25);
+    const tw = 18 + ((i * 5) % 14);
+    const isAlliance = tx < 2400;
+    graphics.fillStyle(isAlliance ? 0x1A4A0A : 0x2A1A0A, isNight ? 0.4 : 0.55);
+    graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
+    graphics.fillStyle(isAlliance ? 0x0A2A0A : 0x1A0A0A, 0.4);
+    graphics.fillRect(tx - 2, ty, 4, 8);
+  }
+
+  // ─── TERRAIN DECORATIONS — rocks, bushes, flowers ──────
+  // Alliance side — rocks and bushes
+  const allianceDecos = [
+    {x:300,y:200,t:'rock'},{x:800,y:150,t:'bush'},{x:1200,y:300,t:'rock'},
+    {x:1700,y:180,t:'bush'},{x:500,y:2200,t:'rock'},{x:1000,y:2100,t:'bush'},
+    {x:1500,y:2250,t:'rock'},{x:2000,y:2150,t:'bush'},
+    {x:400,y:700,t:'bush'},{x:900,y:800,t:'rock'},{x:1400,y:750,t:'bush'},
+    {x:600,y:1500,t:'rock'},{x:1100,y:1600,t:'bush'},{x:1800,y:1550,t:'rock'},
+  ];
+  for (const d of allianceDecos) {
+    if (d.t === 'rock') {
+      graphics.fillStyle(isNight ? 0x2A3A2A : 0x4A5A4A, 0.5);
+      graphics.fillCircle(d.x, d.y, 12);
+      graphics.fillStyle(isNight ? 0x3A4A3A : 0x5A6A5A, 0.3);
+      graphics.fillCircle(d.x - 3, d.y - 3, 6);
+    } else {
+      graphics.fillStyle(isNight ? 0x1A3A1A : 0x2A5A2A, 0.5);
+      graphics.fillCircle(d.x, d.y, 10);
+      graphics.fillCircle(d.x + 8, d.y + 4, 8);
+      graphics.fillCircle(d.x - 6, d.y + 3, 7);
+    }
+  }
+
+  // Horde side — skulls and bones scattered
+  const hordeDecos = [
+    {x:2700,y:200},{x:3200,y:300},{x:3700,y:150},{x:4200,y:280},
+    {x:2800,y:2200},{x:3300,y:2100},{x:3800,y:2250},{x:4300,y:2150},
+    {x:2900,y:700},{x:3400,y:800},{x:3900,y:750},
+    {x:3000,y:1500},{x:3500,y:1600},{x:4000,y:1550},
+  ];
+  for (const d of hordeDecos) {
+    // Small bone/skull
+    graphics.fillStyle(0xD4C8A0, 0.2);
+    graphics.fillCircle(d.x, d.y, 6);
+    graphics.fillStyle(0x1A0A00, 0.3);
+    graphics.fillCircle(d.x - 2, d.y - 1, 1.5);
+    graphics.fillCircle(d.x + 2, d.y - 1, 1.5);
+  }
+
+  // ─── MAGICAL RIVER DIVIDER at x=2400 ──────────────────
+  // River bed
+  graphics.fillStyle(isNight ? 0x0A1825 : 0x1A3050, 0.6);
+  graphics.fillRect(halfW - 30, 0, 60, MAP_H);
+
+  // Flowing water segments with animated wave
+  for (let ry = 0; ry < MAP_H; ry += 6) {
+    const wave = Math.sin(ry * 0.02 + t * 0.04) * 8;
+    const alpha = 0.25 + Math.sin(ry * 0.01 + t * 0.03) * 0.08;
+    graphics.fillStyle(isNight ? 0x1A3055 : 0x2A5080, alpha);
+    graphics.fillRect(halfW - 18 + wave, ry, 36, 6);
+  }
+
+  // Water highlights / shimmer
+  for (let ry = 0; ry < MAP_H; ry += 25) {
+    const sx2 = halfW + Math.sin(ry * 0.04 + t * 0.05) * 10;
+    graphics.fillStyle(isNight ? 0x3060A0 : 0x5090CC, 0.2);
+    graphics.fillRect(sx2 - 3, ry, 6, 3);
+  }
+
+  // Gold energy core running through the center
+  graphics.fillStyle(0xF0C040, 0.15);
+  graphics.fillRect(halfW - 3, 0, 6, MAP_H);
+  graphics.fillStyle(0xF0C040, 0.7);
+  graphics.fillRect(halfW - 1, 0, 2, MAP_H);
+
+  // Floating magical particles along the river
+  for (let ry = 0; ry < MAP_H; ry += 40) {
+    const px = halfW + Math.sin(ry * 0.03 + t * 0.06) * 12;
+    const py = ry + Math.cos(ry * 0.02 + t * 0.04) * 8;
+    const pAlpha = 0.3 + Math.sin(ry * 0.05 + t * 0.08) * 0.2;
+    graphics.fillStyle(0xFFD700, pAlpha);
+    graphics.fillCircle(px, py, 2);
+    // Secondary blue particle
+    graphics.fillStyle(0x66AAFF, pAlpha * 0.6);
+    graphics.fillCircle(px + 8, py + 12, 1.5);
+  }
+
+  // ─── Stone bridge at lane crossing ──────────────────────
+  const bridgeY = 1200; // mid lane center
+  // Bridge deck
+  graphics.fillStyle(isNight ? 0x3A3028 : 0x6A5A48, 1);
+  graphics.fillRect(halfW - 45, bridgeY - 80, 90, 160);
+  // Bridge rails
+  graphics.fillStyle(isNight ? 0x2A2418 : 0x5A4A38, 1);
+  graphics.fillRect(halfW - 48, bridgeY - 82, 96, 6);
+  graphics.fillRect(halfW - 48, bridgeY + 76, 96, 6);
+  // Bridge pillars
+  graphics.fillStyle(isNight ? 0x2A2218 : 0x4A3A28, 1);
+  graphics.fillRect(halfW - 48, bridgeY - 82, 8, 164);
+  graphics.fillRect(halfW + 40, bridgeY - 82, 8, 164);
+  // Stone texture on bridge
+  graphics.lineStyle(1, isNight ? 0x2A2010 : 0x4A3A28, 0.3);
+  for (let by = bridgeY - 75; by < bridgeY + 75; by += 18) {
+    graphics.lineBetween(halfW - 42, by, halfW + 42, by);
+  }
+  // Gold trim on bridge edges
+  graphics.lineStyle(1, 0xC8960C, 0.3);
+  graphics.lineBetween(halfW - 48, bridgeY - 82, halfW + 48, bridgeY - 82);
+  graphics.lineBetween(halfW - 48, bridgeY + 82, halfW + 48, bridgeY + 82);
+
+  // River bank edges
+  graphics.lineStyle(2, isNight ? 0x1A2A10 : 0x3A4A2A, 0.5);
+  graphics.lineBetween(halfW - 30, 0, halfW - 30, MAP_H);
+  graphics.lineBetween(halfW + 30, 0, halfW + 30, MAP_H);
+
+  // ─── STRUCTURES (drawn with graphics each frame) ──────────
+  for (const s of gs.structures) {
+    if (!s.alive) { graphics.fillStyle(0x333333, 0.3); graphics.fillRect(s.x - 15, s.y - 10, 30, 20); continue; }
+    drawStructure(s, t, isNight);
+  }
+
+  // ─── UNITS + HEROES as Phaser sprites ─────────────────────
+  _renderedPositions.length = 0; // clear proximity tracking each frame
+  const activeIds = new Set();
+
+  for (const u of gs.units) {
+    if (!u.alive) continue;
+    activeIds.add(u.id);
+    renderSprite(u.id, unitTexKey(u.unitType, u.faction), u, t, false);
+  }
+  for (const h of gs.heroes) {
+    if (!h.alive) continue;
+    activeIds.add(h.id);
+    renderSprite(h.id, heroTexKey(h.heroClass, h.faction), h, t, true);
+  }
+
+  // Remove stale sprites
+  for (const id in spritePool) {
+    if (!activeIds.has(id)) {
+      // Death animation
+      const sp = spritePool[id];
+      if (sp.alpha > 0) {
+        phaserScene.tweens.add({ targets: sp, alpha: 0, angle: 360, scaleX: 0.2, scaleY: 0.2, duration: 400, onComplete: () => { sp.destroy(); } });
+        // Death sparks
+        for (let i = 0; i < 6; i++) {
+          const spark = phaserScene.add.circle(sp.x, sp.y, 3, sp.getData('isAlliance') ? 0x4A8FE0 : 0xE24B4A).setDepth(50);
+          phaserScene.tweens.add({
+            targets: spark, x: sp.x + (Math.random() - 0.5) * 80, y: sp.y + (Math.random() - 0.5) * 80,
+            alpha: 0, duration: 500, onComplete: () => spark.destroy()
+          });
+        }
+      }
+      if (sp._glow) sp._glow.destroy();
+      if (sp._label) sp._label.destroy();
+      delete spritePool[id];
+      if (hpBarPool[id]) { hpBarPool[id].bg.destroy(); hpBarPool[id].fill.destroy(); hpBarPool[id].lvl.destroy(); delete hpBarPool[id]; }
+    }
+  }
+
+  // ─── PROJECTILES with ability effects ───────────────────────
+  for (const p of gs.projectiles) {
+    const cx = p.fx + (p.tx - p.fx) * p.p, cy = p.fy + (p.ty - p.fy) * p.p;
+    const pColor = parseInt(p.color.replace('#', ''), 16);
+
+    // Outer glow trail
+    graphics.fillStyle(pColor, 0.08);
+    graphics.fillCircle(cx, cy, 20);
+
+    // Trail particles behind projectile
+    for (let i = 1; i <= 4; i++) {
+      const tp = p.p - i * 0.03;
+      if (tp < 0) break;
+      const tx2 = p.fx + (p.tx - p.fx) * tp, ty2 = p.fy + (p.ty - p.fy) * tp;
+      graphics.fillStyle(pColor, 0.25 - i * 0.05);
+      graphics.fillCircle(tx2, ty2, 4 - i * 0.6);
+    }
+
+    // Main projectile body
+    graphics.fillStyle(pColor, 0.3); graphics.fillCircle(cx, cy, 10);
+    graphics.fillStyle(pColor, 0.95); graphics.fillCircle(cx, cy, 5);
+    graphics.fillStyle(0xffffff, 0.6); graphics.fillCircle(cx, cy, 2);
+
+    // Impact spark at target when nearly arrived
+    if (p.p > 0.85) {
+      const sparkA = (p.p - 0.85) / 0.15;
+      graphics.fillStyle(0xFFFFFF, sparkA * 0.4);
+      graphics.fillCircle(p.tx, p.ty, 12 * sparkA);
+      graphics.fillStyle(pColor, sparkA * 0.3);
+      graphics.fillCircle(p.tx, p.ty, 20 * sparkA);
+    }
+
+    // Cast origin flash (when projectile just spawned)
+    if (p.p < 0.15) {
+      const castA = 1 - p.p / 0.15;
+      graphics.fillStyle(pColor, castA * 0.2);
+      graphics.fillCircle(p.fx, p.fy, 15);
+    }
+  }
+
+  // ─── DAMAGE NUMBERS (float up and fade) ────────────────────
+  // Track HP changes
+  const newHpMap = {};
+  for (const u of gs.units) newHpMap[u.id] = u.hp;
+  for (const h of gs.heroes) newHpMap[h.id] = h.hp;
+  for (const id in prevHpMap) {
+    if (newHpMap[id] !== undefined && newHpMap[id] < prevHpMap[id]) {
+      const diff = prevHpMap[id] - newHpMap[id];
+      const entity = gs.units.find(u => u.id === id) || gs.heroes.find(h => h.id === id);
+      if (entity && diff > 0) {
+        const txt = phaserScene.add.text(entity.x, entity.y - 30, `-${diff}`, {
+          fontSize: '16px', fontFamily: 'Cinzel', color: '#F0C040', fontStyle: 'bold',
+          stroke: '#000', strokeThickness: 2,
+        }).setOrigin(0.5).setDepth(90);
+        phaserScene.tweens.add({ targets: txt, y: entity.y - 80, alpha: 0, duration: 1000, onComplete: () => txt.destroy() });
+      }
+    }
+  }
+  prevHpMap = newHpMap;
+
+  // ─── FLOATING GOLD NUMBERS ─────────────────────────────────
+  if (!window._prevGoldMap) window._prevGoldMap = {};
+  for (const h of gs.heroes) {
+    const prev = window._prevGoldMap[h.id];
+    if (prev !== undefined && h.gold > prev) {
+      const gain = h.gold - prev;
+      if (gain >= 100) sfxGold();
+      const txt = phaserScene.add.text(h.x + 20, h.y - 50, `+${gain}g`, {
+        fontSize: '18px', fontFamily: 'Cinzel', color: '#FFD700', fontStyle: 'bold',
+        stroke: '#000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(91);
+      phaserScene.tweens.add({ targets: txt, y: h.y - 120, alpha: 0, duration: 1200, onComplete: () => txt.destroy() });
+    }
+    window._prevGoldMap[h.id] = h.gold;
+  }
+
+  // ─── DEATH EFFECTS — dramatic explosion ─────────────────────
+  deathEffects = deathEffects.filter(fx => {
+    fx.age++;
+    const prog = fx.age / fx.maxAge, alpha = 1 - prog;
+
+    // Expanding shockwave rings
+    graphics.lineStyle(4 - prog * 3, fx.color, alpha * 0.6);
+    graphics.strokeCircle(fx.x, fx.y, 10 + prog * 60);
+    graphics.lineStyle(2, fx.color, alpha * 0.3);
+    graphics.strokeCircle(fx.x, fx.y, 5 + prog * 40);
+
+    // Inner flash
+    graphics.fillStyle(0xffffff, alpha * 0.5);
+    graphics.fillCircle(fx.x, fx.y, 10 * (1 - prog));
+
+    // Scatter particles (8 directions)
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + fx.age * 0.08;
+      const dist = prog * 55;
+      const px = fx.x + Math.cos(angle) * dist;
+      const py = fx.y + Math.sin(angle) * dist;
+      graphics.fillStyle(fx.color, alpha * 0.7);
+      graphics.fillCircle(px, py, 3 * (1 - prog));
+    }
+
+    // Skull flash at center for hero deaths
+    if (fx.age < 10) {
+      graphics.fillStyle(0xD4C8A0, (10 - fx.age) / 10 * 0.4);
+      graphics.fillCircle(fx.x, fx.y, 15);
+    }
+
+    return fx.age < fx.maxAge;
+  });
+
+  // ─── Level Up — golden burst with rising text ──────────────
+  levelUpEffects = levelUpEffects.filter(fx => {
+    fx.age++;
+    const prog = fx.age / 40, alpha = 1 - prog;
+
+    // Golden expanding ring
+    graphics.lineStyle(3, 0xffd700, alpha * 0.8);
+    graphics.strokeCircle(fx.x, fx.y, 8 + prog * 45);
+    // Second ring
+    graphics.lineStyle(1.5, 0xF0C040, alpha * 0.4);
+    graphics.strokeCircle(fx.x, fx.y, 15 + prog * 30);
+
+    // Rising golden stars
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 + fx.age * 0.12;
+      const r = 12 + prog * 30;
+      graphics.fillStyle(0xffd700, alpha * 0.7);
+      graphics.fillCircle(fx.x + Math.cos(angle) * r, fx.y + Math.sin(angle) * r - prog * 20, 2.5);
+    }
+
+    // "LEVEL UP" flash
+    if (fx.age < 15) {
+      graphics.fillStyle(0xffd700, (15 - fx.age) / 15 * 0.3);
+      graphics.fillCircle(fx.x, fx.y, 25);
+    }
+
+    return fx.age < 40;
+  });
+
+  // ─── ATMOSPHERIC EFFECTS ────────────────────────────────────
+  nightOverlay.clear();
+  if (isNight) {
+    // Dark blue overlay
+    nightOverlay.fillStyle(0x000022, 0.4);
+    nightOverlay.fillRect(0, 0, MAP_W, MAP_H);
+    // Vignette edges
+    nightOverlay.fillStyle(0x000010, 0.15);
+    nightOverlay.fillRect(0, 0, MAP_W, 200);
+    nightOverlay.fillRect(0, MAP_H - 200, MAP_W, 200);
+    // Moonlight
+    nightOverlay.fillStyle(0x1a2a5a, 0.06);
+    nightOverlay.fillCircle(MAP_W / 2, MAP_H / 2, 600);
+    // Stars
+    for (let i = 0; i < 40; i++) {
+      const sx2 = (i * 127 + 31) % MAP_W;
+      const sy2 = (i * 83 + 17) % (MAP_H * 0.4);
+      const twinkle = 0.2 + Math.sin(t * 0.03 + i * 0.7) * 0.15;
+      nightOverlay.fillStyle(0xFFFFFF, twinkle);
+      nightOverlay.fillCircle(sx2, sy2, 1 + (i % 3 === 0 ? 1 : 0));
+    }
+  } else {
+    // Day — subtle dust motes floating on Horde side
+    for (let i = 0; i < 15; i++) {
+      const dx = halfW + ((i * 311 + t * 0.3) % (halfW - 100)) + 50;
+      const dy = ((i * 197 + t * 0.2) % MAP_H);
+      graphics.fillStyle(0xAA8844, 0.06);
+      graphics.fillCircle(dx, dy, 2);
+    }
+    // Holy light rays on Alliance side (subtle)
+    graphics.fillStyle(0xFFFFCC, 0.015);
+    for (let i = 0; i < 5; i++) {
+      const rx = 200 + i * 400;
+      graphics.fillRect(rx - 15, 0, 30, MAP_H * 0.6);
+    }
+  }
+  sunMoonText.setText(isNight ? '\uD83C\uDF19' : '\u2600\uFE0F');
+  sunMoonText.setPosition(cam.scrollX + cam.width / cam.zoom - 60, cam.scrollY + 10);
+
+  // ─── BASE ATTACK WARNING ──────────────────────────────────
+  if (!window._prevBaseHP) window._prevBaseHP = {};
+  for (const s of gs.structures) {
+    if (s.structureType !== 'base') continue;
+    const prev = window._prevBaseHP[s.id];
+    if (prev && s.hp < prev - 100) {
+      // Flash screen edge red/blue when base takes big damage
+      const warnColor = s.faction === 'alliance' ? 0x4A8FE0 : 0xCC2222;
+      graphics.fillStyle(warnColor, 0.06);
+      graphics.fillRect(0, 0, MAP_W, MAP_H);
+    }
+    window._prevBaseHP[s.id] = s.hp;
+  }
+}
+
+// ─── Track all rendered positions for label proximity check ──────
+const _renderedPositions = [];
+
+// ─── Sprite rendering ────────────────────────────────────────────
+function renderSprite(id, texKey, entity, t, isHero) {
+  const isA = entity.faction === 'alliance';
+  const bob = Math.sin(t * 0.08 + (entity.x || 0) * 0.01) * 3;
+
+  // HARD CLAMP — all units in mid lane
+  const clampedY = Math.max(1040, Math.min(1360, entity.y));
+
+  // Create or reuse sprite
+  let sp = spritePool[id];
+  if (!sp) {
+    sp = phaserScene.add.sprite(entity.x, clampedY, texKey).setDepth(10);
+    sp.setData('isAlliance', isA);
+    spritePool[id] = sp;
+
+    // Glow ring — 60% smaller (scale 1.2 instead of 3), opacity 0.2
+    const glowKey = isA ? 'glow_blue' : 'glow_red';
+    sp._glow = phaserScene.add.image(entity.x, clampedY + 40, glowKey).setDepth(9).setScale(1.2).setAlpha(0.2);
+
+    // Name label
+    const classNames = { footman:'Knight', ironwarrior:'Knight', archer:'Ranger', shredder:'Ranger',
+      gryphon:'Gryphon', warlock:'Mage', ballista:'Siege', colossus:'Siege',
+      knight:'Knight', ranger:'Ranger', mage:'Mage', priest:'Priest', siegemaster:'Siege' };
+    const labelText = classNames[entity.heroClass || entity.unitType] || '';
+    sp._label = phaserScene.add.text(entity.x, clampedY + 50, labelText, {
+      fontSize: '10px', fontFamily: 'Cinzel', color: '#ffffff',
+      backgroundColor: '#00000088', padding: { x: 3, y: 1 },
+    }).setOrigin(0.5, 0).setDepth(22);
+  }
+
+  // Update position — always clamped
+  sp.setPosition(entity.x, clampedY + bob);
+  sp.setFlipX(!isA);
+  sp.setScale(isHero ? 4.0 : 3.0);
+  sp.setAlpha(1);
+  sp.setAngle(0);
+
+  // Glow — small and subtle
+  if (sp._glow) {
+    sp._glow.setPosition(entity.x, clampedY + 42);
+    sp._glow.setAlpha(0.2);
+  }
+
+  // Label — hide if another unit is within 60px (proximity check)
+  if (sp._label) {
+    let tooClose = false;
+    for (const pos of _renderedPositions) {
+      const dx = entity.x - pos.x, dy = clampedY - pos.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 60) { tooClose = true; break; }
+    }
+    if (tooClose) {
+      sp._label.setVisible(false);
+    } else {
+      sp._label.setVisible(true);
+      sp._label.setPosition(entity.x, clampedY + 52 + bob);
+    }
+  }
+  _renderedPositions.push({ x: entity.x, y: clampedY });
+
+  // Attack flash
+  if (entity.currentAttackCd !== undefined && entity.currentAttackCd > 15) {
+    sp.setTint(0xffffff);
+  } else {
+    sp.clearTint();
+  }
+
+  // HP bar above unit — 120px wide (visible at zoom-out)
+  const hp = entity.hp, maxHp = entity.maxHp;
+  const barW = isHero ? 140 : 100;
+  let bar = hpBarPool[id];
+  if (!bar) {
+    const bg = phaserScene.add.rectangle(entity.x, clampedY - 80, barW + 4, 12, 0x0D1520).setDepth(20).setOrigin(0.5);
+    const fill = phaserScene.add.rectangle(entity.x - barW/2, clampedY - 80, barW, 8, 0x44AA22).setDepth(21).setOrigin(0, 0.5);
+    const lvl = phaserScene.add.text(entity.x, clampedY - 100, '', { fontSize: '22px', color: '#ffd700', fontFamily: 'Cinzel', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setDepth(22).setOrigin(0.5);
+    bar = { bg, fill, lvl };
+    hpBarPool[id] = bar;
+  }
+  const pct = Math.max(0, hp / maxHp);
+  const barColor = pct < 0.3 ? 0xff3333 : 0x44AA22;
+  bar.bg.setPosition(entity.x, clampedY - 80 + bob);
+  bar.fill.setPosition(entity.x - barW/2, clampedY - 80 + bob);
+  bar.fill.displayWidth = barW * pct;
+  bar.fill.setFillStyle(barColor);
+  bar.lvl.setPosition(entity.x, clampedY - 104 + bob);
+  bar.lvl.setText(entity.level !== undefined ? `${entity.level}` : '');
+}
+
+// ─── Draw Structures (still graphics-based for detail) ───────────
+function drawStructure(s, t, isNight) {
+  const isA = s.faction === 'alliance';
+  const primary = isA ? 0x3366cc : 0xcc3333;
+  const dark = isA ? 0x1a3366 : 0x661a1a;
+  const gold = 0xffd700;
+
+  if (s.structureType === 'base' && isA) {
+    // ═══ ALLIANCE HUMAN KEEP at (150, 1200) — Warcraft style ═══
+    const cx = 150, cy = 1200;
+
+    // ── Soft blue holy glow ──
+    graphics.fillStyle(0x4A8FE0, 0.1 + Math.sin(t * 0.03) * 0.05);
+    graphics.fillCircle(cx, cy, 280);
+    graphics.fillStyle(0x2244AA, 0.04);
+    graphics.fillCircle(cx, cy - 100, 200);
+
+    // ── TIER 1: Wide stone foundation ──
+    graphics.fillStyle(0x6A7A8A, 1);
+    graphics.fillRect(cx - 200, cy + 60, 400, 160);
+    // Stone brick texture
+    graphics.fillStyle(0x5A6A7A, 0.5);
+    for (let px = -180; px < 180; px += 38) {
+      for (let py = 70; py < 210; py += 30) {
+        graphics.fillRect(cx + px + ((px*3)&6), cy + py + ((py*7)&4), 22, 14);
+      }
+    }
+    // Gold reinforcement bands
+    graphics.lineStyle(2, 0xC8960C, 0.35);
+    graphics.lineBetween(cx - 198, cy + 100, cx + 198, cy + 100);
+    graphics.lineBetween(cx - 198, cy + 150, cx + 198, cy + 150);
+
+    // ── TIER 2: Main keep — polished stone walls ──
+    graphics.fillStyle(0x5A6A7A, 1);
+    graphics.fillRect(cx - 150, cy - 120, 300, 200);
+    // Lighter stone patches for polished look
+    graphics.fillStyle(0x7A8A9A, 0.3);
+    for (let px = -130; px < 130; px += 32) {
+      for (let py = -110; py < 70; py += 28) {
+        graphics.fillRect(cx + px + ((px*5)&8), cy + py, 16, 12);
+      }
+    }
+    // Gold trim bands on keep
+    graphics.lineStyle(2, 0xC8960C, 0.4);
+    graphics.lineBetween(cx - 148, cy - 50, cx + 148, cy - 50);
+    graphics.lineBetween(cx - 148, cy + 20, cx + 148, cy + 20);
+
+    // ── Left guard tower ──
+    graphics.fillStyle(0x4A5A6A, 1);
+    graphics.fillRect(cx - 200, cy - 180, 70, 260);
+    // ── Right guard tower ──
+    graphics.fillRect(cx + 130, cy - 180, 70, 260);
+
+    // ── TIER 3: Central spire — tall with blue crystal ──
+    graphics.fillStyle(0x5A6A7A, 1);
+    graphics.fillRect(cx - 35, cy - 300, 70, 200);
+    // Spire narrows to peak
+    graphics.fillStyle(0x1A4ABA, 1);
+    graphics.fillTriangle(cx, cy - 370, cx - 32, cy - 300, cx + 32, cy - 300);
+    // Spire stone lines
+    graphics.lineStyle(1, 0x4A5A6A, 0.3);
+    for (let r = cy - 290; r < cy - 110; r += 18) graphics.lineBetween(cx - 33, r, cx + 33, r);
+
+    // ── Blue glowing crystal at spire top ──
+    const crystalP = 0.6 + Math.sin(t * 0.07) * 0.3;
+    graphics.fillStyle(0x4A8FE0, 0.12 * crystalP);
+    graphics.fillCircle(cx, cy - 375, 28);
+    graphics.fillStyle(0x2266DD, 0.3 * crystalP);
+    graphics.fillCircle(cx, cy - 375, 14);
+    graphics.fillStyle(0x66AAFF, crystalP);
+    graphics.fillCircle(cx, cy - 375, 5);
+
+    // ── Blue pointed roofs on guard towers ──
+    graphics.fillStyle(0x1A4ABA, 1);
+    graphics.fillTriangle(cx - 165, cy - 240, cx - 208, cy - 178, cx - 122, cy - 178);
+    graphics.fillTriangle(cx + 165, cy - 240, cx + 122, cy - 178, cx + 208, cy - 178);
+
+    // ── Gold flags on towers ──
+    graphics.lineStyle(2, 0xAAAAAA, 1);
+    graphics.lineBetween(cx - 165, cy - 240, cx - 165, cy - 275);
+    graphics.lineBetween(cx + 165, cy - 240, cx + 165, cy - 275);
+    const flagWave = Math.sin(t * 0.06) * 4;
+    graphics.fillStyle(0x4A8FE0, 0.9);
+    graphics.fillRect(cx - 165, cy - 275, 30 + flagWave, 18);
+    graphics.fillRect(cx + 165, cy - 275, 30 + flagWave, 18);
+    // Gold lion emblem on flags
+    graphics.fillStyle(0xC8960C, 0.7);
+    graphics.fillCircle(cx - 150, cy - 266, 4);
+    graphics.fillCircle(cx + 180, cy - 266, 4);
+
+    // ── Refined battlements — clean square merlons ──
+    for (let i = 0; i < 10; i++) {
+      graphics.fillStyle(0x6A7A8A, 1);
+      graphics.fillRect(cx - 190 + i * 40, cy + 50, 16, 14);
+    }
+    for (let i = 0; i < 8; i++) {
+      graphics.fillStyle(0x5A6A7A, 1);
+      graphics.fillRect(cx - 142 + i * 38, cy - 130, 14, 12);
+    }
+    // Tower battlements
+    for (let i = 0; i < 4; i++) {
+      graphics.fillStyle(0x5A6A7A, 1);
+      graphics.fillRect(cx - 198 + i * 18, cy - 190, 10, 12);
+      graphics.fillRect(cx + 132 + i * 18, cy - 190, 10, 12);
+    }
+
+    // ── Alliance lion shield emblem on front ──
+    graphics.fillStyle(0x000000, 0.3);
+    graphics.fillCircle(cx, cy + 10, 50);
+    graphics.fillStyle(0x2244AA, 0.95);
+    graphics.fillRoundedRect(cx - 38, cy - 30, 76, 95, 8);
+    graphics.lineStyle(3, 0xC8960C, 0.9);
+    graphics.strokeRoundedRect(cx - 38, cy - 30, 76, 95, 8);
+    // Gold cross on shield
+    graphics.lineStyle(4, 0xC8960C, 0.85);
+    graphics.lineBetween(cx, cy - 22, cx, cy + 56);
+    graphics.lineBetween(cx - 26, cy + 15, cx + 26, cy + 15);
+    // Lion head silhouette (simple)
+    graphics.fillStyle(0xC8960C, 0.6);
+    graphics.fillCircle(cx, cy + 2, 12);
+    graphics.fillTriangle(cx, cy - 12, cx - 8, cy + 4, cx + 8, cy + 4);
+
+    // ── Gold torch brackets with holy blue flames ──
+    for (const txOff of [-110, 110, -55, 55]) {
+      graphics.fillStyle(0xC8960C, 0.7);
+      graphics.fillRect(cx + txOff - 3, cy - 60, 6, 18);
+      const flicker = Math.sin(t * 0.14 + txOff) * 3;
+      graphics.fillStyle(0x4488FF, 0.6);
+      graphics.fillTriangle(cx + txOff, cy - 76 + flicker, cx + txOff - 5, cy - 60, cx + txOff + 5, cy - 60);
+      graphics.fillStyle(0x88BBFF, 0.4);
+      graphics.fillTriangle(cx + txOff, cy - 70 + flicker, cx + txOff - 3, cy - 62, cx + txOff + 3, cy - 62);
+    }
+
+    // ── Stained glass windows ──
+    for (const wx of [-90, 90]) {
+      graphics.fillStyle(0x1A2A5A, 0.9);
+      graphics.fillRect(cx + wx - 8, cy - 50, 16, 30);
+      graphics.fillStyle(0x4A8FE0, 0.3 + Math.sin(t * 0.05) * 0.1);
+      graphics.fillRect(cx + wx - 6, cy - 48, 12, 26);
+      // Window arch
+      graphics.fillStyle(0x5A6A7A, 1);
+      graphics.fillRect(cx + wx - 9, cy - 52, 18, 4);
+    }
+
+    // ── Grand gate with gold portcullis ──
+    graphics.fillStyle(0x3A2A18, 1);
+    graphics.fillRect(cx - 35, cy + 170, 70, 50);
+    graphics.lineStyle(2, 0xC8960C, 0.6);
+    for (let gx2 = cx - 30; gx2 <= cx + 30; gx2 += 10) graphics.lineBetween(gx2, cy + 170, gx2, cy + 220);
+    graphics.lineBetween(cx - 35, cy + 190, cx + 35, cy + 190);
+    // Gate arch
+    graphics.fillStyle(0x6A7A8A, 1);
+    graphics.fillRect(cx - 40, cy + 162, 80, 12);
+
+    // ── Gold trim outlines ──
+    graphics.lineStyle(2, 0xC8960C, 0.5);
+    graphics.strokeRect(cx - 200, cy + 60, 400, 160);
+    graphics.strokeRect(cx - 150, cy - 120, 300, 200);
+
+    // ── HP bar above spire ──
+    drawHPBar(cx - 200, cy - 390, 400, 12, s.hp, s.maxHp, 0xC8960C);
+
+  } else if (s.structureType === 'base' && !isA) {
+    // ═══ HORDE ORCISH STRONGHOLD at (4650, 1200) ═══════
+    const hx = 4650, hy = 1200;
+
+    // ── Dark red atmospheric glow ──
+    graphics.fillStyle(0x8B0000, 0.1 + Math.sin(t * 0.03) * 0.05);
+    graphics.fillCircle(hx, hy, 300);
+    graphics.fillStyle(0x440000, 0.06);
+    graphics.fillCircle(hx, hy + 100, 250);
+
+    // ── TIER 1: Wide base platform — volcanic rock ──
+    graphics.fillStyle(0x1A1008, 1);
+    graphics.fillRect(hx - 200, hy + 60, 400, 160);
+    // Stone texture patches
+    graphics.fillStyle(0x2A1A08, 0.5);
+    for (let px = -180; px < 180; px += 40) {
+      for (let py = 70; py < 210; py += 35) {
+        graphics.fillRect(hx + px + ((px*3)&7), hy + py + ((py*5)&5), 20, 16);
+      }
+    }
+    // Iron reinforcement bands
+    graphics.lineStyle(3, 0x2A2A2A, 0.7);
+    graphics.lineBetween(hx - 198, hy + 100, hx + 198, hy + 100);
+    graphics.lineBetween(hx - 198, hy + 150, hx + 198, hy + 150);
+
+    // ── TIER 2: Middle keep — dark iron walls ──
+    graphics.fillStyle(0x0A0808, 1);
+    graphics.fillRect(hx - 150, hy - 120, 300, 200);
+    // Darker stone patches
+    graphics.fillStyle(0x1A1008, 0.4);
+    for (let px = -130; px < 130; px += 35) {
+      for (let py = -110; py < 70; py += 30) {
+        graphics.fillRect(hx + px + ((px*7)&9), hy + py, 18, 14);
+      }
+    }
+    // Iron bands on middle keep
+    graphics.lineStyle(2, 0x2A2A2A, 0.6);
+    graphics.lineBetween(hx - 148, hy - 50, hx + 148, hy - 50);
+    graphics.lineBetween(hx - 148, hy + 20, hx + 148, hy + 20);
+
+    // ── TIER 3: Central spire — tall black tower ──
+    graphics.fillStyle(0x0A0808, 1);
+    graphics.fillRect(hx - 40, hy - 320, 80, 220);
+    // Spire narrows at top
+    graphics.fillStyle(0x0A0808, 1);
+    graphics.fillTriangle(hx, hy - 380, hx - 35, hy - 320, hx + 35, hy - 320);
+    // Spire stone texture
+    graphics.lineStyle(1, 0x1A1A1A, 0.3);
+    for (let r = hy - 310; r < hy - 110; r += 20) graphics.lineBetween(hx - 38, r, hx + 38, r);
+
+    // ── Red glowing crystal at spire top ──
+    const crystalPulse = 0.6 + Math.sin(t * 0.08) * 0.3;
+    graphics.fillStyle(0x8B0000, 0.15 * crystalPulse);
+    graphics.fillCircle(hx, hy - 385, 30); // outer glow
+    graphics.fillStyle(0xCC0000, 0.3 * crystalPulse);
+    graphics.fillCircle(hx, hy - 385, 15);
+    graphics.fillStyle(0xFF2222, crystalPulse);
+    graphics.fillCircle(hx, hy - 385, 6); // bright core
+
+    // ── 7 brutal iron spikes along middle keep top ──
+    for (let i = 0; i < 7; i++) {
+      const sx2 = hx - 132 + i * 44;
+      graphics.fillStyle(0x1A1A1A, 1);
+      graphics.fillRect(sx2 - 6, hy - 140, 12, 28);
+      graphics.fillStyle(0x8B0000, 1);
+      graphics.fillTriangle(sx2, hy - 172, sx2 - 8, hy - 142, sx2 + 8, hy - 142);
+    }
+
+    // ── Crude orcish battlements — thick chunky merlons ──
+    for (let i = 0; i < 10; i++) {
+      graphics.fillStyle(0x1A1008, 1);
+      graphics.fillRect(hx - 190 + i * 40, hy + 50, 18, 16);
+    }
+    for (let i = 0; i < 8; i++) {
+      graphics.fillStyle(0x0A0808, 1);
+      graphics.fillRect(hx - 142 + i * 38, hy - 130, 16, 14);
+    }
+
+    // ── Hanging iron chains on sides ──
+    graphics.lineStyle(2, 0x2A2A2A, 0.5);
+    for (let cy2 = hy - 100; cy2 < hy + 50; cy2 += 10) {
+      graphics.strokeCircle(hx - 155, cy2, 4);
+      graphics.strokeCircle(hx + 155, cy2, 4);
+    }
+
+    // ── Red war banner from spire ──
+    graphics.fillStyle(0x8B0000, 0.9);
+    const bannerWave = Math.sin(t * 0.06) * 5;
+    graphics.fillRect(hx + 40, hy - 340, 50 + bannerWave, 80);
+    graphics.lineStyle(1, 0x550000, 0.7);
+    graphics.strokeRect(hx + 40, hy - 340, 50 + bannerWave, 80);
+    // Crude skull symbol on banner
+    graphics.fillStyle(0x000000, 0.6);
+    graphics.fillCircle(hx + 65, hy - 310, 10);
+    graphics.fillRect(hx + 59, hy - 302, 12, 6);
+
+    // ── Large orcish skull on front gate ──
+    graphics.fillStyle(0x000000, 0.4);
+    graphics.fillCircle(hx, hy + 30, 55); // dark backing
+    graphics.fillStyle(0xD4C8A0, 0.95);
+    graphics.fillCircle(hx, hy + 20, 40); // cranium
+    graphics.fillRect(hx - 25, hy + 55, 50, 20); // jaw
+    // Eye sockets
+    graphics.fillStyle(0x0A0808, 1);
+    graphics.fillCircle(hx - 14, hy + 12, 9);
+    graphics.fillCircle(hx + 14, hy + 12, 9);
+    // Glowing red eyes
+    graphics.fillStyle(0xCC2222, 0.6 + Math.sin(t * 0.1) * 0.3);
+    graphics.fillCircle(hx - 14, hy + 12, 4);
+    graphics.fillCircle(hx + 14, hy + 12, 4);
+    // Nose
+    graphics.fillStyle(0x0A0808, 0.9);
+    graphics.fillTriangle(hx, hy + 28, hx - 6, hy + 44, hx + 6, hy + 44);
+    // Teeth
+    for (let tx2 = -20; tx2 <= 20; tx2 += 8) {
+      graphics.fillStyle(0xD4C8A0, 0.85);
+      graphics.fillRect(hx + tx2, hy + 57, 5, 12);
+    }
+    // Tusks (orcish)
+    graphics.fillStyle(0xD4C8A0, 0.9);
+    graphics.fillTriangle(hx - 28, hy + 40, hx - 36, hy + 18, hx - 22, hy + 35);
+    graphics.fillTriangle(hx + 28, hy + 40, hx + 36, hy + 18, hx + 22, hy + 35);
+
+    // ── Iron torch brackets with flames ──
+    for (const txOff of [-120, 120, -60, 60]) {
+      // Bracket
+      graphics.fillStyle(0x2A2A2A, 0.8);
+      graphics.fillRect(hx + txOff - 3, hy - 60, 6, 20);
+      // Flame (flickering)
+      const flicker = Math.sin(t * 0.15 + txOff) * 3;
+      graphics.fillStyle(0xFF6600, 0.7);
+      graphics.fillTriangle(hx + txOff, hy - 78 + flicker, hx + txOff - 6, hy - 60, hx + txOff + 6, hy - 60);
+      graphics.fillStyle(0xFFAA00, 0.5);
+      graphics.fillTriangle(hx + txOff, hy - 72 + flicker, hx + txOff - 3, hy - 62, hx + txOff + 3, hy - 62);
+    }
+
+    // ── Crude orcish runes on face ──
+    graphics.lineStyle(2, 0x0A0505, 0.4);
+    // Rune 1
+    graphics.lineBetween(hx - 80, hy - 80, hx - 80, hy - 50);
+    graphics.lineBetween(hx - 80, hy - 65, hx - 68, hy - 55);
+    // Rune 2
+    graphics.lineBetween(hx + 80, hy - 80, hx + 80, hy - 50);
+    graphics.lineBetween(hx + 80, hy - 80, hx + 70, hy - 65);
+    graphics.lineBetween(hx + 80, hy - 50, hx + 70, hy - 65);
+    // Rune 3
+    graphics.lineBetween(hx - 100, hy + 100, hx - 90, hy + 130);
+    graphics.lineBetween(hx - 100, hy + 115, hx - 88, hy + 110);
+
+    // ── Gate — iron portcullis at base ──
+    graphics.fillStyle(0x0A0500, 1);
+    graphics.fillRect(hx - 35, hy + 170, 70, 50);
+    graphics.lineStyle(3, 0x2A2A2A, 0.8);
+    for (let gx2 = hx - 30; gx2 <= hx + 30; gx2 += 10) graphics.lineBetween(gx2, hy + 170, gx2, hy + 220);
+    graphics.lineBetween(hx - 35, hy + 190, hx + 35, hy + 190);
+    graphics.lineBetween(hx - 35, hy + 205, hx + 35, hy + 205);
+
+    // ── Dark border ──
+    graphics.lineStyle(2, 0x0A0808, 0.6);
+    graphics.strokeRect(hx - 200, hy + 60, 400, 160);
+    graphics.strokeRect(hx - 150, hy - 120, 300, 200);
+
+    // ── HP bar above spire ──
+    drawHPBar(hx - 200, hy - 400, 400, 12, s.hp, s.maxHp, 0xC8960C);
+
+  } else if (s.structureType === 'barracks') {
+    graphics.fillStyle(dark, 0.8); graphics.fillRect(s.x - 35, s.y - 28, 70, 56);
+    graphics.fillStyle(primary, 0.75); graphics.fillRect(s.x - 28, s.y - 22, 56, 44);
+    graphics.lineStyle(2, isA ? 0x4477dd : 0xdd4444, 0.6);
+    graphics.lineBetween(s.x - 35, s.y - 28, s.x, s.y - 38);
+    graphics.lineBetween(s.x, s.y - 38, s.x + 35, s.y - 28);
+    graphics.fillStyle(0x2a1a08, 0.8); graphics.fillRect(s.x - 8, s.y + 2, 16, 20);
+    graphics.lineStyle(1, gold, 0.5); graphics.strokeRect(s.x - 35, s.y - 28, 70, 56);
+    drawHPBar(s.x - 28, s.y - 42, 56, 5, s.hp, s.maxHp, primary);
+
+  } else {
+    // TOWERS — draw as square tower shapes, NOT circles
+    const r = s.tier === 2 ? 28 : 22;
+    // Range ring (subtle)
+    graphics.lineStyle(1, primary, 0.04);
+    graphics.strokeCircle(s.x, s.y, s.tier === 2 ? 350 : 300);
+    // Tower body — square with battlements
+    graphics.fillStyle(dark, 0.95);
+    graphics.fillRect(s.x - r, s.y - r, r * 2, r * 2);
+    graphics.fillStyle(primary, 0.8);
+    graphics.fillRect(s.x - r + 4, s.y - r + 4, r * 2 - 8, r * 2 - 8);
+    // Merlons on top
+    for (let bx = -r + 2; bx < r; bx += 10) {
+      graphics.fillStyle(dark, 0.9);
+      graphics.fillRect(s.x + bx, s.y - r - 6, 6, 8);
+    }
+    // Gold trim
+    graphics.lineStyle(1.5, gold, 0.5);
+    graphics.strokeRect(s.x - r, s.y - r, r * 2, r * 2);
+    // Tier indicator
+    if (s.tier === 2) {
+      graphics.fillStyle(gold, 0.4);
+      graphics.fillCircle(s.x, s.y, 5);
+    }
+    drawHPBar(s.x - r, s.y - r - 14, r * 2, 4, s.hp, s.maxHp, primary);
+  }
+}
+
+function drawHPBar(x, y, w, h, hp, maxHp, color) {
+  const pct = Math.max(0, hp / maxHp);
+  graphics.fillStyle(0x0D1520, 0.85); graphics.fillRect(x - 1, y - 1, w + 2, h + 2);
+  graphics.fillStyle(color, 0.9); graphics.fillRect(x, y, w * pct, h);
+  if (pct < 0.3) { graphics.fillStyle(0xff0000, 0.3); graphics.fillRect(x, y, w * pct, h); }
+}
+
+// ─── UI Updates ──────────────────────────────────────────────────
+
+function formatTime(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+}
+
+function updateUI() {
+  if (!gameState) return;
+  const gs = gameState;
+
+  // Live tab title
+  const aK = gs.heroes.filter(h=>h.faction==='alliance').reduce((s,h)=>s+h.kills,0);
+  const hK = gs.heroes.filter(h=>h.faction==='horde').reduce((s,h)=>s+h.kills,0);
+  document.title = gs.winner ? `VICTORY - War of Agents` : `[${aK}-${hK}] War of Agents`;
+
+  // Kill announcements + event ticker + structure events
+  checkKillAnnouncements(gs);
+  updateEventTicker(gs);
+
+  // Tower/base destroyed announcements
+  if (!window._prevStructures) window._prevStructures = {};
+  for (const s of gs.structures) {
+    const wasAlive = window._prevStructures[s.id];
+    if (wasAlive === true && !s.alive) {
+      const ticker = document.getElementById('event-ticker');
+      const ev = document.createElement('div');
+      ev.className = 'ticker-event';
+      const fColor = s.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+      const name = s.structureType === 'base' ? 'BASE' : s.structureType.toUpperCase().replace('_', ' ');
+      ev.innerHTML = `<span style="color:${fColor}">${s.faction.toUpperCase()}</span> <span style="color:#C8960C">${name} DESTROYED</span>`;
+      ticker.appendChild(ev);
+      setTimeout(() => { if (ev.parentNode) ev.remove(); }, 6000);
+      // Big announce for base
+      if (s.structureType === 'base') {
+        const container = document.getElementById('kill-announce');
+        container.innerHTML = `<div class="announce-text streak7">${s.faction === 'alliance' ? 'ALLIANCE' : 'HORDE'} BASE DESTROYED</div>`;
+        setTimeout(() => { container.innerHTML = ''; }, 4000);
+      }
+    }
+    window._prevStructures[s.id] = s.alive;
+  }
+
+  // Top bar scores
+  const aKills = gs.heroes.filter(h=>h.faction==='alliance').reduce((s,h)=>s+h.kills,0);
+  const hKills = gs.heroes.filter(h=>h.faction==='horde').reduce((s,h)=>s+h.kills,0);
+  const aAlive = gs.heroes.filter(h=>h.faction==='alliance'&&h.alive).length;
+  const hAlive = gs.heroes.filter(h=>h.faction==='horde'&&h.alive).length;
+  const aDots = gs.heroes.filter(h=>h.faction==='alliance').map(h=>`<span style="color:${h.alive?'#4A8FE0':'#333'}">\u25CF</span>`).join('');
+  const hDots = gs.heroes.filter(h=>h.faction==='horde').map(h=>`<span style="color:${h.alive?'#E24B4A':'#333'}">\u25CF</span>`).join('');
+  document.getElementById('alliance-score').innerHTML = `${aDots} ALLIANCE: ${aKills}`;
+  document.getElementById('horde-score').innerHTML = `HORDE: ${hKills} ${hDots}`;
+  document.getElementById('wave-count').textContent = gs.waveCount;
+
+  // Phase
+  const phaseBadge = document.getElementById('phase-badge');
+  phaseBadge.textContent = gs.phase.toUpperCase();
+  phaseBadge.className = `phase-badge phase-${gs.phase}`;
+  document.getElementById('phase-icon').innerHTML = gs.phase === 'day' ? '&#9788;' : '&#9790;';
+
+  // Match timer
+  const timeStr = formatTime(gs.time);
+  document.getElementById('match-timer').textContent = timeStr;
+
+  // Stats panel
+  const aUnits = gs.units.filter(u=>u.alive&&u.faction==='alliance').length;
+  const hUnits = gs.units.filter(u=>u.alive&&u.faction==='horde').length;
+  document.getElementById('st-wave').textContent = gs.waveCount;
+  document.getElementById('st-a-units').textContent = aUnits;
+  document.getElementById('st-h-units').textContent = hUnits;
+  document.getElementById('st-a-kills').textContent = aKills;
+  document.getElementById('st-h-kills').textContent = hKills;
+  document.getElementById('st-time').textContent = timeStr;
+
+  // Hero cards
+  const panel = document.getElementById('heroes-panel');
+  panel.innerHTML = '';
+
+  const sorted = [...gs.heroes].sort((a,b) => {
+    if (a.faction !== b.faction) return a.faction==='alliance'?-1:1;
+    return b.kills - a.kills;
+  });
+
+  for (const h of sorted) {
+    const card = document.createElement('div');
+    card.className = `hero-card ${h.faction} ${h.alive?'':'dead'}`;
+    const streak = h.killStreak>=3 ? `<span class="streak-badge">${h.killStreak}x</span>` : '';
+    const icon = CLASS_ICONS[h.heroClass]||'';
+    const clr = CLASS_CARD_COLORS[h.heroClass]||'#aaa';
+    const hpPct = h.alive?(h.hp/h.maxHp*100):0;
+    const manaPct = h.alive?(h.mana/h.maxMana*100):0;
+    const agentLabel = h.agentId ? h.agentId : 'AI';
+    const pills = h.items.length>0
+      ? h.items.map(i=>`<span class="item-pill">${i}</span>`).join('')
+      : '<span style="color:#1a2a3a;font-size:8px">No items</span>';
+    const abs = h.abilities.map(a=>
+      `<span style="color:${a.cd>0?'#1a2a3a':'#3A5A7A'}" title="${a.name} T${a.tier}">${a.name.split(' ')[0]}</span>`
+    ).join(' ');
+
+    const hpNum = Math.round(hpPct);
+    const mpNum = Math.round(manaPct);
+    card.innerHTML = `
+      <div class="hero-header">
+        <div class="class-icon" style="background:${clr}18;border:1px solid ${clr}66">${icon}</div>
+        <div>
+          <div class="name">${h.heroClass} ${streak}</div>
+          <div class="agent-label">${agentLabel} <span class="level-badge">LV ${h.level}</span></div>
+          <div class="faction-label ${h.faction}">${h.faction==='alliance'?'Alliance':'Horde'}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:3px"><span style="color:#C8960C;font-size:8px;min-width:14px">HP</span><div class="hp-bar" style="flex:1"><div class="hp-bar-fill hp-${h.faction}" style="width:${hpPct}%"></div></div><span style="color:#66BB6A;font-size:9px;min-width:28px;text-align:right">${hpNum}%</span></div>
+      <div style="display:flex;align-items:center;gap:3px"><span style="color:#C8960C;font-size:8px;min-width:14px">MP</span><div class="hp-bar" style="flex:1"><div class="mana-bar-fill" style="width:${manaPct}%"></div></div><span style="color:#42A5F5;font-size:9px;min-width:28px;text-align:right">${mpNum}%</span></div>
+      <div class="kda">K: ${h.kills} / D: ${h.deaths} / A: ${h.assists}</div>
+      <div class="stats">${h.hp}/${h.maxHp} HP | ${h.gold}g | DMG:${h.damage}</div>
+      <div class="items-row">${pills}</div>
+      ${!h.alive?`<div style="color:#E24B4A;font-size:10px;font-weight:700">\u2620 DEAD (${h.respawnIn})</div>`:''}
+    `;
+    panel.appendChild(card);
+  }
+
+  // Kill feed — show last 10 kills
+  // Reset kill counter if game was reset or on first load
+  if (gs.kills.length < lastKillCount || lastKillCount === 0) {
+    lastKillCount = Math.max(0, gs.kills.length - 10); // show last 10 on first load
+  }
+
+  if (gs.kills.length > lastKillCount) {
+    const feed = document.getElementById('kill-feed');
+    for (let i = lastKillCount; i < gs.kills.length; i++) {
+      const k = gs.kills[i];
+      const killer = gs.heroes.find(h=>h.id===k.killerId);
+      const victim = gs.heroes.find(h=>h.id===k.victimId);
+      if (!killer||!victim) continue;
+
+      const kClr = killer.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
+      const vClr = victim.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
+      const kIcon = CLASS_ICONS[killer.heroClass]||'';
+      const vIcon = CLASS_ICONS[victim.heroClass]||'';
+      const rowCls = killer.faction==='alliance' ? 'alliance-kill' : 'horde-kill';
+
+      const entry = document.createElement('div');
+      entry.className = `kill-entry ${k.isRampage?'rampage':rowCls}`;
+      entry.innerHTML = k.isRampage
+        ? `<span style="color:#ffd700;font-weight:700">RAMPAGE!</span> <span style="color:${kClr}">${kIcon} ${killer.heroClass}</span> <span class="kill-sword">\u2694</span> <span style="color:${vClr}">${vIcon} ${victim.heroClass}</span> <span class="dmg-num">+${k.bounty}g</span>`
+        : `<span style="color:${kClr}">${kIcon} ${killer.heroClass}</span> <span class="kill-sword">\u2694</span> <span style="color:${vClr}">${vIcon} ${victim.heroClass}</span> <span class="dmg-num">+${k.bounty}g</span>`;
+
+      feed.appendChild(entry);
+
+      // Sound effects
+      if (k.isRampage) sfxRampage(); else sfxKill();
+
+      // Auto-fade after 30 seconds (keep visible much longer)
+      setTimeout(() => { entry.classList.add('fading'); }, 30000);
+      setTimeout(() => { if (entry.parentNode) entry.remove(); }, 31000);
+
+      // Keep max 10
+      const entries = feed.querySelectorAll('.kill-entry');
+      while (entries.length > 10) entries[0].remove();
+    }
+    lastKillCount = gs.kills.length;
+  }
+
+  // Minimap
+  const mc = document.getElementById('minimap-canvas');
+  const ctx = mc.getContext('2d');
+  if (mc.width !== 160) { mc.width = 160; mc.height = 160; }
+  // Background
+  ctx.fillStyle = '#0a0e08';
+  ctx.fillRect(0, 0, 160, 160);
+
+  const sx = 160/MAP_W, sy = 160/MAP_H;
+
+  // Territory tint
+  ctx.fillStyle = '#0c1a0c';
+  ctx.fillRect(0, 0, 80, 160);
+  ctx.fillStyle = '#1a100a';
+  ctx.fillRect(80, 0, 80, 160);
+
+  // Mid lane on minimap
+  ctx.fillStyle = '#3A2A18';
+  ctx.fillRect(0, 1040 * sy, 80, 320 * sy);
+  ctx.fillStyle = '#2A1500';
+  ctx.fillRect(80, 1040 * sy, 80, 320 * sy);
+
+  // Jungle camps on minimap
+  if (gs.camps) {
+    for (const camp of gs.camps) {
+      const alive = camp.monsters && camp.monsters.some(m => m.alive);
+      ctx.fillStyle = alive ? (camp.isBoss ? '#CC8800' : '#4A6A2A') : '#1A1A0A';
+      ctx.beginPath();
+      ctx.arc(camp.x * sx, camp.y * sy, alive ? 3 : 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Gold divider / river
+  ctx.fillStyle = '#2A5080';
+  ctx.fillRect(79, 0, 2, 160);
+  ctx.fillStyle = '#C8960C';
+  ctx.fillRect(79.5, 0, 1, 160);
+
+  // Structures
+  for (const s of gs.structures) {
+    if (!s.alive) continue;
+    ctx.fillStyle = s.faction==='alliance' ? '#3366cc' : '#cc3333';
+    if (s.structureType==='base') {
+      ctx.fillRect(s.x*sx-4, s.y*sy-4, 8, 8);
+      ctx.strokeStyle = '#C8960C'; ctx.lineWidth = 1;
+      ctx.strokeRect(s.x*sx-4, s.y*sy-4, 8, 8);
+    } else if (s.structureType==='barracks') {
+      ctx.fillRect(s.x*sx-2, s.y*sy-2, 4, 4);
+    } else {
+      ctx.beginPath(); ctx.arc(s.x*sx, s.y*sy, s.tier===2?3:2, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // Units as dots
+  for (const u of gs.units) {
+    if (!u.alive) continue;
+    ctx.fillStyle = u.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(u.x*sx-2, u.y*sy-2, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+
+  // Heroes as larger dots
+  for (const h of gs.heroes) {
+    if (!h.alive) continue;
+    ctx.fillStyle = h.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
+    ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 5, 0, Math.PI*2); ctx.fill();
+    // White center dot
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 1, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Camera viewport
+  if (cam) {
+    ctx.strokeStyle = '#C8960C88';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cam.scrollX*sx, cam.scrollY*sy, (cam.width/cam.zoom)*sx, (cam.height/cam.zoom)*sy);
+  }
+
+  // Winner overlay — full stats screen
+  const overlay = document.getElementById('winner-overlay');
+  if (gs.winner) {
+    overlay.classList.add('show');
+    document.getElementById('winner-text').textContent = 'VICTORY';
+    document.getElementById('winner-faction').textContent =
+      gs.winner==='alliance' ? 'THE ALLIANCE TRIUMPHS' : 'THE IRON HORDE CONQUERS';
+    document.getElementById('winner-faction').style.color =
+      gs.winner==='alliance' ? '#4A8FE0' : '#E24B4A';
+
+    // Build MVP stats table (only once)
+    if (!document.getElementById('mvp-stats')) {
+      const mvp = [...gs.heroes].sort((a,b) => (b.kills*3+b.assists) - (a.kills*3+a.assists))[0];
+      const statsDiv = document.createElement('div');
+      statsDiv.id = 'mvp-stats';
+      statsDiv.style.cssText = 'margin-top:20px;max-width:700px;width:90%;';
+
+      // MVP banner
+      const mvpColor = mvp.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
+      let html = `<div style="text-align:center;margin-bottom:12px">
+        <span style="color:#C8960C;font-size:14px;letter-spacing:0.1em">MOST VALUABLE PLAYER</span><br>
+        <span style="color:${mvpColor};font-size:22px;font-weight:700;text-shadow:0 0 10px ${mvpColor}44">${mvp.heroClass.toUpperCase()}</span>
+        <span style="color:#C8960C;font-size:14px"> — K:${mvp.kills} D:${mvp.deaths} A:${mvp.assists}</span>
+      </div>`;
+
+      // Match time
+      html += `<div style="text-align:center;color:#888;font-size:12px;margin-bottom:10px">Match Time: ${formatTime(gs.time)} | Wave: ${gs.waveCount}</div>`;
+
+      // Hero table
+      html += `<table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr style="color:#C8960C;border-bottom:1px solid #C8960C44">
+          <th style="padding:4px 6px;text-align:left">Hero</th><th>Faction</th><th>K</th><th>D</th><th>A</th><th>Gold</th><th>Level</th><th>Items</th>
+        </tr>`;
+      const sorted2 = [...gs.heroes].sort((a,b) => b.kills - a.kills);
+      for (const h of sorted2) {
+        const fc = h.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
+        const bg = h.id === mvp.id ? '#C8960C11' : 'transparent';
+        html += `<tr style="border-bottom:1px solid #ffffff08;background:${bg}">
+          <td style="padding:3px 6px;color:${fc};font-weight:700">${h.heroClass}</td>
+          <td style="color:${fc};text-align:center">${h.faction}</td>
+          <td style="text-align:center;color:#66CC66">${h.kills}</td>
+          <td style="text-align:center;color:#CC6666">${h.deaths}</td>
+          <td style="text-align:center;color:#6688AA">${h.assists}</td>
+          <td style="text-align:center;color:#F0C040">${h.gold}</td>
+          <td style="text-align:center;color:#C8960C">${h.level}</td>
+          <td style="color:#8A7A5A;font-size:9px">${h.items.join(', ')||'—'}</td>
+        </tr>`;
+      }
+      html += '</table>';
+      html += `<div style="text-align:center;margin-top:14px"><button onclick="fetch('/api/admin/reset',{method:'POST'}).then(()=>location.reload())" style="background:linear-gradient(135deg,#8B6914,#C8960C);color:#1A0E04;border:none;padding:8px 24px;font-family:Cinzel;font-size:13px;font-weight:700;border-radius:4px;cursor:pointer;letter-spacing:0.08em">PLAY AGAIN</button></div>`;
+
+      statsDiv.innerHTML = html;
+      overlay.appendChild(statsDiv);
+    }
+  } else {
+    overlay.classList.remove('show');
+    const old = document.getElementById('mvp-stats');
+    if (old) old.remove();
+  }
+}
+
+window.addEventListener('resize', () => {
+  const w = window.innerWidth, h = window.innerHeight - TOP_H - BOT_H;
+  game.scale.resize(w, h);
+  if (cam) {
+    cam.setZoom(w / 4800);
+    cam.centerOn(2400, 1200);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,8 +1,60 @@
 import express from 'express';
 import http from 'http';
 import path from 'path';
+import fs from 'fs';
 import { WebSocketServer, WebSocket } from 'ws';
-import Database from 'better-sqlite3';
+import initSqlJs from 'sql.js';
+
+// ─── sql.js wrapper mimicking better-sqlite3 API ────────────────────────────
+let db: any;
+async function initDB() {
+  const SQL = await initSqlJs();
+  const dbPath = path.join(__dirname, '..', 'war_of_agents.db');
+  try {
+    const buf = fs.readFileSync(dbPath);
+    db = new SQL.Database(buf);
+  } catch {
+    db = new SQL.Database();
+  }
+  // Auto-save every 30 seconds
+  setInterval(() => {
+    try {
+      const data = db.export();
+      fs.writeFileSync(dbPath, Buffer.from(data));
+    } catch {}
+  }, 30000);
+  return db;
+}
+
+// Wrapper to make sql.js look like better-sqlite3
+function prepareStmt(sql: string) {
+  return {
+    run: (...params: any[]) => { try { db.run(sql, params); } catch {} },
+    get: (...params: any[]) => {
+      try {
+        const stmt = db.prepare(sql);
+        stmt.bind(params);
+        if (stmt.step()) {
+          const row = stmt.getAsObject();
+          stmt.free();
+          return row;
+        }
+        stmt.free();
+      } catch {}
+      return undefined;
+    },
+    all: (...params: any[]) => {
+      try {
+        const results: any[] = [];
+        const stmt = db.prepare(sql);
+        if (params.length) stmt.bind(params);
+        while (stmt.step()) results.push(stmt.getAsObject());
+        stmt.free();
+        return results;
+      } catch { return []; }
+    },
+  };
+}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -171,9 +223,8 @@ interface AgentRegistration {
 }
 
 // ─── Database ────────────────────────────────────────────────────────────────
-const db = new Database(path.join(__dirname, '..', 'war_of_agents.db'));
-db.pragma('journal_mode = WAL');
-db.exec(`
+// DB initialized async in startServer() below — tables created there
+const DB_SCHEMA = `
   CREATE TABLE IF NOT EXISTS agents (
     agent_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -220,27 +271,36 @@ db.exec(`
     timestamp INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
   );
-`);
+`;
 
-const stmtInsertAgent = db.prepare(`INSERT OR REPLACE INTO agents VALUES (?,?,?,?,?)`);
-const stmtUpsertLeaderboard = db.prepare(`
-  INSERT INTO leaderboard (agent_id, name, faction, hero_class, kills, deaths, assists, gold_earned, games_played, wins)
-  VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0)
-  ON CONFLICT(agent_id) DO UPDATE SET name=excluded.name
-`);
-const stmtUpdateStats = db.prepare(`
-  UPDATE leaderboard SET kills=kills+?, deaths=deaths+?, assists=assists+?, gold_earned=gold_earned+?, games_played=games_played+?, wins=wins+?
-  WHERE agent_id=?
-`);
-const stmtGetLeaderboard = db.prepare(`SELECT * FROM leaderboard ORDER BY kills DESC, deaths ASC LIMIT 50`);
-const stmtGetAgent = db.prepare(`SELECT * FROM leaderboard WHERE agent_id=?`);
-const stmtUpdateElo = db.prepare(`UPDATE leaderboard SET elo=? WHERE agent_id=?`);
-const stmtGetElo = db.prepare(`SELECT elo FROM leaderboard WHERE agent_id=?`);
-const stmtInsertMatch = db.prepare(`INSERT INTO matches (id, started_at, status) VALUES (?, ?, 'in_progress')`);
-const stmtEndMatch = db.prepare(`UPDATE matches SET ended_at=?, winner=?, status='completed' WHERE id=?`);
-const stmtInsertSnapshot = db.prepare(`INSERT INTO replay_snapshots (match_id, tick, snapshot, timestamp) VALUES (?, ?, ?, ?)`);
-const stmtGetMatches = db.prepare(`SELECT * FROM matches ORDER BY started_at DESC LIMIT 50`);
-const stmtGetReplaySnapshots = db.prepare(`SELECT tick, snapshot, timestamp FROM replay_snapshots WHERE match_id=? ORDER BY tick ASC`);
+// Prepared statements — initialized after DB is ready
+let stmtInsertAgent: any;
+let stmtUpsertLeaderboard: any;
+let stmtUpdateStats: any;
+let stmtGetLeaderboard: any;
+let stmtGetAgent: any;
+let stmtUpdateElo: any;
+let stmtGetElo: any;
+let stmtInsertMatch: any;
+let stmtEndMatch: any;
+let stmtInsertSnapshot: any;
+let stmtGetMatches: any;
+let stmtGetReplaySnapshots: any;
+
+function initStatements() {
+  stmtInsertAgent = prepareStmt(`INSERT OR REPLACE INTO agents VALUES (?,?,?,?,?)`);
+  stmtUpsertLeaderboard = prepareStmt(`INSERT OR REPLACE INTO leaderboard (agent_id, name, faction, hero_class, kills, deaths, assists, gold_earned, games_played, wins, elo) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 1200)`);
+  stmtUpdateStats = prepareStmt(`UPDATE leaderboard SET kills=kills+?, deaths=deaths+?, assists=assists+?, gold_earned=gold_earned+?, games_played=games_played+?, wins=wins+? WHERE agent_id=?`);
+  stmtGetLeaderboard = prepareStmt(`SELECT * FROM leaderboard ORDER BY kills DESC, deaths ASC LIMIT 50`);
+  stmtGetAgent = prepareStmt(`SELECT * FROM leaderboard WHERE agent_id=?`);
+  stmtUpdateElo = prepareStmt(`UPDATE leaderboard SET elo=? WHERE agent_id=?`);
+  stmtGetElo = prepareStmt(`SELECT elo FROM leaderboard WHERE agent_id=?`);
+  stmtInsertMatch = prepareStmt(`INSERT INTO matches (id, started_at, status) VALUES (?, ?, 'in_progress')`);
+  stmtEndMatch = prepareStmt(`UPDATE matches SET ended_at=?, winner=?, status='completed' WHERE id=?`);
+  stmtInsertSnapshot = prepareStmt(`INSERT INTO replay_snapshots (match_id, tick, snapshot, timestamp) VALUES (?, ?, ?, ?)`);
+  stmtGetMatches = prepareStmt(`SELECT * FROM matches ORDER BY started_at DESC LIMIT 50`);
+  stmtGetReplaySnapshots = prepareStmt(`SELECT tick, snapshot, timestamp FROM replay_snapshots WHERE match_id=? ORDER BY tick ASC`);
+}
 
 // ─── ELO Rating System ─────────────────────────────────────────────────────
 function calculateElo(winnerElo: number, loserElo: number): { newWinner: number; newLoser: number } {
@@ -1483,7 +1543,7 @@ setInterval(fetchStats, 3000);
 
 // ─── Leaderboard Page ───────────────────────────────────────────────────────
 app.get('/leaderboard', (_req, res) => {
-  const rows = db.prepare('SELECT * FROM leaderboard ORDER BY elo DESC LIMIT 50').all() as any[];
+  const rows = prepareStmt('SELECT * FROM leaderboard ORDER BY elo DESC LIMIT 50').all() as any[];
   const tableRows = rows.map((r: any, i: number) => {
     const border = r.faction === 'alliance' ? '#3B82F6' : '#EF4444';
     return `<tr style="border-left:4px solid ${border};">
@@ -1745,11 +1805,7 @@ if (snapshots.length === 0) {
 });
 
 // ─── Init & Start ────────────────────────────────────────────────────────────
-initStructures();
-initJungleCamps();
-spawnBotHeroes();
-spawnWave();
-try { stmtInsertMatch.run(currentMatchId, Date.now()); } catch (_e) { /* ignore */ }
+// Init moved to async startup block at bottom of file
 
 // Game loop via setImmediate for precise timing
 let lastTick = Date.now();
@@ -1768,11 +1824,24 @@ function gameLoop() {
   setImmediate(gameLoop);
 }
 
-server.listen(PORT, () => {
-  console.log(`\n⚔️  WAR OF AGENTS v1 — Alliance vs Iron Horde`);
-  console.log(`   Server: http://localhost:${PORT}`);
-  console.log(`   WebSocket: ws://localhost:${PORT}`);
-  console.log(`   API: http://localhost:${PORT}/api/game/state`);
-  console.log(`   ${TICK_RATE} ticks/sec | ${BROADCAST_RATE} broadcasts/sec\n`);
-  gameLoop();
-});
+// ─── Async startup ─────────────────────────────────────────────────────────
+(async () => {
+  await initDB();
+  db.run(DB_SCHEMA);
+  initStatements();
+
+  initStructures();
+  initJungleCamps();
+  spawnBotHeroes();
+  spawnWave();
+  try { stmtInsertMatch.run(currentMatchId, Date.now()); } catch (_e) { /* ignore */ }
+
+  server.listen(PORT, () => {
+    console.log(`\n⚔️  WAR OF AGENTS v1 — Alliance vs Iron Horde`);
+    console.log(`   Server: http://localhost:${PORT}`);
+    console.log(`   WebSocket: ws://localhost:${PORT}`);
+    console.log(`   API: http://localhost:${PORT}/api/game/state`);
+    console.log(`   ${TICK_RATE} ticks/sec | ${BROADCAST_RATE} broadcasts/sec\n`);
+    gameLoop();
+  });
+})();

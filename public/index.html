@@ -704,7 +704,8 @@ const CLASS_CARD_COLORS = {
 };
 
 // ─── WebSocket ───────────────────────────────────────────────────
-const ws = new WebSocket(`ws://${location.host}`);
+const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const ws = new WebSocket(`${wsProto}//${location.host}`);
 // ─── Loading Screen ──────────────────────────────────────────
 const loadingTips = [
   'Sharpening Alliance swords...',

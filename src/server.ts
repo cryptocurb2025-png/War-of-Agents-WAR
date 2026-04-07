@@ -5,7 +5,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import Database from 'better-sqlite3';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const PORT = 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 const TICK_RATE = 20;
 const BROADCAST_RATE = 10;
 const MAP_W = 4800;
@@ -13,8 +13,18 @@ const MAP_H = 2400;
 const TICK_MS = 1000 / TICK_RATE;
 const BROADCAST_MS = 1000 / BROADCAST_RATE;
 const DAY_NIGHT_CYCLE = 120_000; // 2 min full cycle
-const LANE_MIN_Y = MAP_H / 2 - 160;
-const LANE_MAX_Y = MAP_H / 2 + 160;
+const LANE_MIN_Y = 400;
+const LANE_MAX_Y = 2000;
+
+// ─── Multi-Lane Definitions ───────────────────────────────────────────────
+type LaneName = 'top' | 'mid' | 'bot';
+const LANES: Record<LaneName, { centerY: number; minY: number; maxY: number }> = {
+  top: { centerY: 500, minY: 400, maxY: 600 },
+  mid: { centerY: 1200, minY: 1040, maxY: 1360 },
+  bot: { centerY: 1900, minY: 1800, maxY: 2000 },
+};
+const LANE_NAMES: LaneName[] = ['top', 'mid', 'bot'];
+const VISION_RADIUS = 400;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Faction = 'alliance' | 'horde';
@@ -78,16 +88,40 @@ interface HeroEntity extends Entity {
   respawnTimer: number;
   agentId: string | null;
   lastDamagedBy: string[];
+  lane: LaneName;
 }
 
 interface Structure extends Entity {
   structureType: 'tower_t1' | 'tower_t2' | 'barracks' | 'base';
   tier: number;
+  lane?: LaneName;
 }
 
 interface UnitEntity extends Entity {
   unitType: string;
   wave: number;
+  lane: LaneName;
+}
+
+// ─── Jungle Camp Types ────────────────────────────────────────────────────
+interface JungleMonster {
+  id: string;
+  pos: Position;
+  hp: number;
+  maxHp: number;
+  damage: number;
+  alive: boolean;
+  campId: string;
+}
+
+interface JungleCamp {
+  id: string;
+  pos: Position;
+  monsters: JungleMonster[];
+  respawnTimer: number;
+  isBoss: boolean;
+  goldReward: number;
+  xpReward: number;
 }
 
 interface GameState {
@@ -98,6 +132,7 @@ interface GameState {
   heroes: Map<string, HeroEntity>;
   units: Map<string, UnitEntity>;
   structures: Map<string, Structure>;
+  camps: JungleCamp[];
   projectiles: Projectile[];
   kills: KillEvent[];
   winner: Faction | null;
@@ -321,13 +356,15 @@ function dist(a: Position, b: Position): number {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-function moveToward(pos: Position, target: Position, speed: number, dt: number): Position {
+function moveToward(pos: Position, target: Position, speed: number, dt: number, lane?: LaneName): Position {
   const d = dist(pos, target);
   if (d < 2) return pos;
   const step = Math.min(speed * dt, d);
+  const minY = lane ? LANES[lane].minY : LANE_MIN_Y;
+  const maxY = lane ? LANES[lane].maxY : LANE_MAX_Y;
   return {
     x: Math.max(0, Math.min(MAP_W, pos.x + (target.x - pos.x) / d * step)),
-    y: Math.max(LANE_MIN_Y, Math.min(LANE_MAX_Y, pos.y + (target.y - pos.y) / d * step)),
+    y: Math.max(minY, Math.min(maxY, pos.y + (target.y - pos.y) / d * step)),
   };
 }
 
@@ -343,6 +380,7 @@ const state: GameState = {
   heroes: new Map(),
   units: new Map(),
   structures: new Map(),
+  camps: [],
   projectiles: [],
   kills: [],
   winner: null,
@@ -352,7 +390,7 @@ const state: GameState = {
 
 // ─── Structure Placement ─────────────────────────────────────────────────────
 function initStructures() {
-  // Alliance (left side)
+  // Alliance base and barracks (center of map vertically)
   const aBase: Structure = {
     id: nextId('struct'), type: 'base', faction: 'alliance', pos: { x: 150, y: MAP_H / 2 },
     hp: 5000, maxHp: 5000, damage: 40, armor: 20, speed: 0, range: 250,
@@ -369,23 +407,7 @@ function initStructures() {
   };
   state.structures.set(aBarracks.id, aBarracks);
 
-  const aT2: Structure = {
-    id: nextId('struct'), type: 'tower', faction: 'alliance', pos: { x: 900, y: MAP_H / 2 - 120 },
-    hp: 2000, maxHp: 2000, damage: 55, armor: 18, speed: 0, range: 350,
-    target: null, alive: true, attackCd: 30, currentAttackCd: 0,
-    structureType: 'tower_t2', tier: 2,
-  };
-  state.structures.set(aT2.id, aT2);
-
-  const aT1: Structure = {
-    id: nextId('struct'), type: 'tower', faction: 'alliance', pos: { x: 1500, y: MAP_H / 2 + 120 },
-    hp: 1500, maxHp: 1500, damage: 45, armor: 15, speed: 0, range: 300,
-    target: null, alive: true, attackCd: 25, currentAttackCd: 0,
-    structureType: 'tower_t1', tier: 1,
-  };
-  state.structures.set(aT1.id, aT1);
-
-  // Horde (right side)
+  // Horde base and barracks
   const hBase: Structure = {
     id: nextId('struct'), type: 'base', faction: 'horde', pos: { x: MAP_W - 150, y: MAP_H / 2 },
     hp: 5000, maxHp: 5000, damage: 40, armor: 20, speed: 0, range: 250,
@@ -402,28 +424,93 @@ function initStructures() {
   };
   state.structures.set(hBarracks.id, hBarracks);
 
-  const hT2: Structure = {
-    id: nextId('struct'), type: 'tower', faction: 'horde', pos: { x: MAP_W - 900, y: MAP_H / 2 + 120 },
-    hp: 2000, maxHp: 2000, damage: 55, armor: 18, speed: 0, range: 350,
-    target: null, alive: true, attackCd: 30, currentAttackCd: 0,
-    structureType: 'tower_t2', tier: 2,
-  };
-  state.structures.set(hT2.id, hT2);
+  // Per-lane towers: T2 (closer to base) and T1 (further out) for each lane per faction
+  for (const laneName of LANE_NAMES) {
+    const laneY = LANES[laneName].centerY;
 
-  const hT1: Structure = {
-    id: nextId('struct'), type: 'tower', faction: 'horde', pos: { x: MAP_W - 1500, y: MAP_H / 2 - 120 },
-    hp: 1500, maxHp: 1500, damage: 45, armor: 15, speed: 0, range: 300,
-    target: null, alive: true, attackCd: 25, currentAttackCd: 0,
-    structureType: 'tower_t1', tier: 1,
-  };
-  state.structures.set(hT1.id, hT1);
+    // Alliance T2 (inner tower)
+    const aT2: Structure = {
+      id: nextId('struct'), type: 'tower', faction: 'alliance', pos: { x: 900, y: laneY },
+      hp: 2000, maxHp: 2000, damage: 55, armor: 18, speed: 0, range: 350,
+      target: null, alive: true, attackCd: 30, currentAttackCd: 0,
+      structureType: 'tower_t2', tier: 2, lane: laneName,
+    };
+    state.structures.set(aT2.id, aT2);
+
+    // Alliance T1 (outer tower)
+    const aT1: Structure = {
+      id: nextId('struct'), type: 'tower', faction: 'alliance', pos: { x: 1500, y: laneY },
+      hp: 1500, maxHp: 1500, damage: 45, armor: 15, speed: 0, range: 300,
+      target: null, alive: true, attackCd: 25, currentAttackCd: 0,
+      structureType: 'tower_t1', tier: 1, lane: laneName,
+    };
+    state.structures.set(aT1.id, aT1);
+
+    // Horde T2 (inner tower)
+    const hT2: Structure = {
+      id: nextId('struct'), type: 'tower', faction: 'horde', pos: { x: MAP_W - 900, y: laneY },
+      hp: 2000, maxHp: 2000, damage: 55, armor: 18, speed: 0, range: 350,
+      target: null, alive: true, attackCd: 30, currentAttackCd: 0,
+      structureType: 'tower_t2', tier: 2, lane: laneName,
+    };
+    state.structures.set(hT2.id, hT2);
+
+    // Horde T1 (outer tower)
+    const hT1: Structure = {
+      id: nextId('struct'), type: 'tower', faction: 'horde', pos: { x: MAP_W - 1500, y: laneY },
+      hp: 1500, maxHp: 1500, damage: 45, armor: 15, speed: 0, range: 300,
+      target: null, alive: true, attackCd: 25, currentAttackCd: 0,
+      structureType: 'tower_t1', tier: 1, lane: laneName,
+    };
+    state.structures.set(hT1.id, hT1);
+  }
+}
+
+// ─── Jungle Camp Initialization ─────────────────────────────────────────
+function initJungleCamps() {
+  const campDefs: { x: number; y: number; isBoss: boolean }[] = [
+    { x: 1200, y: 800, isBoss: false },   // between top and mid
+    { x: 3600, y: 800, isBoss: false },   // between top and mid
+    { x: 1200, y: 1600, isBoss: false },  // between mid and bot
+    { x: 3600, y: 1600, isBoss: false },  // between mid and bot
+    { x: 2400, y: 1200, isBoss: true },   // boss camp at center
+  ];
+
+  state.camps = campDefs.map(def => {
+    const campId = nextId('camp');
+    const monsterCount = def.isBoss ? 3 : 2;
+    const monsterHp = def.isBoss ? 600 : 400;
+    const monsterDmg = def.isBoss ? 25 : 15;
+    const monsters: JungleMonster[] = [];
+    for (let i = 0; i < monsterCount; i++) {
+      monsters.push({
+        id: nextId('jmon'),
+        pos: { x: def.x + (i - 1) * 40, y: def.y + (i % 2 === 0 ? -20 : 20) },
+        hp: monsterHp,
+        maxHp: monsterHp,
+        damage: monsterDmg,
+        alive: true,
+        campId,
+      });
+    }
+    return {
+      id: campId,
+      pos: { x: def.x, y: def.y },
+      monsters,
+      respawnTimer: 0,
+      isBoss: def.isBoss,
+      goldReward: def.isBoss ? 200 : 100,
+      xpReward: def.isBoss ? 100 : 50,
+    };
+  });
 }
 
 // ─── Hero Factory ────────────────────────────────────────────────────────────
-function createHero(faction: Faction, heroClass: HeroClass, agentId: string | null): HeroEntity {
+function createHero(faction: Faction, heroClass: HeroClass, agentId: string | null, lane: LaneName = 'mid'): HeroEntity {
   const stats = heroBaseStats(heroClass);
+  const laneInfo = LANES[lane];
   const spawnX = faction === 'alliance' ? 200 + Math.random() * 100 : MAP_W - 300 + Math.random() * 100;
-  const spawnY = LANE_MIN_Y + 20 + Math.random() * (LANE_MAX_Y - LANE_MIN_Y - 40);
+  const spawnY = laneInfo.minY + 20 + Math.random() * (laneInfo.maxY - laneInfo.minY - 40);
   return {
     id: nextId('hero'),
     type: 'hero',
@@ -445,6 +532,7 @@ function createHero(faction: Faction, heroClass: HeroClass, agentId: string | nu
     respawnTimer: 0,
     agentId,
     lastDamagedBy: [],
+    lane,
   };
 }
 
@@ -453,42 +541,52 @@ function spawnWave() {
   state.waveCount++;
   const scaling = 1 + state.waveCount * 0.05;
 
-  // Alliance wave
+  // Alliance wave - distribute across all 3 lanes
+  let allianceLaneIdx = 0;
   const aBarracks = [...state.structures.values()].find(s => s.faction === 'alliance' && s.structureType === 'barracks' && s.alive);
   if (aBarracks) {
     for (const def of ALLIANCE_UNITS) {
       for (let i = 0; i < 2; i++) {
+        const lane = LANE_NAMES[allianceLaneIdx % 3];
+        const laneY = LANES[lane].centerY;
         const u: UnitEntity = {
           id: nextId('unit'), type: 'unit', faction: 'alliance',
-          pos: { x: aBarracks.pos.x + 50 + Math.random() * 40, y: aBarracks.pos.y - 60 + Math.random() * 120 },
+          pos: { x: aBarracks.pos.x + 50 + Math.random() * 40, y: laneY - 30 + Math.random() * 60 },
           hp: Math.floor(def.hp * scaling), maxHp: Math.floor(def.hp * scaling),
           damage: Math.floor(def.damage * scaling), armor: def.armor,
           speed: def.speed, range: def.range,
           target: null, alive: true,
           attackCd: 20, currentAttackCd: 0,
           unitType: def.type, wave: state.waveCount,
+          lane,
         };
         state.units.set(u.id, u);
+        allianceLaneIdx++;
       }
     }
   }
 
-  // Horde wave
+  // Horde wave - distribute across all 3 lanes
+  let hordeLaneIdx = 0;
   const hBarracks = [...state.structures.values()].find(s => s.faction === 'horde' && s.structureType === 'barracks' && s.alive);
   if (hBarracks) {
     for (const def of HORDE_UNITS) {
       for (let i = 0; i < 2; i++) {
+        const lane = LANE_NAMES[hordeLaneIdx % 3];
+        const laneY = LANES[lane].centerY;
         const u: UnitEntity = {
           id: nextId('unit'), type: 'unit', faction: 'horde',
-          pos: { x: hBarracks.pos.x - 50 - Math.random() * 40, y: hBarracks.pos.y - 60 + Math.random() * 120 },
+          pos: { x: hBarracks.pos.x - 50 - Math.random() * 40, y: laneY - 30 + Math.random() * 60 },
           hp: Math.floor(def.hp * scaling), maxHp: Math.floor(def.hp * scaling),
           damage: Math.floor(def.damage * scaling), armor: def.armor,
           speed: def.speed, range: def.range,
           target: null, alive: true,
           attackCd: 20, currentAttackCd: 0,
           unitType: def.type, wave: state.waveCount,
+          lane,
         };
         state.units.set(u.id, u);
+        hordeLaneIdx++;
       }
     }
   }
@@ -496,11 +594,15 @@ function spawnWave() {
 
 // ─── AI Bot Heroes ───────────────────────────────────────────────────────────
 function spawnBotHeroes() {
+  // 5 heroes per faction: 2 top, 1 mid, 2 bot
+  const laneAssignment: LaneName[] = ['top', 'top', 'mid', 'bot', 'bot'];
   const classes: HeroClass[] = ['knight', 'ranger', 'mage', 'priest', 'siegemaster'];
-  for (const hc of classes) {
-    const aHero = createHero('alliance', hc, null);
+  for (let i = 0; i < classes.length; i++) {
+    const hc = classes[i];
+    const lane = laneAssignment[i];
+    const aHero = createHero('alliance', hc, null, lane);
     state.heroes.set(aHero.id, aHero);
-    const hHero = createHero('horde', hc, null);
+    const hHero = createHero('horde', hc, null, lane);
     state.heroes.set(hHero.id, hHero);
   }
 }
@@ -618,11 +720,52 @@ function checkLevelUp(hero: HeroEntity) {
 function heroAI(hero: HeroEntity, dt: number) {
   if (!hero.alive) return;
 
+  const baseX = hero.faction === 'alliance' ? 150 : MAP_W - 150;
+  const baseY = MAP_H / 2;
+  const distToBase = dist(hero.pos, { x: baseX, y: baseY });
+
   // Mana regen
   hero.mana = Math.min(hero.maxMana, hero.mana + 0.3);
 
-  // HP regen
-  hero.hp = Math.min(hero.maxHp, hero.hp + 0.1);
+  // HP regen (5x faster near own base)
+  const regenMult = distToBase < 200 ? 5 : 1;
+  hero.hp = Math.min(hero.maxHp, hero.hp + 0.1 * regenMult);
+
+  // Retreat behavior: if HP < 30%, move toward own base
+  if (hero.hp < hero.maxHp * 0.3) {
+    hero.pos = moveToward(hero.pos, { x: baseX, y: baseY }, hero.speed, dt, hero.lane);
+    // Still tick cooldowns while retreating
+    for (const ab of hero.abilities) { if (ab.currentCd > 0) ab.currentCd--; }
+    if (hero.currentAttackCd > 0) hero.currentAttackCd--;
+    checkLevelUp(hero);
+    return;
+  }
+
+  // Heal at base: if HP < 50%, move toward base
+  if (hero.hp < hero.maxHp * 0.5) {
+    hero.pos = moveToward(hero.pos, { x: baseX, y: baseY }, hero.speed, dt, hero.lane);
+    // If near base, just regen (handled above with 5x mult), but still fight if enemies close
+  }
+
+  // Lane switching: if all towers in our lane are dead, roam to help another lane
+  const myLaneTowers = [...state.structures.values()].filter(
+    s => s.alive && s.faction === hero.faction && s.lane === hero.lane &&
+    (s.structureType === 'tower_t1' || s.structureType === 'tower_t2')
+  );
+  if (myLaneTowers.length === 0) {
+    // Find a lane that still has towers
+    for (const ln of LANE_NAMES) {
+      if (ln === hero.lane) continue;
+      const laneTowers = [...state.structures.values()].filter(
+        s => s.alive && s.faction === hero.faction && s.lane === ln &&
+        (s.structureType === 'tower_t1' || s.structureType === 'tower_t2')
+      );
+      if (laneTowers.length > 0) {
+        hero.lane = ln;
+        break;
+      }
+    }
+  }
 
   const allEntities: Entity[] = [
     ...[...state.heroes.values()].filter(h => h.alive),
@@ -630,12 +773,37 @@ function heroAI(hero: HeroEntity, dt: number) {
     ...[...state.structures.values()].filter(s => s.alive),
   ];
 
-  const target = findTarget(hero, allEntities);
-  if (!target) return;
+  // Focus fire: prioritize low HP enemies (< 40%) among nearby targets
+  let target: Entity | null = null;
+  let bestDist = Infinity;
+  let foundLowHp = false;
+  for (const e of allEntities) {
+    if (!e.alive || e.faction === hero.faction) continue;
+    const d = dist(hero.pos, e.pos);
+    const isLowHp = e.hp < e.maxHp * 0.4;
+    // Prefer low HP targets; among same priority, prefer closer
+    if (isLowHp && !foundLowHp) {
+      foundLowHp = true;
+      bestDist = d;
+      target = e;
+    } else if (isLowHp === foundLowHp && d < bestDist) {
+      bestDist = d;
+      target = e;
+    }
+  }
+
+  if (!target) {
+    // Tick cooldowns even without target
+    for (const ab of hero.abilities) { if (ab.currentCd > 0) ab.currentCd--; }
+    if (hero.currentAttackCd > 0) hero.currentAttackCd--;
+    checkLevelUp(hero);
+    return;
+  }
 
   const d = dist(hero.pos, target.pos);
+  const targetIsHero = target.type === 'hero';
 
-  // Use abilities
+  // Use abilities with smarter selection
   for (const ab of hero.abilities) {
     if (ab.currentCd > 0) { ab.currentCd--; continue; }
     if (hero.mana < ab.manaCost) continue;
@@ -643,18 +811,19 @@ function heroAI(hero: HeroEntity, dt: number) {
     if (ab.effect === 'heal' && hero.hp > hero.maxHp * 0.6) continue;
     if (ab.effect === 'armor_buff' && hero.hp > hero.maxHp * 0.5) continue;
 
+    // Save high-cooldown abilities (>= 150) for heroes, use low-CD ones on units
+    if (ab.cooldown >= 150 && !targetIsHero && ab.damage > 0) continue;
+
     hero.mana -= ab.manaCost;
     ab.currentCd = ab.cooldown;
 
     if (ab.effect === 'heal') {
-      // Heal self or nearby ally
       const healTarget = hero.hp < hero.maxHp * 0.5 ? hero :
         [...state.heroes.values()].find(h => h.alive && h.faction === hero.faction && h.hp < h.maxHp * 0.5 && dist(h.pos, hero.pos) < ab.range) || hero;
       healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + Math.abs(ab.damage) * ab.tier);
     } else if (ab.effect === 'dash' || ab.effect === 'teleport') {
-      hero.pos = moveToward(hero.pos, target.pos, ab.range * 0.8, 1);
+      hero.pos = moveToward(hero.pos, target.pos, ab.range * 0.8, 1, hero.lane);
     } else if (ab.aoe > 0) {
-      // AOE damage
       for (const e of allEntities) {
         if (e.faction === hero.faction || !e.alive) continue;
         if (dist(target.pos, e.pos) < ab.aoe) {
@@ -677,9 +846,9 @@ function heroAI(hero: HeroEntity, dt: number) {
     break;
   }
 
-  // Move toward target or attack
+  // Move toward target or attack (respect lane bounds)
   if (d > hero.range) {
-    hero.pos = moveToward(hero.pos, target.pos, hero.speed, dt);
+    hero.pos = moveToward(hero.pos, target.pos, hero.speed, dt, hero.lane);
   } else {
     if (hero.currentAttackCd <= 0) {
       applyDamage(target, hero.damage, hero.id);
@@ -694,18 +863,40 @@ function heroAI(hero: HeroEntity, dt: number) {
 
   if (hero.currentAttackCd > 0) hero.currentAttackCd--;
 
-  // Auto-buy items
+  // Smart item buying: boots first, then damage, then defensive if dying often
   if (hero.items.length < 5) {
-    const affordable = SHOP_ITEMS.filter(item => item.cost <= hero.gold && !hero.items.find(i => i.id === item.id));
-    if (affordable.length > 0) {
-      const item = affordable[Math.floor(Math.random() * affordable.length)];
-      hero.gold -= item.cost;
-      hero.items.push(item);
-      if (item.stats.hp) { hero.maxHp += item.stats.hp; hero.hp += item.stats.hp; }
-      if (item.stats.damage) hero.damage += item.stats.damage;
-      if (item.stats.armor) hero.armor += item.stats.armor;
-      if (item.stats.speed) hero.speed += item.stats.speed;
-      if (item.stats.mana) { hero.maxMana += item.stats.mana; hero.mana += item.stats.mana; }
+    const owned = new Set(hero.items.map(i => i.id));
+    let itemToBuy: Item | undefined;
+
+    // Priority 1: boots for speed
+    if (!owned.has('boots') && hero.gold >= 150) {
+      itemToBuy = SHOP_ITEMS.find(i => i.id === 'boots');
+    }
+    // Priority 2: if dying often (deaths > kills), buy defensive
+    else if (!owned.has('shield') && hero.deaths > hero.kills && hero.gold >= 250) {
+      itemToBuy = SHOP_ITEMS.find(i => i.id === 'shield');
+    }
+    // Priority 3: damage items
+    else if (!owned.has('sword') && hero.gold >= 300) {
+      itemToBuy = SHOP_ITEMS.find(i => i.id === 'sword');
+    }
+    // Priority 4: utility
+    else if (!owned.has('cloak') && hero.gold >= 200) {
+      itemToBuy = SHOP_ITEMS.find(i => i.id === 'cloak');
+    }
+    // Priority 5: relic (expensive)
+    else if (!owned.has('relic') && hero.gold >= 500) {
+      itemToBuy = SHOP_ITEMS.find(i => i.id === 'relic');
+    }
+
+    if (itemToBuy) {
+      hero.gold -= itemToBuy.cost;
+      hero.items.push(itemToBuy);
+      if (itemToBuy.stats.hp) { hero.maxHp += itemToBuy.stats.hp; hero.hp += itemToBuy.stats.hp; }
+      if (itemToBuy.stats.damage) hero.damage += itemToBuy.stats.damage;
+      if (itemToBuy.stats.armor) hero.armor += itemToBuy.stats.armor;
+      if (itemToBuy.stats.speed) hero.speed += itemToBuy.stats.speed;
+      if (itemToBuy.stats.mana) { hero.maxMana += itemToBuy.stats.mana; hero.mana += itemToBuy.stats.mana; }
     }
   }
 
@@ -752,15 +943,16 @@ function unitAI(unit: UnitEntity, dt: number) {
   }
 
   if (!target) {
-    // March toward enemy base
+    // March toward enemy base along own lane
     const baseX = unit.faction === 'alliance' ? MAP_W - 150 : 150;
-    unit.pos = moveToward(unit.pos, { x: baseX, y: MAP_H / 2 }, unit.speed, dt);
+    const laneY = LANES[unit.lane].centerY;
+    unit.pos = moveToward(unit.pos, { x: baseX, y: laneY }, unit.speed, dt, unit.lane);
     return;
   }
 
   const d = dist(unit.pos, target.pos);
   if (d > unit.range) {
-    unit.pos = moveToward(unit.pos, target.pos, unit.speed, dt);
+    unit.pos = moveToward(unit.pos, target.pos, unit.speed, dt, unit.lane);
   } else {
     if (unit.currentAttackCd <= 0) {
       applyDamage(target, unit.damage, unit.id);
@@ -809,9 +1001,10 @@ function handleRespawns() {
         hero.alive = true;
         hero.hp = hero.maxHp;
         hero.mana = hero.maxMana;
+        const laneInfo = LANES[hero.lane];
         hero.pos = {
           x: hero.faction === 'alliance' ? 200 + Math.random() * 100 : MAP_W - 300 + Math.random() * 100,
-          y: MAP_H / 2 - 100 + Math.random() * 200,
+          y: laneInfo.minY + Math.random() * (laneInfo.maxY - laneInfo.minY),
         };
       }
     }
@@ -860,12 +1053,62 @@ function gameTick() {
     structureAI(struct);
   }
 
-  // HARD CLAMP: force ALL units and heroes into lane bounds every tick
+  // HARD CLAMP: force ALL units and heroes into their lane bounds every tick
   for (const hero of state.heroes.values()) {
-    hero.pos.y = Math.max(LANE_MIN_Y, Math.min(LANE_MAX_Y, hero.pos.y));
+    const lb = LANES[hero.lane];
+    hero.pos.y = Math.max(lb.minY, Math.min(lb.maxY, hero.pos.y));
   }
   for (const unit of state.units.values()) {
-    unit.pos.y = Math.max(LANE_MIN_Y, Math.min(LANE_MAX_Y, unit.pos.y));
+    const lb = LANES[unit.lane];
+    unit.pos.y = Math.max(lb.minY, Math.min(lb.maxY, unit.pos.y));
+  }
+
+  // ─── Jungle Camp Tick ──────────────────────────────────────────────────
+  for (const camp of state.camps) {
+    const aliveMonsters = camp.monsters.filter(m => m.alive);
+    if (aliveMonsters.length === 0) {
+      // Camp cleared - tick respawn timer
+      camp.respawnTimer--;
+      if (camp.respawnTimer <= 0) {
+        // Respawn all monsters
+        for (const m of camp.monsters) {
+          m.alive = true;
+          m.hp = m.maxHp;
+        }
+        camp.respawnTimer = 0;
+      }
+    } else {
+      // Camp is alive - check if any hero is attacking it
+      for (const hero of state.heroes.values()) {
+        if (!hero.alive) continue;
+        for (const monster of aliveMonsters) {
+          const d = dist(hero.pos, monster.pos);
+          if (d < hero.range + 50) {
+            // Hero attacks monster
+            if (hero.currentAttackCd <= 0) {
+              const reduction = 0; // monsters have no armor
+              const dmg = Math.max(1, hero.damage);
+              monster.hp -= dmg;
+              if (monster.hp <= 0) {
+                monster.hp = 0;
+                monster.alive = false;
+                // Reward the hero
+                hero.gold += camp.goldReward;
+                hero.xp += camp.xpReward;
+                // Check if camp is now cleared
+                if (camp.monsters.every(m => !m.alive)) {
+                  camp.respawnTimer = 60 * TICK_RATE; // 60 seconds
+                }
+              }
+            }
+            // Monster fights back
+            if (monster.alive && d < 100) {
+              applyDamage(hero, monster.damage, monster.id);
+            }
+          }
+        }
+      }
+    }
   }
 
   // Update projectiles
@@ -901,6 +1144,27 @@ function gameTick() {
 
 // ─── Serialize State ─────────────────────────────────────────────────────────
 function serializeState() {
+  // ─── Fog of War: compute vision sources per faction ──────────────────
+  const fogOfWar: { alliance: { x: number; y: number; radius: number }[]; horde: { x: number; y: number; radius: number }[] } = {
+    alliance: [],
+    horde: [],
+  };
+  // Heroes as vision sources
+  for (const h of state.heroes.values()) {
+    if (!h.alive) continue;
+    fogOfWar[h.faction].push({ x: Math.round(h.pos.x), y: Math.round(h.pos.y), radius: VISION_RADIUS });
+  }
+  // Units as vision sources
+  for (const u of state.units.values()) {
+    if (!u.alive) continue;
+    fogOfWar[u.faction].push({ x: Math.round(u.pos.x), y: Math.round(u.pos.y), radius: VISION_RADIUS });
+  }
+  // Structures as vision sources
+  for (const s of state.structures.values()) {
+    if (!s.alive) continue;
+    fogOfWar[s.faction].push({ x: Math.round(s.pos.x), y: Math.round(s.pos.y), radius: VISION_RADIUS });
+  }
+
   return {
     tick: state.tick,
     time: state.time,
@@ -920,16 +1184,30 @@ function serializeState() {
       abilities: h.abilities.map(a => ({ id: a.id, name: a.name, tier: a.tier, cd: a.currentCd })),
       agentId: h.agentId,
       respawnIn: h.alive ? 0 : h.respawnTimer,
+      lane: h.lane,
     })),
     units: [...state.units.values()].map(u => ({
       id: u.id, faction: u.faction, unitType: u.unitType,
       x: Math.round(u.pos.x), y: Math.round(u.pos.y),
       hp: Math.round(u.hp), maxHp: u.maxHp, alive: u.alive,
+      lane: u.lane,
     })),
     structures: [...state.structures.values()].map(s => ({
       id: s.id, faction: s.faction, structureType: s.structureType,
       x: Math.round(s.pos.x), y: Math.round(s.pos.y),
       hp: Math.round(s.hp), maxHp: s.maxHp, alive: s.alive, tier: s.tier,
+      lane: s.lane || null,
+    })),
+    camps: state.camps.map(c => ({
+      id: c.id,
+      x: Math.round(c.pos.x), y: Math.round(c.pos.y),
+      isBoss: c.isBoss,
+      monsters: c.monsters.map(m => ({
+        id: m.id,
+        x: Math.round(m.pos.x), y: Math.round(m.pos.y),
+        hp: Math.round(m.hp), maxHp: m.maxHp, alive: m.alive,
+      })),
+      respawnIn: c.respawnTimer > 0 ? Math.ceil(c.respawnTimer / TICK_RATE) : 0,
     })),
     projectiles: state.projectiles.map(p => ({
       id: p.id, fx: Math.round(p.from.x), fy: Math.round(p.from.y),
@@ -937,6 +1215,7 @@ function serializeState() {
       p: +p.progress.toFixed(2), color: p.color, faction: p.faction,
     })),
     kills: state.kills.slice(-5),
+    fogOfWar,
   };
 }
 
@@ -953,6 +1232,16 @@ wss.on('connection', (ws) => {
   clients.add(ws);
   ws.on('close', () => clients.delete(ws));
   ws.on('error', () => clients.delete(ws));
+  // Chat relay
+  ws.on('message', (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+      if (msg.type === 'chat' && msg.text) {
+        const relay = JSON.stringify({ type: 'chat', name: String(msg.name || 'Anon').slice(0, 20), text: String(msg.text).slice(0, 120) });
+        for (const c of clients) { if (c !== ws && c.readyState === WebSocket.OPEN) c.send(relay); }
+      }
+    } catch {}
+  });
   // Send initial state
   ws.send(JSON.stringify({ type: 'state', data: serializeState() }));
 });
@@ -1000,7 +1289,7 @@ app.post('/api/strategy/deployment', (req, res) => {
 
   if (action === 'move' && targetX != null && targetY != null) {
     hero.target = null;
-    hero.pos = moveToward(hero.pos, { x: targetX, y: targetY }, hero.speed * 5, 1);
+    hero.pos = moveToward(hero.pos, { x: targetX, y: targetY }, hero.speed * 5, 1, hero.lane);
     return res.json({ success: true, action: 'move' });
   }
 
@@ -1072,6 +1361,7 @@ function resetGame() {
   state.heroes.clear();
   state.units.clear();
   state.structures.clear();
+  state.camps = [];
   state.projectiles = [];
   state.kills = [];
   state.winner = null;
@@ -1088,6 +1378,7 @@ function resetGame() {
 
   // Re-init
   initStructures();
+  initJungleCamps();
   spawnBotHeroes();
   spawnWave();
 }
@@ -1449,6 +1740,7 @@ if (snapshots.length === 0) {
 
 // ─── Init & Start ────────────────────────────────────────────────────────────
 initStructures();
+initJungleCamps();
 spawnBotHeroes();
 spawnWave();
 try { stmtInsertMatch.run(currentMatchId, Date.now()); } catch (_e) { /* ignore */ }

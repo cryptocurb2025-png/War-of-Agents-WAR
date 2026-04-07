@@ -887,13 +887,9 @@ function pUpdate() {
   const grassBase = isNight ? 0x1a3010 : 0x2D5A1B;
   const dirtBase  = isNight ? 0x2a1808 : 0x3A2010;
   const treeColor = 0x1A3A0A;
-  // 3 lanes: top (400-600), mid (1040-1360), bot (1800-2000)
-  const LANES = [
-    { name: 'top', y: 400, h: 200 },
-    { name: 'mid', y: 1040, h: 320 },
-    { name: 'bot', y: 1800, h: 200 },
-  ];
-  const laneY = 1040, laneH = 320; // mid lane for backward compat
+  // Single mid lane (multi-lane infrastructure kept server-side for future)
+  const LANES = [{ name: 'mid', y: 1040, h: 320 }];
+  const laneY = 1040, laneH = 320;
 
   // Left grass half
   graphics.fillStyle(grassBase, 1);
@@ -1324,11 +1320,8 @@ function renderSprite(id, texKey, entity, t, isHero) {
   const isA = entity.faction === 'alliance';
   const bob = Math.sin(t * 0.08 + (entity.x || 0) * 0.01) * 3;
 
-  // HARD CLAMP — per-lane bounds based on entity's lane assignment
-  const LANE_BOUNDS = { top: [400, 600], mid: [1040, 1360], bot: [1800, 2000] };
-  const eLane = entity.lane || 'mid';
-  const [LANE_TOP, LANE_BOT] = LANE_BOUNDS[eLane] || [1040, 1360];
-  const clampedY = Math.max(LANE_TOP, Math.min(LANE_BOT, entity.y));
+  // HARD CLAMP — all units in mid lane
+  const clampedY = Math.max(1040, Math.min(1360, entity.y));
 
   // Create or reuse sprite
   let sp = spritePool[id];

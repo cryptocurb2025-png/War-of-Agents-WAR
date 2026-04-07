@@ -13,8 +13,9 @@ const MAP_H = 2400;
 const TICK_MS = 1000 / TICK_RATE;
 const BROADCAST_MS = 1000 / BROADCAST_RATE;
 const DAY_NIGHT_CYCLE = 120_000; // 2 min full cycle
-const LANE_MIN_Y = 400;
-const LANE_MAX_Y = 2000;
+// Force single lane (mid) for now — multi-lane visuals don't fit zoomed-out camera
+const LANE_MIN_Y = 1040;
+const LANE_MAX_Y = 1360;
 
 // ─── Multi-Lane Definitions ───────────────────────────────────────────────
 type LaneName = 'top' | 'mid' | 'bot';
@@ -23,7 +24,7 @@ const LANES: Record<LaneName, { centerY: number; minY: number; maxY: number }> =
   mid: { centerY: 1200, minY: 1040, maxY: 1360 },
   bot: { centerY: 1900, minY: 1800, maxY: 2000 },
 };
-const LANE_NAMES: LaneName[] = ['top', 'mid', 'bot'];
+const LANE_NAMES: LaneName[] = ['mid', 'mid', 'mid']; // Single lane for now
 const VISION_RADIUS = 400;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -425,7 +426,8 @@ function initStructures() {
   state.structures.set(hBarracks.id, hBarracks);
 
   // Per-lane towers: T2 (closer to base) and T1 (further out) for each lane per faction
-  for (const laneName of LANE_NAMES) {
+  const uniqueLanes = [...new Set(LANE_NAMES)];
+  for (const laneName of uniqueLanes) {
     const laneY = LANES[laneName].centerY;
 
     // Alliance T2 (inner tower)
@@ -595,7 +597,7 @@ function spawnWave() {
 // ─── AI Bot Heroes ───────────────────────────────────────────────────────────
 function spawnBotHeroes() {
   // 5 heroes per faction: 2 top, 1 mid, 2 bot
-  const laneAssignment: LaneName[] = ['top', 'top', 'mid', 'bot', 'bot'];
+  const laneAssignment: LaneName[] = ['mid', 'mid', 'mid', 'mid', 'mid'];
   const classes: HeroClass[] = ['knight', 'ranger', 'mage', 'priest', 'siegemaster'];
   for (let i = 0; i < classes.length; i++) {
     const hc = classes[i];

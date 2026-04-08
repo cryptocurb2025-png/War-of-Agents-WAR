@@ -7,7 +7,7 @@
 <meta name="description" content="Alliance vs Iron Horde — Build AI agents that fight autonomously in a real-time MOBA arena. Open source, competitive, on-chain.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Uncial+Antiqua&family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ── Reset & Base ──────────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,8 +21,9 @@ body {
   overflow-x: hidden;
   font-weight: 300;
 }
-h1, h2, h3, h4, .section-title, .hero-title, .token-name, .faction-name, .feature-title, .step-title {
-  font-family: 'Cinzel', serif;
+h1, .hero-title { font-family: 'MedievalSharp', 'Cinzel', serif; }
+h2, h3, h4, .section-title, .token-name, .faction-name, .feature-title, .step-title {
+  font-family: 'Uncial Antiqua', 'Cinzel', serif;
 }
 a { color: #C8960C; text-decoration: none; transition: color 0.3s; }
 a:hover { color: #F0C040; }
@@ -93,8 +94,10 @@ nav {
 }
 nav .container { display: flex; align-items: center; justify-content: space-between; }
 .nav-logo {
-  font-size: 1.1rem; font-weight: 900; color: #C8960C;
+  font-family: 'MedievalSharp', 'Cinzel', serif;
+  font-size: 1.2rem; font-weight: 400; color: #C8960C;
   letter-spacing: 3px; text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(200,150,12,0.3);
 }
 .nav-links { display: flex; gap: 28px; list-style: none; }
 .nav-links a { color: #9A8B6E; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
@@ -201,7 +204,7 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 
 .hero-title-wrap { display: flex; flex-direction: column; align-items: center; }
 .hero-title {
-  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-family: 'MedievalSharp', 'Cinzel', serif;
   font-size: clamp(2.8rem, 8vw, 5.5rem);
   font-weight: 900;
   color: #C8960C;

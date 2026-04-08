@@ -773,21 +773,51 @@
   </div>
 </div>
 
-<!-- ─── PLAYER CONTROLS (shown when ?player= in URL) ── -->
-<div id="player-controls" style="display:none;position:fixed;bottom:200px;right:10px;z-index:50;width:220px">
-  <div style="background:#0A0804ee;border:1px solid #5A4A2A;border-radius:6px;padding:10px;font-family:'Cinzel',serif">
-    <div style="color:#C8960C;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px" id="pc-title">YOUR HERO</div>
-    <div id="pc-hero-info" style="color:#AAA080;font-size:11px;margin-bottom:8px"></div>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button onclick="playerCmd('retreat')" style="flex:1;padding:8px;background:#0A1A0A;border:1px solid #2A5A2A;color:#66AA66;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;border-radius:3px;font-weight:700">RETREAT</button>
-      <button onclick="playerCmd('push')" style="flex:1;padding:8px;background:#1A1A0A;border:1px solid #5A5A2A;color:#CCAA44;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;border-radius:3px;font-weight:700">PUSH</button>
-      <button onclick="playerCmd('attack')" style="flex:1;padding:8px;background:#1A0A0A;border:1px solid #5A2A2A;color:#CC4444;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;border-radius:3px;font-weight:700">ATTACK</button>
-    </div>
-    <div id="pc-abilities" style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px"></div>
-    <div id="pc-shop" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px"></div>
-    <div id="pc-status" style="color:#5A4A2A;font-size:9px"></div>
+<!-- ─── PLAYER ACTION BAR (Dota-style, shown when ?player= in URL) ── -->
+<div id="player-controls" style="display:none">
+  <!-- Hotkey HUD overlay top-center -->
+  <div id="pc-hotkey-bar" style="position:fixed;bottom:200px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:4px;font-family:'Cinzel',serif">
+    <!-- Ability slots Q W E R -->
+    <div class="hk-slot" id="hk-q" data-key="Q"><div class="hk-key">Q</div><div class="hk-name" id="hk-q-name">-</div><div class="hk-cd" id="hk-q-cd"></div></div>
+    <div class="hk-slot" id="hk-w" data-key="W"><div class="hk-key">W</div><div class="hk-name" id="hk-w-name">-</div><div class="hk-cd" id="hk-w-cd"></div></div>
+    <div class="hk-slot" id="hk-e" data-key="E"><div class="hk-key">E</div><div class="hk-name" id="hk-e-name">-</div><div class="hk-cd" id="hk-e-cd"></div></div>
+    <div class="hk-slot" id="hk-r" data-key="R"><div class="hk-key">R</div><div class="hk-name" id="hk-r-name">-</div><div class="hk-cd" id="hk-r-cd"></div></div>
+    <div style="width:8px"></div>
+    <!-- Item slots 1-5 -->
+    <div class="hk-slot hk-item" id="hk-1" data-key="1"><div class="hk-key">1</div><div class="hk-name" id="hk-1-name">Boots</div></div>
+    <div class="hk-slot hk-item" id="hk-2" data-key="2"><div class="hk-key">2</div><div class="hk-name" id="hk-2-name">Sword</div></div>
+    <div class="hk-slot hk-item" id="hk-3" data-key="3"><div class="hk-key">3</div><div class="hk-name" id="hk-3-name">Shield</div></div>
+    <div class="hk-slot hk-item" id="hk-4" data-key="4"><div class="hk-key">4</div><div class="hk-name" id="hk-4-name">Cloak</div></div>
+    <div class="hk-slot hk-item" id="hk-5" data-key="5"><div class="hk-key">5</div><div class="hk-name" id="hk-5-name">Relic</div></div>
+  </div>
+  <!-- Hero stats bar -->
+  <div id="pc-stats-bar" style="position:fixed;bottom:194px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:11px;color:#AAA080;background:#0A0804dd;border:1px solid #5A4A2A;border-radius:4px;padding:4px 12px;display:flex;gap:12px;align-items:center">
+    <span id="pc-title" style="color:#C8960C;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:0.08em">YOUR HERO</span>
+    <span id="pc-hero-info"></span>
+    <span id="pc-status" style="color:#C8960C;font-size:10px"></span>
+  </div>
+  <!-- Movement hint -->
+  <div id="pc-move-hint" style="position:fixed;bottom:168px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:9px;color:#5A4A2A;letter-spacing:0.08em">
+    WASD/Arrows: Move &bull; Q/W/E/R: Abilities &bull; 1-5: Buy Items &bull; SPACE: Attack nearest
   </div>
 </div>
+
+<style>
+.hk-slot {
+  width:56px;height:56px;background:linear-gradient(180deg,#1A1408,#0A0804);border:2px solid #5A4A2A;border-radius:5px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;
+  transition:border-color 0.15s,box-shadow 0.15s;user-select:none;
+}
+.hk-slot:hover{border-color:#C8960C;box-shadow:0 0 10px rgba(200,150,12,0.3)}
+.hk-slot.on-cd{opacity:0.4}
+.hk-slot.pressed{border-color:#F0C040;box-shadow:0 0 16px rgba(240,192,64,0.5);transform:scale(0.95)}
+.hk-slot.owned{border-color:#2A5A2A;background:linear-gradient(180deg,#0A1A0A,#0A0804)}
+.hk-key{font-size:14px;font-weight:900;color:#C8960C;text-shadow:0 0 6px rgba(200,150,12,0.4)}
+.hk-name{font-size:8px;color:#8A7A5A;margin-top:2px;text-align:center;line-height:1.1;max-width:52px;overflow:hidden}
+.hk-cd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#FF6644;text-shadow:0 0 8px rgba(255,100,60,0.6);pointer-events:none}
+.hk-item .hk-key{color:#66AA66;font-size:12px}
+.hk-item .hk-name{color:#66AA66}
+</style>
 
 <!-- ─── SPECTATOR CHAT ──────────────────────────────── -->
 <div id="chat-panel">
@@ -2679,78 +2709,196 @@ function updateUI() {
   }
 }
 
-// ─── Player Controls (when ?player= in URL) ─────────────────
+// ─── Player Controls — Dota-style keyboard system ─────────────────
 const urlParams = new URLSearchParams(window.location.search);
 const playerAgentId = urlParams.get('player') || localStorage.getItem('woa_agentId');
+const ITEMS = [
+  {id:'boots',name:'Boots',cost:200,key:'1'},
+  {id:'sword',name:'Sword',cost:300,key:'2'},
+  {id:'shield',name:'Shield',cost:250,key:'3'},
+  {id:'cloak',name:'Cloak',cost:200,key:'4'},
+  {id:'relic',name:'Relic',cost:600,key:'5'},
+];
+const ABILITY_KEYS = ['q','w','e','r'];
+const keysDown = {};
+let moveInterval = null;
+let myHeroAbilities = [];
+let myOwnedItems = new Set();
+
 if (playerAgentId) {
   document.getElementById('player-controls').style.display = 'block';
   const pcFaction = localStorage.getItem('woa_faction') || 'alliance';
   const pcClass = localStorage.getItem('woa_class') || 'knight';
-  document.getElementById('pc-title').textContent = (pcClass + ' — ' + pcFaction).toUpperCase();
+  document.getElementById('pc-title').textContent = (pcClass + ' · ' + pcFaction).toUpperCase();
 
-  const ITEMS = [
-    {id:'boots',name:'Boots',cost:200},{id:'sword',name:'Sword',cost:300},
-    {id:'shield',name:'Shield',cost:250},{id:'cloak',name:'Cloak',cost:200},{id:'relic',name:'Relic',cost:600}
-  ];
+  // Update item slot names with costs
+  ITEMS.forEach((item, i) => {
+    const el = document.getElementById('hk-' + item.key + '-name');
+    if (el) el.textContent = item.name + ' ' + item.cost + 'g';
+  });
 
-  // Render shop buttons once
-  const shopDiv = document.getElementById('pc-shop');
-  ITEMS.forEach(item => {
-    const btn = document.createElement('button');
-    btn.textContent = item.name + ' ' + item.cost + 'g';
-    btn.style.cssText = 'padding:4px 6px;background:#1A1200;border:1px solid #5A4A2A;color:#C8960C;font-family:Cinzel;font-size:9px;cursor:pointer;border-radius:3px';
-    btn.onclick = () => fetch('/api/strategy/deployment', {
+  function sendCmd(body) {
+    return fetch('/api/strategy/deployment', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({agentId:playerAgentId,action:'buy',itemId:item.id})
-    }).then(r=>r.json()).then(d=>{ document.getElementById('pc-status').textContent = d.success ? 'Bought '+item.name : (d.error||'Failed'); });
-    shopDiv.appendChild(btn);
+      body: JSON.stringify({agentId:playerAgentId,...body})
+    }).then(r=>r.json()).catch(()=>({error:'Network error'}));
+  }
+
+  function flashSlot(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('pressed');
+    setTimeout(() => el.classList.remove('pressed'), 150);
+  }
+
+  // Continuous movement while holding WASD
+  function startMoveLoop() {
+    if (moveInterval) return;
+    moveInterval = setInterval(() => {
+      const faction = localStorage.getItem('woa_faction') || 'alliance';
+      const hero = getMyHero();
+      if (!hero || !hero.alive) return;
+      let dx = 0, dy = 0;
+      if (keysDown['a'] || keysDown['arrowleft']) dx = -1;
+      if (keysDown['d'] || keysDown['arrowright']) dx = 1;
+      if (keysDown['w'] || keysDown['arrowup']) dy = -1;
+      if (keysDown['s'] || keysDown['arrowdown']) dy = 1;
+      if (dx === 0 && dy === 0) return;
+      const step = (hero.speed || 40) * 3;
+      const tx = Math.max(100, Math.min(4700, hero.pos.x + dx * step));
+      const ty = Math.max(100, Math.min(2300, hero.pos.y + dy * step));
+      sendCmd({action:'move', targetX:tx, targetY:ty});
+    }, 100);
+  }
+
+  function stopMoveLoop() {
+    const anyMove = keysDown['a']||keysDown['d']||keysDown['w']||keysDown['s']||keysDown['arrowleft']||keysDown['arrowright']||keysDown['arrowup']||keysDown['arrowdown'];
+    if (!anyMove && moveInterval) { clearInterval(moveInterval); moveInterval = null; }
+  }
+
+  function getMyHero() {
+    if (!gameState || !gameState.heroes) return null;
+    return gameState.heroes.find(h => h.agentId === playerAgentId);
+  }
+
+  // Keyboard handler
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const key = e.key.toLowerCase();
+    keysDown[key] = true;
+
+    // WASD / Arrow movement
+    if (['a','d','w','s','arrowleft','arrowright','arrowup','arrowdown'].includes(key)) {
+      e.preventDefault();
+      startMoveLoop();
+      return;
+    }
+
+    // SPACE = attack nearest enemy (move toward enemy base)
+    if (key === ' ') {
+      e.preventDefault();
+      const faction = localStorage.getItem('woa_faction') || 'alliance';
+      const tx = faction === 'alliance' ? 4600 : 200;
+      sendCmd({action:'move', targetX:tx, targetY:1200}).then(d => {
+        document.getElementById('pc-status').textContent = 'ATTACKING';
+      });
+      return;
+    }
+
+    // Q W E R = abilities
+    const abIdx = ABILITY_KEYS.indexOf(key);
+    if (abIdx >= 0 && myHeroAbilities[abIdx]) {
+      e.preventDefault();
+      flashSlot('hk-' + key);
+      sendCmd({action:'ability', abilityId:myHeroAbilities[abIdx].id}).then(d => {
+        document.getElementById('pc-status').textContent = d.success ? 'Cast ' + myHeroAbilities[abIdx].name + '!' : (d.error||'Failed');
+      });
+      return;
+    }
+
+    // 1-5 = buy items
+    const itemIdx = ['1','2','3','4','5'].indexOf(key);
+    if (itemIdx >= 0) {
+      e.preventDefault();
+      flashSlot('hk-' + key);
+      const item = ITEMS[itemIdx];
+      sendCmd({action:'buy', itemId:item.id}).then(d => {
+        if (d.success) {
+          myOwnedItems.add(item.id);
+          document.getElementById('pc-status').textContent = 'Bought ' + item.name + '!';
+          const slot = document.getElementById('hk-' + item.key);
+          if (slot) slot.classList.add('owned');
+        } else {
+          document.getElementById('pc-status').textContent = d.error || 'Failed';
+        }
+      });
+      return;
+    }
+
+    // B = retreat to base
+    if (key === 'b') {
+      const faction = localStorage.getItem('woa_faction') || 'alliance';
+      const tx = faction === 'alliance' ? 200 : 4600;
+      sendCmd({action:'move', targetX:tx, targetY:1200}).then(() => {
+        document.getElementById('pc-status').textContent = 'RETREATING TO BASE';
+      });
+      return;
+    }
+  });
+
+  document.addEventListener('keyup', (e) => {
+    keysDown[e.key.toLowerCase()] = false;
+    stopMoveLoop();
+  });
+
+  // Click on ability/item slots
+  document.querySelectorAll('.hk-slot').forEach(slot => {
+    slot.addEventListener('click', () => {
+      const key = slot.dataset.key?.toLowerCase();
+      if (key) document.dispatchEvent(new KeyboardEvent('keydown', {key}));
+    });
   });
 }
 
-function playerCmd(type) {
-  if (!playerAgentId) return;
-  const faction = localStorage.getItem('woa_faction') || 'alliance';
-  let targetX, targetY = 1200;
-  if (type === 'retreat') targetX = faction === 'alliance' ? 200 : 4600;
-  else if (type === 'push') targetX = 2400;
-  else targetX = faction === 'alliance' ? 4600 : 200;
-  fetch('/api/strategy/deployment', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({agentId:playerAgentId,action:'move',targetX,targetY})
-  }).then(r=>r.json()).then(d=>{ document.getElementById('pc-status').textContent = d.success ? type.toUpperCase() : (d.error||'Failed'); });
-}
-
-// Update player hero info from game state
+// Update player hero HUD from game state
 function updatePlayerControls() {
   if (!playerAgentId || !gameState) return;
   const hero = gameState.heroes.find(h => h.agentId === playerAgentId);
   if (!hero) return;
+
   const info = document.getElementById('pc-hero-info');
   const hpPct = Math.round(hero.hp / hero.maxHp * 100);
-  const manaPct = Math.round(hero.mana / hero.maxMana * 100);
-  info.innerHTML = `HP: <span style="color:#66AA66">${hero.hp}/${hero.maxHp}</span> (${hpPct}%) | MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> | Gold: <span style="color:#F0C040">${hero.gold}</span> | Lv${hero.level}`;
-  if (!hero.alive) info.innerHTML = `<span style="color:#CC4444;font-weight:700">DEAD — respawning in ${hero.respawnIn} ticks</span>`;
+  if (hero.alive) {
+    info.innerHTML = `HP: <span style="color:${hpPct>50?'#66AA66':hpPct>25?'#CCAA44':'#CC4444'}">${hero.hp}/${hero.maxHp}</span> | MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> | Gold: <span style="color:#F0C040">${hero.gold}</span> | Lv${hero.level}`;
+  } else {
+    info.innerHTML = `<span style="color:#CC4444;font-weight:700">DEAD — respawning...</span>`;
+  }
 
-  // Update abilities
-  const abDiv = document.getElementById('pc-abilities');
-  if (abDiv.children.length === 0 && hero.abilities) {
-    hero.abilities.forEach(ab => {
-      const btn = document.createElement('button');
-      btn.dataset.abilityId = ab.id;
-      btn.style.cssText = 'padding:4px 8px;background:#0A0A1A;border:1px solid #3A3A5A;color:#8888CC;font-family:Cinzel;font-size:9px;cursor:pointer;border-radius:3px;text-align:left';
-      btn.onclick = () => fetch('/api/strategy/deployment', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({agentId:playerAgentId,action:'ability',abilityId:ab.id})
-      }).then(r=>r.json()).then(d=>{ document.getElementById('pc-status').textContent = d.success ? 'Cast '+ab.name : (d.error||'Failed'); });
-      abDiv.appendChild(btn);
+  // Update ability hotkey slots
+  if (hero.abilities) {
+    myHeroAbilities = hero.abilities;
+    hero.abilities.forEach((ab, i) => {
+      if (i >= 4) return;
+      const key = ABILITY_KEYS[i];
+      const nameEl = document.getElementById('hk-' + key + '-name');
+      const cdEl = document.getElementById('hk-' + key + '-cd');
+      const slot = document.getElementById('hk-' + key);
+      if (nameEl) nameEl.textContent = ab.name;
+      if (cdEl) cdEl.textContent = ab.cd > 0 ? ab.cd : '';
+      if (slot) {
+        slot.classList.toggle('on-cd', ab.cd > 0);
+      }
     });
   }
-  if (hero.abilities) {
-    hero.abilities.forEach((ab, i) => {
-      if (abDiv.children[i]) {
-        const cd = ab.cd > 0 ? ` (${ab.cd})` : '';
-        abDiv.children[i].textContent = ab.name + cd;
-        abDiv.children[i].style.opacity = ab.cd > 0 ? '0.4' : '1';
+
+  // Update owned items
+  if (hero.items) {
+    hero.items.forEach(item => {
+      myOwnedItems.add(item.id);
+      const idx = ITEMS.findIndex(i => i.id === item.id);
+      if (idx >= 0) {
+        const slot = document.getElementById('hk-' + ITEMS[idx].key);
+        if (slot) slot.classList.add('owned');
       }
     });
   }

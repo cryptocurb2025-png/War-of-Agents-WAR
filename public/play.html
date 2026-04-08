@@ -747,10 +747,15 @@ a { color: #C8960C; text-decoration: none; }
 
   // ── Battle HUD ─────────────────────────────────────────────
   function showBattleHud() {
+    // Redirect to full Phaser game with player controls
+    // Session is in localStorage so game.html can read it
+    window.location.href = '/game.html?player=' + encodeURIComponent(playerAgentId);
+    return;
+
+    // Below is the old basic HUD — keeping for reference but never reached
     document.getElementById('joinScreen').classList.add('hidden');
     document.getElementById('battleHud').classList.remove('hidden');
 
-    // Set up header
     document.getElementById('hudIcon').textContent = HERO_ICONS[playerClass] || '';
     document.getElementById('hudName').textContent = playerName;
     document.getElementById('hudClass').textContent = playerClass + ' - ' + playerFaction;

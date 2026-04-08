@@ -773,6 +773,22 @@
   </div>
 </div>
 
+<!-- ─── PLAYER CONTROLS (shown when ?player= in URL) ── -->
+<div id="player-controls" style="display:none;position:fixed;bottom:200px;right:10px;z-index:50;width:220px">
+  <div style="background:#0A0804ee;border:1px solid #5A4A2A;border-radius:6px;padding:10px;font-family:'Cinzel',serif">
+    <div style="color:#C8960C;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px" id="pc-title">YOUR HERO</div>
+    <div id="pc-hero-info" style="color:#AAA080;font-size:11px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button onclick="playerCmd('retreat')" style="flex:1;padding:8px;background:#0A1A0A;border:1px solid #2A5A2A;color:#66AA66;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;border-radius:3px;font-weight:700">RETREAT</button>
+      <button onclick="playerCmd('push')" style="flex:1;padding:8px;background:#1A1A0A;border:1px solid #5A5A2A;color:#CCAA44;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;border-radius:3px;font-weight:700">PUSH</button>
+      <button onclick="playerCmd('attack')" style="flex:1;padding:8px;background:#1A0A0A;border:1px solid #5A2A2A;color:#CC4444;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;border-radius:3px;font-weight:700">ATTACK</button>
+    </div>
+    <div id="pc-abilities" style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px"></div>
+    <div id="pc-shop" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px"></div>
+    <div id="pc-status" style="color:#5A4A2A;font-size:9px"></div>
+  </div>
+</div>
+
 <!-- ─── SPECTATOR CHAT ──────────────────────────────── -->
 <div id="chat-panel">
   <div id="chat-header">CHAT</div>
@@ -2378,6 +2394,7 @@ function updateUI() {
   checkKillAnnouncements(gs);
   updateEventTicker(gs);
   updateBettingPanel();
+  if (typeof updatePlayerControls === 'function') updatePlayerControls();
 
   // Tower/base destroyed announcements
   if (!window._prevStructures) window._prevStructures = {};
@@ -2662,7 +2679,84 @@ function updateUI() {
   }
 }
 
-// Resize handled by Phaser.Scale.RESIZE + scale.on('resize') in pCreate
+// ─── Player Controls (when ?player= in URL) ─────────────────
+const urlParams = new URLSearchParams(window.location.search);
+const playerAgentId = urlParams.get('player') || localStorage.getItem('woa_agentId');
+if (playerAgentId) {
+  document.getElementById('player-controls').style.display = 'block';
+  const pcFaction = localStorage.getItem('woa_faction') || 'alliance';
+  const pcClass = localStorage.getItem('woa_class') || 'knight';
+  document.getElementById('pc-title').textContent = (pcClass + ' — ' + pcFaction).toUpperCase();
+
+  const ITEMS = [
+    {id:'boots',name:'Boots',cost:200},{id:'sword',name:'Sword',cost:300},
+    {id:'shield',name:'Shield',cost:250},{id:'cloak',name:'Cloak',cost:200},{id:'relic',name:'Relic',cost:600}
+  ];
+
+  // Render shop buttons once
+  const shopDiv = document.getElementById('pc-shop');
+  ITEMS.forEach(item => {
+    const btn = document.createElement('button');
+    btn.textContent = item.name + ' ' + item.cost + 'g';
+    btn.style.cssText = 'padding:4px 6px;background:#1A1200;border:1px solid #5A4A2A;color:#C8960C;font-family:Cinzel;font-size:9px;cursor:pointer;border-radius:3px';
+    btn.onclick = () => fetch('/api/strategy/deployment', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({agentId:playerAgentId,action:'buy',itemId:item.id})
+    }).then(r=>r.json()).then(d=>{ document.getElementById('pc-status').textContent = d.success ? 'Bought '+item.name : (d.error||'Failed'); });
+    shopDiv.appendChild(btn);
+  });
+}
+
+function playerCmd(type) {
+  if (!playerAgentId) return;
+  const faction = localStorage.getItem('woa_faction') || 'alliance';
+  let targetX, targetY = 1200;
+  if (type === 'retreat') targetX = faction === 'alliance' ? 200 : 4600;
+  else if (type === 'push') targetX = 2400;
+  else targetX = faction === 'alliance' ? 4600 : 200;
+  fetch('/api/strategy/deployment', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({agentId:playerAgentId,action:'move',targetX,targetY})
+  }).then(r=>r.json()).then(d=>{ document.getElementById('pc-status').textContent = d.success ? type.toUpperCase() : (d.error||'Failed'); });
+}
+
+// Update player hero info from game state
+function updatePlayerControls() {
+  if (!playerAgentId || !gameState) return;
+  const hero = gameState.heroes.find(h => h.agentId === playerAgentId);
+  if (!hero) return;
+  const info = document.getElementById('pc-hero-info');
+  const hpPct = Math.round(hero.hp / hero.maxHp * 100);
+  const manaPct = Math.round(hero.mana / hero.maxMana * 100);
+  info.innerHTML = `HP: <span style="color:#66AA66">${hero.hp}/${hero.maxHp}</span> (${hpPct}%) | MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> | Gold: <span style="color:#F0C040">${hero.gold}</span> | Lv${hero.level}`;
+  if (!hero.alive) info.innerHTML = `<span style="color:#CC4444;font-weight:700">DEAD — respawning in ${hero.respawnIn} ticks</span>`;
+
+  // Update abilities
+  const abDiv = document.getElementById('pc-abilities');
+  if (abDiv.children.length === 0 && hero.abilities) {
+    hero.abilities.forEach(ab => {
+      const btn = document.createElement('button');
+      btn.dataset.abilityId = ab.id;
+      btn.style.cssText = 'padding:4px 8px;background:#0A0A1A;border:1px solid #3A3A5A;color:#8888CC;font-family:Cinzel;font-size:9px;cursor:pointer;border-radius:3px;text-align:left';
+      btn.onclick = () => fetch('/api/strategy/deployment', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({agentId:playerAgentId,action:'ability',abilityId:ab.id})
+      }).then(r=>r.json()).then(d=>{ document.getElementById('pc-status').textContent = d.success ? 'Cast '+ab.name : (d.error||'Failed'); });
+      abDiv.appendChild(btn);
+    });
+  }
+  if (hero.abilities) {
+    hero.abilities.forEach((ab, i) => {
+      if (abDiv.children[i]) {
+        const cd = ab.cd > 0 ? ` (${ab.cd})` : '';
+        abDiv.children[i].textContent = ab.name + cd;
+        abDiv.children[i].style.opacity = ab.cd > 0 ? '0.4' : '1';
+      }
+    });
+  }
+}
+
+// Resize handled by Phaser Scale.FIT
 </script>
 </body>
 </html>

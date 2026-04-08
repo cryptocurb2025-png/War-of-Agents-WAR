@@ -162,13 +162,10 @@ a { color: #C8960C; text-decoration: none; }
 
 /* ── Battle HUD ─────────────────────────────────────────── */
 #battleHud {
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  z-index: 1;
-  pointer-events: none; /* let clicks through to iframe by default */
-}
-#battleHud > * {
-  pointer-events: auto; /* but HUD elements catch clicks */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1A2A1A 0%, #0A1408 50%, #2A1A0A 100%);
 }
 
 /* Top bar */
@@ -565,9 +562,6 @@ a { color: #C8960C; text-decoration: none; }
 
 <!-- ════════ BATTLE HUD ════════ -->
 <div id="battleHud" class="hidden">
-
-  <!-- Game view iframe -->
-  <iframe id="gameFrame" src="/game.html" style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:0"></iframe>
 
   <!-- Top bar -->
   <div class="hud-top">
@@ -1074,9 +1068,20 @@ a { color: #C8960C; text-decoration: none; }
     const cw = canvas.width, ch = canvas.height;
     const scaleX = cw / MAP_W, scaleY = ch / MAP_H;
 
-    // Background
-    ctx.fillStyle = '#0C0A06';
-    ctx.fillRect(0, 0, cw, ch);
+    // Background — Alliance green left, Horde brown right
+    ctx.fillStyle = '#2A5A1A';
+    ctx.fillRect(0, 0, cw / 2, ch);
+    ctx.fillStyle = '#4A2A10';
+    ctx.fillRect(cw / 2, 0, cw / 2, ch);
+    // Lane road
+    const laneTop = 1040 * scaleY, laneBot = 1360 * scaleY;
+    ctx.fillStyle = '#5A4A2A';
+    ctx.fillRect(0, laneTop, cw / 2, laneBot - laneTop);
+    ctx.fillStyle = '#3A2010';
+    ctx.fillRect(cw / 2, laneTop, cw / 2, laneBot - laneTop);
+    // River divider
+    ctx.fillStyle = '#2A5080';
+    ctx.fillRect(cw / 2 - 2, 0, 4, ch);
 
     // Grid lines
     ctx.strokeStyle = 'rgba(200,150,12,0.04)';
@@ -1101,8 +1106,9 @@ a { color: #C8960C; text-decoration: none; }
     if (gameState.structures) {
       gameState.structures.forEach(function(s) {
         if (!s.alive) return;
-        const sx = s.pos.x * scaleX, sy = s.pos.y * scaleY;
-        const size = s.type === 'base' ? 14 : (s.type === 'barracks' ? 10 : 8);
+        const sx = (s.x || (s.pos && s.pos.x) || 0) * scaleX;
+        const sy = (s.y || (s.pos && s.pos.y) || 0) * scaleY;
+        const size = s.structureType === 'base' ? 14 : (s.structureType === 'barracks' ? 10 : 8);
         ctx.fillStyle = s.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
         ctx.fillRect(sx - size / 2, sy - size / 2, size, size);
         ctx.strokeStyle = s.faction === 'alliance' ? '#6AAFFF' : '#FF7A7A';

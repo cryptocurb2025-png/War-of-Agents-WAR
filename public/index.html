@@ -11,7 +11,7 @@
 <style>
 /* ── Reset & Base ──────────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 body {
   font-family: 'Inter', 'Cinzel', sans-serif;
   background: #0A0804;
@@ -162,7 +162,6 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
   0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.12; }
   50% { transform: translateY(-15px) rotate(3deg); opacity: 0.2; }
 }
-}
 #particles-canvas {
   position: absolute; inset: 0;
   pointer-events: none; z-index: 2;
@@ -175,52 +174,21 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 
 /* Faction crests — CSS drawn */
 .faction-emblem {
-  width: clamp(100px, 15vw, 160px);
-  height: clamp(120px, 18vw, 190px);
+  width: 80px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   animation: emblemFloat 4s ease-in-out infinite;
   position: relative;
+  flex-shrink: 0;
 }
 .faction-emblem.alliance { animation-delay: 0s; }
 .faction-emblem.horde { animation-delay: 2s; }
 
-/* Alliance crest — shield with lion */
-.faction-emblem.alliance::before {
-  content: '';
-  width: 90px; height: 110px;
-  background: linear-gradient(180deg, #2244AA, #1A3388);
-  clip-path: polygon(50% 0%, 100% 15%, 100% 70%, 50% 100%, 0% 70%, 0% 15%);
-  display: block;
-  box-shadow: 0 0 30px rgba(74,143,224,0.4);
-  border: 2px solid #4A8FE0;
-}
-.faction-emblem.alliance::after {
-  content: '\2694\FE0F';
-  font-size: 36px;
-  position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
-  filter: drop-shadow(0 0 8px rgba(200,200,255,0.5));
-}
+/* Alliance/Horde crests now use <img> tags — no pseudo-elements needed */
 .alliance-label {
   color: #4A8FE0; font-size: 14px; font-weight: 700; letter-spacing: 3px;
   margin-top: 8px; text-shadow: 0 0 10px rgba(74,143,224,0.3);
 }
 
-/* Horde crest — iron skull */
-.faction-emblem.horde::before {
-  content: '';
-  width: 100px; height: 110px;
-  background: linear-gradient(180deg, #3A1A0A, #1A0A00);
-  clip-path: polygon(15% 0%, 85% 0%, 100% 20%, 100% 80%, 85% 100%, 15% 100%, 0% 80%, 0% 20%);
-  display: block;
-  box-shadow: 0 0 30px rgba(180,40,0,0.4);
-  border: 2px solid #AA3322;
-}
-.faction-emblem.horde::after {
-  content: '\1F480';
-  font-size: 42px;
-  position: absolute; top: 33%; left: 50%; transform: translate(-50%, -50%);
-  filter: drop-shadow(0 0 12px rgba(255,50,0,0.5));
-}
 .horde-label {
   color: #E24B4A; font-size: 14px; font-weight: 700; letter-spacing: 3px;
   margin-top: 8px; text-shadow: 0 0 10px rgba(226,75,74,0.3);

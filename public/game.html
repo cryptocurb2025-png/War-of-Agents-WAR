@@ -877,7 +877,7 @@ const config = {
   height: window.innerHeight - BOT_H - TOP_H,
   backgroundColor: '#1a3a1a',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
-  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
 };
 
 const game = new Phaser.Game(config);
@@ -1045,18 +1045,9 @@ function pCreate() {
   cam = this.cameras.main;
   cam.setBounds(0, 0, MAP_W, MAP_H);
 
-  // Zoom: fit full map into screen — with safe minimum
-  function updateZoom() {
-    const sw = phaserScene.scale.width || window.innerWidth;
-    const sh = phaserScene.scale.height || (window.innerHeight - 190);
-    const zoom = Math.max(0.1, Math.min(sw / MAP_W, sh / MAP_H));
-    cam.setZoom(zoom);
-    cam.centerOn(2400, 1200);
-  }
-  updateZoom();
-
-  // Recalculate on resize
-  this.scale.on('resize', updateZoom);
+  // Zoom: fit full 4800-wide map into view
+  cam.setZoom(this.scale.width / MAP_W);
+  cam.centerOn(2400, 1200);
 
   // Dynamic layer for everything
   graphics = this.add.graphics();
@@ -1069,9 +1060,6 @@ function pCreate() {
   // Sun/Moon text
   sunMoonText = this.add.text(MAP_W - 80, 20, '\u2600', { fontSize: '32px', color: '#FFD700' });
   sunMoonText.setDepth(101).setScrollFactor(0);
-
-  // Force initial terrain draw
-  console.log('Phaser create: canvas', this.scale.width, 'x', this.scale.height, 'zoom:', cam.zoom);
 }
 
 // ─── Texture key lookup ─────────────────────────────────────────

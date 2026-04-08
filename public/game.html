@@ -535,7 +535,7 @@
     align-items: center;
     transition: opacity 0.8s ease;
   }
-  #loading-screen.hidden { opacity: 0; pointer-events: none; }
+  #loading-screen.hidden { opacity: 0; pointer-events: none; display: none !important; }
   #loading-title {
     font-size: 42px;
     color: #C8960C;
@@ -725,9 +725,11 @@ const loadInterval = setInterval(() => {
   document.getElementById('loading-bar-fill').style.width = loadProg + '%';
   if (loadProg >= 100) {
     clearInterval(loadInterval);
-    setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
+    setTimeout(() => { const ls = document.getElementById('loading-screen'); if (ls) ls.remove(); }, 500);
   }
 }, 200);
+// Failsafe: force remove loading screen after 3 seconds
+setTimeout(() => { const ls = document.getElementById('loading-screen'); if (ls) ls.remove(); }, 3000);
 
 // ─── Kill Announcements ─────────────────────────────────────
 let _lastAnnounceKills = {};

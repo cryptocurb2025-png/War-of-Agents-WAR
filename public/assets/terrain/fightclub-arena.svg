@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" shape-rendering="crispEdges">
+  <!-- Deep background -->
+  <rect width="640" height="360" fill="#0a0d15"/>
+  
+  <!-- Sky/mist layer -->
+  <rect y="0" width="640" height="80" fill="#10192b"/>
+  <rect y="20" width="640" height="40" fill="#16243c"/>
+  <rect y="40" width="640" height="20" fill="#1d2a45"/>
+  
+  <!-- Ground layers -->
+  <rect y="60" width="640" height="300" fill="#11161d"/>
+  <rect y="80" width="640" height="280" fill="#0d1218"/>
+  <rect y="100" width="640" height="260" fill="#0f151c"/>
+  
+  <!-- Atmospheric haze -->
+  <rect y="60" width="640" height="120" fill="url(#arenaMist)" opacity="0.3"/>
+  
+  <!-- Distant mountains/structures -->
+  <path d="M0 100 L80 60 L140 85 L200 50 L280 90 L340 55 L400 80 L460 45 L540 85 L600 50 L640 75 L640 100 L0 100 Z" fill="#0d1320"/>
+  <path d="M0 110 L60 85 L120 100 L180 70 L250 105 L320 75 L380 95 L440 65 L520 100 L580 70 L640 90 L640 120 L0 120 Z" fill="#13202a"/>
+  
+  <!-- Arena floor base -->
+  <rect x="40" y="140" width="560" height="180" fill="#111714"/>
+  <rect x="40" y="160" width="560" height="160" fill="#0d1210"/>
+  
+  <!-- Central arena pit - the Fight Club -->
+  <rect x="60" y="150" width="520" height="160" fill="#151d18"/>
+  <rect x="60" y="170" width="520" height="140" fill="#0f1612"/>
+  
+  <!-- Battleground - where units fight -->
+  <rect x="80" y="160" width="480" height="140" fill="#1a2420"/>
+  <rect x="80" y="180" width="480" height="120" fill="#121a16"/>
+  
+  <!-- Mid lane path - the only active lane -->
+  <rect x="100" y="190" width="440" height="80" fill="#1e2a22"/>
+  <rect x="100" y="210" width="440" height="60" fill="#16221a"/>
+  
+  <!-- Lane markers - only mid is active -->
+  <rect x="120" y="200" width="400" height="4" fill="#2d3d30"/>
+  <rect x="120" y="260" width="400" height="4" fill="#2d3d30"/>
+  
+  <!-- Center line - battlefield front -->
+  <rect x="310" y="150" width="20" height="160" fill="#3d3428" opacity="0.6"/>
+  <rect x="312" y="150" width="16" height="160" fill="#6e5e38" opacity="0.8"/>
+  <rect x="314" y="150" width="12" height="160" fill="#c7a35f" opacity="0.4"/>
+  
+  <!-- Tower positions - only mid -->
+  <!-- Alliance tower (left) -->
+  <rect x="70" y="145" width="40" height="50" fill="#1d2638"/>
+  <rect x="75" y="155" width="30" height="6" fill="#57bdff"/>
+  <rect x="78" y="165" width="24" height="30" fill="#2a3548"/>
+  
+  <!-- Horde tower (right) -->
+  <rect x="530" y="145" width="40" height="50" fill="#382027"/>
+  <rect x="535" y="155" width="30" height="6" fill="#ff5c7a"/>
+  <rect x="538" y="165" width="24" height="30" fill="#4a2833"/>
+  
+  <!-- Keep positions - enhanced for one lane -->
+  <!-- Alliance Keep -->
+  <rect x="24" y="120" width="60" height="80" fill="#222f46"/>
+  <rect x="32" y="130" width="20" height="8" fill="#57bdff"/>
+  <rect x="34" y="140" width="16" height="60" fill="#2a3548"/>
+  
+  <!-- Horde Keep -->
+  <rect x="556" y="120" width="60" height="80" fill="#43212a"/>
+  <rect x="588" y="130" width="20" height="8" fill="#ff5c7a"/>
+  <rect x="570" y="140" width="16" height="60" fill="#4a2833"/>
+  
+  <!-- Center Banner - fight club标志 -->
+  <rect x="300" y="130" width="40" height="180" fill="#2d2518"/>
+  <rect x="304" y="125" width="32" height="8" fill="#6e5e38"/>
+  <rect x="306" y="135" width="28" height="6" fill="#c7a35f"/>
+  <rect x="308" y="145" width="24" height="4" fill="#9d8351"/>
+  <rect x="310" y="155" width="20" height="4" fill="#6e5e38"/>
+  
+  <!-- Decorative pillars -->
+  <rect x="280" y="120" width="6" height="30" fill="#3d3428"/>
+  <rect x="354" y="120" width="6" height="30" fill="#3d3428"/>
+  
+  <!-- Ground details -->
+  <rect x="130" y="220" width="8" height="20" fill="#24352a"/>
+  <rect x="200" y="240" width="8" height="20" fill="#24352a"/>
+  <rect x="270" y="210" width="8" height="20" fill="#24352a"/>
+  <rect x="360" y="230" width="8" height="20" fill="#24352a"/>
+  <rect x="430" y="220" width="8" height="20" fill="#24352a"/>
+  <rect x="500" y="240" width="8" height="20" fill="#24352a"/>
+  
+  <!-- Subtle grid pattern on floor -->
+  <rect x="100" y="190" width="4" height="80" fill="#1e2a22" opacity="0.5"/>
+  <rect x="180" y="190" width="4" height="80" fill="#1e2a22" opacity="0.5"/>
+  <rect x="260" y="190" width="4" height="80" fill="#1e2a22" opacity="0.5"/>
+  <rect x="340" y="190" width="4" height="80" fill="#1e2a22" opacity="0.5"/>
+  <rect x="420" y="190" width="4" height="80" fill="#1e2a22" opacity="0.5"/>
+  <rect x="500" y="190" width="4" height="80" fill="#1e2a22" opacity="0.5"/>
+  
+  <!-- Foreground mist -->
+  <rect x="0" y="320" width="640" height="40" fill="#0a0d15"/>
+  <rect x="0" y="330" width="640" height="30" fill="#07070a"/>
+  
+  <!-- Corner accents -->
+  <rect x="0" y="310" width="60" height="50" fill="url(#cornerMist)" opacity="0.4"/>
+  <rect x="580" y="310" width="60" height="50" fill="url(#cornerMistH)" opacity="0.4"/>
+  
+  <defs>
+    <linearGradient id="arenaMist" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1d2a45"/>
+      <stop offset="100%" stop-color="#0d1218"/>
+    </linearGradient>
+    <linearGradient id="cornerMist" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#57bdff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </linearGradient>
+    <linearGradient id="cornerMistH" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff5c7a" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </linearGradient>
+  </defs>
+</svg>

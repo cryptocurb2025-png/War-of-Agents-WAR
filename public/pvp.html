@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>World of Agents - PvP Arena</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .pvp-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .login-screen, .queue-screen, .hero-select-screen, .game-screen {
+        display: none;
+        width: 100%;
+        max-width: 600px;
+      }
+      .login-screen.active, .queue-screen.active, .hero-select-screen.active, .game-screen.active {
+        display: block;
+      }
+      .login-form {
+        background: rgba(11, 11, 16, 0.9);
+        border: 1px solid rgba(240, 201, 106, 0.3);
+        border-radius: 14px;
+        padding: 40px;
+        text-align: center;
+      }
+      .login-form h1 {
+        font-family: "Cinzel", Georgia, serif;
+        color: #f2ede2;
+        margin-bottom: 8px;
+      }
+      .login-form p {
+        color: rgba(242, 237, 226, 0.6);
+        margin-bottom: 24px;
+      }
+      .login-form input {
+        width: 100%;
+        padding: 12px 16px;
+        background: rgba(20, 20, 28, 0.9);
+        border: 1px solid rgba(240, 201, 106, 0.25);
+        border-radius: 8px;
+        color: #f2ede2;
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+      .login-form input:focus {
+        outline: none;
+        border-color: rgba(240, 201, 106, 0.6);
+      }
+      .login-form button {
+        width: 100%;
+        padding: 14px 24px;
+        background: linear-gradient(135deg, #c7a35f, #9d8351);
+        border: none;
+        border-radius: 8px;
+        color: #0a0d15;
+        font-family: "Cinzel", Georgia, serif;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .login-form button:hover {
+        background: linear-gradient(135deg, #d4b46a, #a8905c);
+        transform: translateY(-1px);
+      }
+      .queue-status {
+        text-align: center;
+        padding: 40px;
+        background: rgba(11, 11, 16, 0.9);
+        border: 1px solid rgba(240, 201, 106, 0.3);
+        border-radius: 14px;
+      }
+      .queue-status h2 {
+        font-family: "Cinzel", Georgia, serif;
+        color: #f2ede2;
+        margin-bottom: 16px;
+      }
+      .queue-status .spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid rgba(240, 201, 106, 0.2);
+        border-top-color: #c7a35f;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+      .queue-status .queue-count {
+        color: rgba(242, 237, 226, 0.7);
+        font-size: 18px;
+      }
+      .queue-status .queue-count span {
+        color: #c7a35f;
+        font-weight: 700;
+      }
+      .leave-queue-btn {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: transparent;
+        border: 1px solid rgba(255, 92, 122, 0.5);
+        border-radius: 8px;
+        color: #ff5c7a;
+        cursor: pointer;
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin: 24px 0;
+      }
+      .hero-card {
+        background: rgba(11, 11, 16, 0.9);
+        border: 2px solid rgba(240, 201, 106, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .hero-card:hover {
+        border-color: rgba(240, 201, 106, 0.5);
+        transform: translateY(-2px);
+      }
+      .hero-card.selected {
+        border-color: #c7a35f;
+        background: rgba(199, 163, 95, 0.15);
+      }
+      .hero-card .hero-icon {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 12px;
+      }
+      .hero-card h3 {
+        font-family: "Cinzel", Georgia, serif;
+        color: #f2ede2;
+        margin: 0 0 8px;
+      }
+      .hero-card .hero-desc {
+        font-size: 12px;
+        color: rgba(242, 237, 226, 0.6);
+      }
+      .confirm-btn {
+        display: block;
+        width: 100%;
+        padding: 14px 24px;
+        background: linear-gradient(135deg, #c7a35f, #9d8351);
+        border: none;
+        border-radius: 8px;
+        color: #0a0d15;
+        font-family: "Cinzel", Georgia, serif;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+        margin-top: 20px;
+      }
+      .confirm-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .game-hud {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .player-info {
+        background: rgba(11, 11, 16, 0.9);
+        border: 1px solid rgba(240, 201, 106, 0.25);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      .player-info.alliance { border-left: 3px solid #57bdff; }
+      .player-info.horde { border-right: 3px solid #ff5c7a; text-align: right; }
+      .player-info .name {
+        font-family: "Cinzel", Georgia, serif;
+        font-size: 14px;
+        color: #f2ede2;
+      }
+      .player-info .faction {
+        font-size: 12px;
+        color: rgba(242, 237, 226, 0.6);
+      }
+      .vs-display {
+        font-family: "Cinzel", Georgia, serif;
+        font-size: 24px;
+        color: #c7a35f;
+      }
+      .game-canvas-wrap {
+        background: #0a0c12;
+        border: 2px solid rgba(240, 201, 106, 0.3);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      #pvp-canvas {
+        display: block;
+        width: 100%;
+        max-width: 980px;
+        height: 420px;
+      }
+      .game-controls {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 16px;
+      }
+      .control-key {
+        padding: 10px 16px;
+        background: rgba(20, 20, 28, 0.9);
+        border: 1px solid rgba(240, 201, 106, 0.3);
+        border-radius: 8px;
+        color: #f2ede2;
+        font-size: 13px;
+      }
+      .control-key kbd {
+        background: rgba(240, 201, 106, 0.2);
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-right: 6px;
+      }
+      .reward-display {
+        text-align: center;
+        padding: 16px;
+        background: rgba(199, 163, 95, 0.1);
+        border: 1px solid rgba(199, 163, 95, 0.3);
+        border-radius: 8px;
+        margin-top: 16px;
+      }
+      .reward-display .woa-amount {
+        font-family: "Cinzel", Georgia, serif;
+        font-size: 28px;
+        color: #c7a35f;
+      }
+      .reward-display .label {
+        font-size: 12px;
+        color: rgba(242, 237, 226, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pvp-container">
+      <!-- Login Screen -->
+      <div id="login-screen" class="login-screen active">
+        <form class="login-form" id="login-form">
+          <h1>World of Agents</h1>
+          <p>Enter the Arena</p>
+          <input type="text" id="player-name" placeholder="Your name" maxlength="16" required />
+          <button type="submit">Enter Queue</button>
+        </form>
+      </div>
+
+      <!-- Queue Screen -->
+      <div id="queue-screen" class="queue-screen">
+        <div class="queue-status">
+          <h2>Searching for Opponent...</h2>
+          <div class="spinner"></div>
+          <div class="queue-count">Players in queue: <span id="queue-count">0</span></div>
+          <button class="leave-queue-btn" id="leave-queue">Leave Queue</button>
+        </div>
+      </div>
+
+      <!-- Hero Select Screen -->
+      <div id="hero-select-screen" class="hero-select-screen">
+        <div class="queue-status">
+          <h2>Choose Your Hero</h2>
+          <p id="matchup-text">You vs Opponent</p>
+          <div class="hero-grid">
+            <div class="hero-card" data-class="WARRIOR">
+              <img class="hero-icon" src="/assets/heroes/hero-placeholder.svg" alt="" />
+              <h3>Warrior</h3>
+              <div class="hero-desc">High HP, melee damage</div>
+            </div>
+            <div class="hero-card" data-class="MAGE">
+              <img class="hero-icon" src="/assets/units/battle-mage-pixel.svg" alt="" />
+              <h3>Mage</h3>
+              <div class="hero-desc">Ranged, high burst damage</div>
+            </div>
+            <div class="hero-card" data-class="RANGER">
+              <img class="hero-icon" src="/assets/heroes/ranger-pixel.svg" alt="" />
+              <h3>Ranger</h3>
+              <div class="hero-desc">Fast attacks, kiting</div>
+            </div>
+            <div class="hero-card" data-class="HEALER">
+              <img class="hero-icon" src="/assets/heroes/healer-pixel.svg" alt="" />
+              <h3>Healer</h3>
+              <div class="hero-desc">Support, sustain combat</div>
+            </div>
+          </div>
+          <button class="confirm-btn" id="confirm-hero" disabled>Confirm Hero</button>
+        </div>
+      </div>
+
+      <!-- Game Screen -->
+      <div id="game-screen" class="game-screen">
+        <div class="game-hud">
+          <div class="player-info alliance">
+            <div class="name" id="p1-name">-</div>
+            <div class="faction">Alliance</div>
+          </div>
+          <div class="vs-display">VS</div>
+          <div class="player-info horde">
+            <div class="name" id="p2-name">-</div>
+            <div class="faction">Horde</div>
+          </div>
+        </div>
+        <div class="game-canvas-wrap">
+          <canvas id="pvp-canvas" width="980" height="420"></canvas>
+        </div>
+        <div class="game-controls">
+          <div class="control-key"><kbd>A</kbd> Move Left</div>
+          <div class="control-key"><kbd>D</kbd> Move Right</div>
+          <div class="control-key"><kbd>W</kbd> Attack</div>
+          <div class="control-key"><kbd>E</kbd> Cast Ability</div>
+        </div>
+        <div class="reward-display" id="reward-display" style="display:none;">
+          <div class="label">Match Rewards</div>
+          <div class="woa-amount">+<span id="reward-amount">0</span> $WOA</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const state = {
+        playerId: null,
+        playerName: null,
+        inQueue: false,
+        inGame: false,
+        myFaction: null,
+        selectedHero: null,
+        gameId: null,
+      };
+
+      let ws = null;
+      let canvas, ctx;
+      let gameState = null;
+
+      function showScreen(id) {
+        document.querySelectorAll('.login-screen, .queue-screen, .hero-select-screen, .game-screen').forEach(el => {
+          el.classList.remove('active');
+        });
+        document.getElementById(id).classList.add('active');
+      }
+
+      function connect() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const url = `${protocol}//${window.location.host}/ws`;
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+          console.log("Connected to PvP server");
+          if (state.playerId) {
+            ws.send(JSON.stringify({ type: "join", playerId: state.playerId }));
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            handleMessage(msg);
+          } catch (e) {
+            console.error("Message error:", e);
+          }
+        };
+
+        ws.onclose = () => {
+          setTimeout(connect, 1000);
+        };
+      }
+
+      function handleMessage(msg) {
+        if (msg.type === "joined") {
+          pollQueueStatus();
+        }
+
+        if (msg.type === "match_found") {
+          state.gameId = msg.gameId;
+          state.inGame = true;
+          showScreen("hero-select-screen");
+          
+          const myPlayer = msg.state.players.alliance.id === state.playerId ? 
+            msg.state.players.alliance : msg.state.players.horde;
+          state.myFaction = msg.state.players.alliance.id === state.playerId ? "alliance" : "horde";
+          
+          document.getElementById("matchup-text").textContent = 
+            `${msg.state.players.alliance.name} vs ${msg.state.players.horde.name}`;
+        }
+
+        if (msg.type === "hero_selected") {
+          // Opponent selected
+        }
+
+        if (msg.type === "state") {
+          gameState = msg.data;
+          renderGame();
+        }
+      }
+
+      document.getElementById("login-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("player-name").value.trim();
+        
+        const res = await fetch("/api/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          state.playerId = data.playerId;
+          state.playerName = data.player.name;
+          showScreen("queue-screen");
+          connect();
+        }
+      });
+
+      document.getElementById("leave-queue").addEventListener("click", () => {
+        ws.send(JSON.stringify({ type: "leave_queue" }));
+        state.inQueue = false;
+        showScreen("login-screen");
+      });
+
+      let queuePoller = null;
+      function pollQueueStatus() {
+        clearInterval(queuePoller);
+        queuePoller = setInterval(async () => {
+          const res = await fetch("/api/queue");
+          const data = await res.json();
+          document.getElementById("queue-count").textContent = data.queued;
+        }, 1000);
+      }
+
+      // Hero selection
+      document.querySelectorAll(".hero-card").forEach(card => {
+        card.addEventListener("click", () => {
+          document.querySelectorAll(".hero-card").forEach(c => c.classList.remove("selected"));
+          card.classList.add("selected");
+          state.selectedHero = card.dataset.class;
+          document.getElementById("confirm-hero").disabled = false;
+        });
+      });
+
+      document.getElementById("confirm-hero").addEventListener("click", () => {
+        if (!state.selectedHero) return;
+        ws.send(JSON.stringify({ 
+          type: "select_hero", 
+          heroClass: state.selectedHero 
+        }));
+        showScreen("game-screen");
+        initCanvas();
+      });
+
+      function initCanvas() {
+        canvas = document.getElementById("pvp-canvas");
+        ctx = canvas.getContext("2d");
+        window.addEventListener("keydown", handleInput);
+        renderLoop();
+      }
+
+      function handleInput(e) {
+        if (!state.inGame || !ws) return;
+        
+        if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") {
+          ws.send(JSON.stringify({ type: "input", input: { action: "move", direction: "left" } }));
+        } else if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") {
+          ws.send(JSON.stringify({ type: "input", input: { action: "move", direction: "right" } }));
+        } else if (e.key === "w" || e.key === "W" || e.key === " ") {
+          ws.send(JSON.stringify({ type: "input", input: { action: "attack" } }));
+        } else if (e.key === "e" || e.key === "E") {
+          ws.send(JSON.stringify({ type: "input", input: { action: "ability", ability: "basic" } }));
+        }
+      }
+
+      function renderLoop() {
+        if (gameState) renderGame();
+        requestAnimationFrame(renderLoop);
+      }
+
+      function renderGame() {
+        if (!ctx || !gameState) return;
+        
+        const w = canvas.width;
+        const h = canvas.height;
+        
+        ctx.fillStyle = "#0a0c12";
+        ctx.fillRect(0, 0, w, h);
+
+        if (gameState.phase === "ended" && gameState.rewards) {
+          document.getElementById("reward-display").style.display = "block";
+          const myReward = state.myFaction === "alliance" ? gameState.rewards.alliance.woa : gameState.rewards.horde.woa;
+          document.getElementById("reward-amount").textContent = myReward;
+        }
+
+        const midY = h / 2;
+        const scale = (w - 64) / 200;
+
+        // Draw lane
+        ctx.fillStyle = "#1a2420";
+        ctx.fillRect(32, midY - 40, w - 64, 80);
+        
+        // Center line
+        ctx.strokeStyle = "rgba(240, 201, 106, 0.3)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(w/2, 0);
+        ctx.lineTo(w/2, h);
+        ctx.stroke();
+
+        // Draw heroes
+        for (const faction of ["alliance", "horde"]) {
+          const heroes = gameState.heroes[faction];
+          for (const hero of heroes) {
+            if (!hero.alive) continue;
+            
+            const x = 32 + (hero.pos + 100) * scale;
+            const y = midY;
+            const color = faction === "alliance" ? "#57bdff" : "#ff5c7a";
+
+            // Shadow
+            ctx.fillStyle = "rgba(0,0,0,0.3)";
+            ctx.beginPath();
+            ctx.ellipse(x, y + 10, 12, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hero body
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 14, 0, Math.PI * 2);
+            ctx.fill();
+
+            // HP bar
+            const hpPct = hero.hp / hero.maxHp;
+            ctx.fillStyle = "#333";
+            ctx.fillRect(x - 16, y - 24, 32, 4);
+            ctx.fillStyle = hpPct > 0.5 ? "#49d17f" : hpPct > 0.25 ? "#f0c96a" : "#ff5c7a";
+            ctx.fillRect(x - 16, y - 24, 32 * hpPct, 4);
+          }
+        }
+
+        // Draw strongholds
+        const baseXAlliance = 32 + (0 + 100) * scale;
+        const baseXHorde = 32 + (100 + 100) * scale;
+
+        ctx.fillStyle = "#222f46";
+        ctx.fillRect(baseXAlliance - 20, midY - 30, 40, 60);
+        ctx.fillStyle = "#57bdff";
+        ctx.fillRect(baseXAlliance - 15, midY - 25, 30, 4);
+
+        ctx.fillStyle = "#43212a";
+        ctx.fillRect(baseXHorde - 20, midY - 30, 40, 60);
+        ctx.fillStyle = "#ff5c7a";
+        ctx.fillRect(baseXHorde - 15, midY - 25, 30, 4);
+
+        // Update HUD
+        document.getElementById("p1-name").textContent = gameState.players?.alliance?.name || "-";
+        document.getElementById("p2-name").textContent = gameState.players?.horde?.name || "-";
+      }
+    </script>
+  </body>
+</html>

@@ -1,23 +1,19 @@
 {
   "name": "war-of-agents",
-  "version": "1.0.0",
-  "description": "War of Agents v1 — Alliance vs Iron Horde MOBA",
-  "main": "dist/server.js",
+  "version": "2.0.0",
+  "description": "War of Agents — Warcraft-style AI MOBA arena with $WOA tokenomics",
+  "type": "module",
+  "main": "spectatorServer.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
-    "dev": "tsc && node dist/server.js"
+    "start": "node spectatorServer.js",
+    "spectator": "node spectatorServer.js",
+    "pvp": "node pvpServer.js",
+    "simulate": "node simulateMatch.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.0",
-    "@types/ws": "^8.5.13",
-    "express": "^4.21.0",
-    "sql.js": "^1.14.1",
-    "typescript": "^5.7.0",
     "ws": "^8.18.0"
   }
 }

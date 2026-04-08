@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- Warrior Hero - Shield & Sword - Warcraft Palette -->
+  <!-- Helmet -->
+  <rect x="12" y="2" width="8" height="2" fill="#8b8b8b"/>
+  <rect x="10" y="4" width="12" height="2" fill="#a0a0a0"/>
+  <rect x="14" y="2" width="4" height="2" fill="#c7a35f"/>
+  <!-- Head -->
+  <rect x="12" y="6" width="8" height="4" fill="#d4a574"/>
+  <rect x="13" y="7" width="2" height="1" fill="#3a3a5c"/>
+  <rect x="17" y="7" width="2" height="1" fill="#3a3a5c"/>
+  <!-- Shoulders -->
+  <rect x="6" y="10" width="6" height="4" fill="#5a6e8a"/>
+  <rect x="20" y="10" width="6" height="4" fill="#5a6e8a"/>
+  <rect x="7" y="10" width="4" height="2" fill="#c7a35f"/>
+  <rect x="21" y="10" width="4" height="2" fill="#c7a35f"/>
+  <!-- Body / Armor -->
+  <rect x="12" y="10" width="8" height="8" fill="#4a5a7a"/>
+  <rect x="14" y="11" width="4" height="6" fill="#5a6e8a"/>
+  <rect x="15" y="12" width="2" height="4" fill="#c7a35f"/>
+  <!-- Shield (left arm) -->
+  <rect x="4" y="12" width="6" height="8" fill="#2a4a8a"/>
+  <rect x="5" y="13" width="4" height="6" fill="#3a6aba"/>
+  <rect x="6" y="14" width="2" height="4" fill="#c7a35f"/>
+  <rect x="5" y="15" width="4" height="2" fill="#c7a35f"/>
+  <!-- Sword (right arm) -->
+  <rect x="24" y="6" width="2" height="2" fill="#e0e0e0"/>
+  <rect x="24" y="8" width="2" height="8" fill="#c0c0c0"/>
+  <rect x="22" y="16" width="6" height="2" fill="#c7a35f"/>
+  <rect x="24" y="18" width="2" height="2" fill="#8b6b3a"/>
+  <!-- Legs -->
+  <rect x="12" y="18" width="3" height="6" fill="#3a3a5c"/>
+  <rect x="17" y="18" width="3" height="6" fill="#3a3a5c"/>
+  <!-- Belt -->
+  <rect x="11" y="17" width="10" height="2" fill="#8b6b3a"/>
+  <rect x="15" y="17" width="2" height="2" fill="#c7a35f"/>
+  <!-- Boots -->
+  <rect x="11" y="24" width="4" height="2" fill="#5a3a1a"/>
+  <rect x="17" y="24" width="4" height="2" fill="#5a3a1a"/>
+  <rect x="10" y="26" width="5" height="2" fill="#4a2a0a"/>
+  <rect x="17" y="26" width="5" height="2" fill="#4a2a0a"/>
+</svg>

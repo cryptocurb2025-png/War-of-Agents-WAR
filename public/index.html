@@ -109,7 +109,8 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
   position: relative;
   overflow: hidden;
   text-align: center;
-  padding-top: 80px;
+  padding: 80px 0 40px;
+  width: 100%;
 }
 
 /* Layer 1: Diagonal faction split with war fog */
@@ -166,7 +167,7 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
   position: absolute; inset: 0;
   pointer-events: none; z-index: 2;
 }
-.hero-content { position: relative; z-index: 3; }
+.hero-content { position: relative; z-index: 3; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 .hero-factions {
   display: flex; align-items: center; justify-content: center; gap: clamp(40px, 10vw, 160px);
   margin-bottom: 10px;
@@ -638,19 +639,13 @@ footer {
 
 <!-- ════════ HERO ════════ -->
 <section id="hero">
-  <!-- Floating WoW icons around edges for depth -->
-  <img src="/icons/spell_fire.jpg" class="hero-icon-float" style="top:12%;left:5%;animation-delay:0s" alt="">
-  <img src="/icons/spell_frost.jpg" class="hero-icon-float" style="top:25%;left:8%;animation-delay:1s" alt="">
-  <img src="/icons/helmet.jpg" class="hero-icon-float" style="top:60%;left:4%;animation-delay:2s" alt="">
-  <img src="/icons/hero_warrior.jpg" class="hero-icon-float" style="top:75%;left:10%;animation-delay:3s" alt="">
-  <img src="/icons/spell_holy.jpg" class="hero-icon-float" style="top:40%;left:3%;animation-delay:4s" alt="">
-  <img src="/icons/spell_arcane.jpg" class="hero-icon-float" style="top:15%;right:6%;animation-delay:0.5s" alt="">
-  <img src="/icons/boss_fire.jpg" class="hero-icon-float" style="top:30%;right:4%;animation-delay:1.5s" alt="">
-  <img src="/icons/orc_skull.jpg" class="hero-icon-float" style="top:55%;right:8%;animation-delay:2.5s" alt="">
-  <img src="/icons/hero_rogue.jpg" class="hero-icon-float" style="top:70%;right:5%;animation-delay:3.5s" alt="">
-  <img src="/icons/sword.jpg" class="hero-icon-float" style="top:85%;right:10%;animation-delay:4.5s" alt="">
-  <img src="/icons/hero_mage.jpg" class="hero-icon-float" style="bottom:10%;left:15%;animation-delay:5s" alt="">
-  <img src="/icons/knight.jpg" class="hero-icon-float" style="bottom:15%;right:15%;animation-delay:5.5s" alt="">
+  <!-- Floating WoW icons — balanced left/right for depth -->
+  <img src="/icons/spell_frost.jpg" class="hero-icon-float" style="top:15%;left:3%;animation-delay:0s" alt="">
+  <img src="/icons/helmet.jpg" class="hero-icon-float" style="top:45%;left:2%;animation-delay:2s" alt="">
+  <img src="/icons/spell_holy.jpg" class="hero-icon-float" style="top:75%;left:4%;animation-delay:4s" alt="">
+  <img src="/icons/spell_arcane.jpg" class="hero-icon-float" style="top:15%;right:3%;animation-delay:1s" alt="">
+  <img src="/icons/boss_fire.jpg" class="hero-icon-float" style="top:45%;right:2%;animation-delay:3s" alt="">
+  <img src="/icons/orc_skull.jpg" class="hero-icon-float" style="top:75%;right:4%;animation-delay:5s" alt="">
   <canvas id="particles-canvas"></canvas>
   <div class="hero-content">
     <div class="hero-factions">

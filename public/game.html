@@ -600,12 +600,7 @@
 <body>
 
 <!-- ─── LOADING SCREEN ────────────────────────────────── -->
-<div id="loading-screen">
-  <div id="loading-title">WAR OF AGENTS</div>
-  <div id="loading-subtitle">ALLIANCE VS IRON HORDE</div>
-  <div id="loading-bar-bg"><div id="loading-bar-fill"></div></div>
-  <div id="loading-tip">Preparing the battlefield...</div>
-</div>
+<!-- Loading screen removed — game shows immediately -->
 
 <!-- ─── KILL ANNOUNCEMENTS ────────────────────────────── -->
 <div id="kill-announce"></div>
@@ -706,30 +701,12 @@ const CLASS_CARD_COLORS = {
 
 // ─── WebSocket ───────────────────────────────────────────────────
 const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-const ws = new WebSocket(`${wsProto}//${location.host}`);
-// ─── Loading Screen ──────────────────────────────────────────
-const loadingTips = [
-  'Sharpening Alliance swords...',
-  'Feeding the Horde war beasts...',
-  'Polishing the gold divider...',
-  'Summoning hero spirits...',
-  'Fortifying tower defenses...',
-  'Brewing mana potions...',
-  'The Lich King watches...',
-];
-document.getElementById('loading-tip').textContent = loadingTips[Math.floor(Math.random() * loadingTips.length)];
-let loadProg = 0;
-const loadInterval = setInterval(() => {
-  loadProg += 8 + Math.random() * 12;
-  if (loadProg > 100) loadProg = 100;
-  document.getElementById('loading-bar-fill').style.width = loadProg + '%';
-  if (loadProg >= 100) {
-    clearInterval(loadInterval);
-    setTimeout(() => { const ls = document.getElementById('loading-screen'); if (ls) ls.remove(); }, 500);
-  }
-}, 200);
-// Failsafe: force remove loading screen after 3 seconds
-setTimeout(() => { const ls = document.getElementById('loading-screen'); if (ls) ls.remove(); }, 3000);
+const wsUrl = `${wsProto}//${location.host}`;
+console.log('WS connecting to:', wsUrl);
+const ws = new WebSocket(wsUrl);
+ws.onopen = function() { console.log('WS connected'); };
+ws.onerror = function(e) { console.error('WS error:', e); };
+// Loading screen removed — game renders immediately
 
 // ─── Kill Announcements ─────────────────────────────────────
 let _lastAnnounceKills = {};
@@ -894,6 +871,7 @@ let prevHpMap = {}; // track HP changes for damage numbers
 
 // ─── Generate textures programmatically ─────────────────────────
 function pPreload() {
+  console.log('Phaser: preload started');
   const scene = this;
 
   // Helper: draw into a texture
@@ -1043,6 +1021,7 @@ function pPreload() {
 }
 
 function pCreate() {
+  console.log('Phaser: create started, canvas:', this.scale.width, 'x', this.scale.height);
   phaserScene = this;
   cam = this.cameras.main;
   cam.setBounds(0, 0, MAP_W, MAP_H);

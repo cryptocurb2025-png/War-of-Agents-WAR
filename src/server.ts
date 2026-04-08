@@ -1284,6 +1284,7 @@ function serializeState() {
 // ─── Express + WebSocket ─────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
+app.use('/docs', express.static(path.join(__dirname, '..', 'public', 'docs')));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 const server = http.createServer(app);

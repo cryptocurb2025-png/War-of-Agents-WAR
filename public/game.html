@@ -92,6 +92,7 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+    min-height: 300px;
   }
 
   #game-container canvas { display: block; }
@@ -874,9 +875,9 @@ const config = {
   parent: 'game-container',
   width: window.innerWidth,
   height: window.innerHeight - BOT_H - TOP_H,
-  backgroundColor: '#000000',
+  backgroundColor: '#1a3a1a',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
-  scale: { mode: Phaser.Scale.NONE },
+  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
 };
 
 const game = new Phaser.Game(config);
@@ -1044,10 +1045,18 @@ function pCreate() {
   cam = this.cameras.main;
   cam.setBounds(0, 0, MAP_W, MAP_H);
 
-  // Zoom: fit full 4800 world width into screen width
-  const zoom = this.scale.width / 4800;
-  cam.setZoom(zoom);
-  cam.centerOn(2400, 1200);
+  // Zoom: fit full map into screen — with safe minimum
+  function updateZoom() {
+    const sw = phaserScene.scale.width || window.innerWidth;
+    const sh = phaserScene.scale.height || (window.innerHeight - 190);
+    const zoom = Math.max(0.1, Math.min(sw / MAP_W, sh / MAP_H));
+    cam.setZoom(zoom);
+    cam.centerOn(2400, 1200);
+  }
+  updateZoom();
+
+  // Recalculate on resize
+  this.scale.on('resize', updateZoom);
 
   // Dynamic layer for everything
   graphics = this.add.graphics();
@@ -1061,7 +1070,8 @@ function pCreate() {
   sunMoonText = this.add.text(MAP_W - 80, 20, '\u2600', { fontSize: '32px', color: '#FFD700' });
   sunMoonText.setDepth(101).setScrollFactor(0);
 
-  // No pan/scroll — full map always visible. Camera is locked.
+  // Force initial terrain draw
+  console.log('Phaser create: canvas', this.scale.width, 'x', this.scale.height, 'zoom:', cam.zoom);
 }
 
 // ─── Texture key lookup ─────────────────────────────────────────
@@ -1090,11 +1100,25 @@ function heroTexKey(heroClass, faction) {
 }
 
 function pUpdate() {
-  if (!gameState || !graphics) return;
+  if (!graphics) return;
   graphics.clear();
 
+  // Draw base terrain even before WebSocket connects
+  const halfW = MAP_W / 2;
+  graphics.fillStyle(0x3A7A2A, 1);
+  graphics.fillRect(0, 0, halfW, MAP_H);
+  graphics.fillStyle(0x5A3A1A, 1);
+  graphics.fillRect(halfW, 0, halfW, MAP_H);
+  // Lane
+  graphics.fillStyle(0x6B5A3A, 1);
+  graphics.fillRect(0, 1040, halfW, 320);
+  graphics.fillStyle(0x2A1500, 1);
+  graphics.fillRect(halfW, 1040, halfW, 320);
+
+  if (!gameState) return; // rest needs game state
+
   const gs = gameState;
-  const isNight = gs.phase === 'night';
+  const isNight = false; // night overlay disabled
   const t = gs.tick;
 
   const halfW = MAP_W / 2;
@@ -2446,14 +2470,7 @@ function updateUI() {
   }
 }
 
-window.addEventListener('resize', () => {
-  const w = window.innerWidth, h = window.innerHeight - TOP_H - BOT_H;
-  game.scale.resize(w, h);
-  if (cam) {
-    cam.setZoom(w / 4800);
-    cam.centerOn(2400, 1200);
-  }
-});
+// Resize handled by Phaser.Scale.RESIZE + scale.on('resize') in pCreate
 </script>
 </body>
 </html>

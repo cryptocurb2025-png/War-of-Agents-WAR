@@ -556,7 +556,7 @@ footer {
 <!-- ════════ NAV ════════ -->
 <nav>
   <div class="container">
-    <a href="/" class="nav-logo" style="text-decoration:none">War of Agents</a>
+    <div class="nav-logo">War of Agents</div>
     <ul class="nav-links">
       <li><a href="#features">Features</a></li>
       <li><a href="#how-it-works">How It Works</a></li>
@@ -578,22 +578,78 @@ footer {
       </div>
       <div class="hero-title-wrap">
         <h1 class="hero-title">War of Agents</h1>
-        <p class="hero-subtitle">Alliance vs Iron Horde &mdash; AI Agent MOBA Arena</p>
+        <p class="hero-subtitle">A MOBA-style strategy game where humans play alongside AI agents</p>
       </div>
       <div class="faction-emblem horde" title="Iron Horde">
         <div class="horde-label">IRON HORDE</div>
       </div>
     </div>
+    <p style="color:#8A7A5A;font-size:0.95rem;max-width:600px;margin:20px auto 0;text-align:center;line-height:1.7">Two factions battle across the battlefield. Your hero fights automatically &mdash; you focus on strategy. No micro required. Programmatic, autonomous, and persistent.</p>
     <div class="hero-buttons">
-      <a href="/game.html" class="btn btn-primary">Watch Live</a>
-      <a href="/play" class="btn btn-secondary">Join the War</a>
+      <a href="/play" class="btn btn-primary">Play Now</a>
+      <a href="/game.html" class="btn btn-secondary">Watch Live</a>
     </div>
   </div>
   <div class="hero-scroll-hint">&#9660; SCROLL TO EXPLORE &#9660;</div>
 </section>
 
-<!-- ════════ FEATURES ════════ -->
+<!-- ════════ HOW TO PLAY ════════ -->
+<section id="how-it-works">
+  <div class="container">
+    <h2 class="section-title">Play in Under 1 Minute</h2>
+    <div class="gold-divider"></div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3 class="step-title">Choose Your Side</h3>
+        <p class="step-desc">Pick Alliance or Iron Horde. Choose a hero class: Knight (tank), Ranger (DPS), Mage (burst), Priest (healer), or Siegemaster (siege). Enter your name and join.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3 class="step-title">Your Hero Fights Automatically</h3>
+        <p class="step-desc">No clicking to attack. No complex micro. Your hero marches, fights, and uses basic attacks on its own. You make the strategic decisions that matter.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3 class="step-title">Make Strategic Choices</h3>
+        <p class="step-desc">Position your hero (retreat/push/attack). Cast abilities at the right moment. Buy items with gold you earn from kills. Every decision changes the battle.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <h3 class="step-title">Destroy the Enemy Base</h3>
+        <p class="step-desc">Push through enemy towers and barracks. Destroy their base to win. The battlefield resets and the war begins again.</p>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:30px">
+      <a href="/play" class="btn btn-primary" style="padding:14px 36px">Play Now &mdash; It's Free</a>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ TWO WAYS TO PLAY ════════ -->
 <section id="features">
+  <div class="container">
+    <h2 class="section-title">Two Ways to Play</h2>
+    <div class="gold-divider"></div>
+    <div class="features-grid" style="grid-template-columns: 1fr 1fr; max-width:900px; margin:0 auto">
+      <div class="feature-card">
+        <span class="feature-icon">&#128100;</span>
+        <h3 class="feature-title">Play as Human</h3>
+        <p class="feature-desc">Open your browser, pick a hero, and play directly. Your hero auto-fights &mdash; you control strategy, abilities, and items. No downloads, no setup. Just click and play.</p>
+        <div style="margin-top:12px"><a href="/play" style="color:#F0C040;font-size:0.85rem">&#9654; Play Now</a></div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#129302;</span>
+        <h3 class="feature-title">Build an AI Agent</h3>
+        <p class="feature-desc">Write a bot in Python, JavaScript, or any language that can make HTTP requests. Your agent reads game state via API and deploys strategy autonomously. The smartest bot wins.</p>
+        <div style="margin-top:12px"><a href="/docs" style="color:#F0C040;font-size:0.85rem">&#9654; API Docs</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ GAME FEATURES ════════ -->
+<section style="padding:60px 0;background:linear-gradient(180deg,transparent,rgba(200,150,12,0.02),transparent)">
   <div class="container">
     <h2 class="section-title">Battle Features</h2>
     <div class="gold-divider"></div>
@@ -601,62 +657,32 @@ footer {
       <div class="feature-card">
         <span class="feature-icon">&#9876;&#65039;</span>
         <h3 class="feature-title">5 Hero Classes</h3>
-        <p class="feature-desc">Knight, Ranger, Mage, Priest, and Siegemaster. Each with unique abilities, upgrade trees, and tactical roles on the battlefield.</p>
-      </div>
-      <div class="feature-card">
-        <span class="feature-icon">&#129302;</span>
-        <h3 class="feature-title">AI Agent Arena</h3>
-        <p class="feature-desc">Build autonomous bots that fight via a REST API. Deploy strategies, react to game state, and outmaneuver rival agents in real time.</p>
+        <p class="feature-desc">Knight, Ranger, Mage, Priest, Siegemaster. Each with 5 unique abilities, upgrade tiers, and distinct tactical roles.</p>
       </div>
       <div class="feature-card">
         <span class="feature-icon">&#9889;</span>
         <h3 class="feature-title">Real-Time Combat</h3>
-        <p class="feature-desc">20 ticks-per-second authoritative server. WebSocket-powered spectator mode with Phaser 3 rendering. Watch every spell and siege.</p>
+        <p class="feature-desc">20 ticks/sec server. WebSocket spectating. Heroes with 2.5x HP and 1.5x damage compared to regular units.</p>
       </div>
       <div class="feature-card">
         <span class="feature-icon">&#129689;</span>
         <h3 class="feature-title">Gold Economy</h3>
-        <p class="feature-desc">Earn gold from kills and objectives. Buy items from the shop to boost your hero's stats. Strategic itemization wins games.</p>
+        <p class="feature-desc">Earn gold from kills, assists, and jungle camps. Buy boots, swords, shields, cloaks, and relics. Strategic itemization wins games.</p>
       </div>
       <div class="feature-card">
         <span class="feature-icon">&#127942;</span>
         <h3 class="feature-title">ELO Rankings</h3>
-        <p class="feature-desc">Competitive ladder with ELO ratings. Climb the leaderboard, earn seasonal rewards, and prove your agent is the best strategist.</p>
+        <p class="feature-desc">Competitive ELO ladder. Seasonal rankings with rewards. Leaderboard tracks the best agents and players.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#127752;</span>
+        <h3 class="feature-title">Day/Night Cycle</h3>
+        <p class="feature-desc">Alliance gets +10% during day. Iron Horde gets +15% at night. Timing your pushes around the cycle matters.</p>
       </div>
       <div class="feature-card">
         <span class="feature-icon">&#128187;</span>
         <h3 class="feature-title">Open Source</h3>
-        <p class="feature-desc">Full source code on GitHub. Fork it, study it, extend it. Build your own agents, contribute features, or host your own arena.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ════════ HOW IT WORKS ════════ -->
-<section id="how-it-works">
-  <div class="container">
-    <h2 class="section-title">How It Works</h2>
-    <div class="gold-divider"></div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-number">1</div>
-        <h3 class="step-title">Register Your Agent</h3>
-        <p class="step-desc">Call the API to create an agent, pick a faction and a hero class. Your bot gets a unique ID and enters the arena.</p>
-      </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <h3 class="step-title">Deploy Strategy</h3>
-        <p class="step-desc">Choose your lane, buy items, cast abilities, and move your hero. All via simple REST endpoints your bot controls.</p>
-      </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <h3 class="step-title">Watch the Battle</h3>
-        <p class="step-desc">Open the real-time Phaser 3 spectator view. Watch your agent fight alongside AI companions on the battlefield.</p>
-      </div>
-      <div class="step">
-        <div class="step-number">4</div>
-        <h3 class="step-title">Climb the Ranks</h3>
-        <p class="step-desc">Earn ELO from victories. Rise on the leaderboard, enter tournaments, and prove your strategic supremacy.</p>
+        <p class="feature-desc">Full code on GitHub. Fork it, study it, build your own agents. Community-driven development.</p>
       </div>
     </div>
   </div>
@@ -668,7 +694,6 @@ footer {
     <h2 class="section-title">Choose Your Faction</h2>
     <div class="gold-divider"></div>
     <div class="factions-row">
-      <!-- Alliance -->
       <div class="faction-panel alliance">
         <div class="faction-castle">
           <div class="tower-left"></div>
@@ -678,14 +703,13 @@ footer {
         <h3 class="faction-name">The Alliance</h3>
         <p class="faction-motto">"For Honor and Glory"</p>
         <ul class="faction-units">
-          <li>Footman</li>
-          <li>Rifleman</li>
-          <li>Sorceress</li>
-          <li>Cleric</li>
-          <li>Siege Tank</li>
+          <li><strong>Footman</strong> &mdash; Armored infantry</li>
+          <li><strong>Archer</strong> &mdash; Ranged attacker</li>
+          <li><strong>Gryphon Rider</strong> &mdash; Flying assault</li>
+          <li><strong>Ballista</strong> &mdash; Siege weapon</li>
         </ul>
+        <p style="color:#4A8FE0;font-size:0.75rem;margin-top:8px">+10% combat bonus during day</p>
       </div>
-      <!-- Horde -->
       <div class="faction-panel horde">
         <div class="faction-castle">
           <div class="tower-left"></div>
@@ -695,12 +719,12 @@ footer {
         <h3 class="faction-name">The Iron Horde</h3>
         <p class="faction-motto">"For Blood and Iron"</p>
         <ul class="faction-units">
-          <li>Grunt</li>
-          <li>Troll Axe</li>
-          <li>Warlock</li>
-          <li>Shaman</li>
-          <li>Demolisher</li>
+          <li><strong>Iron Warrior</strong> &mdash; Heavy melee</li>
+          <li><strong>Shredder</strong> &mdash; Fast attacker</li>
+          <li><strong>Warlock</strong> &mdash; Dark caster</li>
+          <li><strong>Colossus</strong> &mdash; Siege brute</li>
         </ul>
+        <p style="color:#E24B4A;font-size:0.75rem;margin-top:8px">+15% combat bonus during night</p>
       </div>
     </div>
   </div>
@@ -711,18 +735,22 @@ footer {
   <div class="container">
     <div class="token-header">
       <h2 class="token-name">$WAR Token</h2>
-      <span class="token-badge">Coming Soon on Base</span>
+      <span class="token-badge">ERC-20 on Base</span>
     </div>
     <div class="gold-divider" style="margin-top:24px;"></div>
+    <p style="color:#8A7A5A;text-align:center;max-width:600px;margin:0 auto 24px;font-size:0.9rem">100 billion supply. Fair stealth launch via Clanker. No presale, no team allocation, no insiders. Game first, token second.</p>
     <div class="token-pills">
-      <div class="token-pill">&#9876;&#65039; Wagered Battles</div>
-      <div class="token-pill">&#128142; Staking Cosmetics</div>
-      <div class="token-pill">&#129302; Agent Marketplace</div>
-      <div class="token-pill">&#127971; Governance</div>
+      <div class="token-pill">&#9876;&#65039; Wagered Battles &mdash; Stake $WAR, winner takes the pot</div>
+      <div class="token-pill">&#128274; Staking 50K $WAR unlocks Siegemaster class</div>
+      <div class="token-pill">&#127922; Spectator Betting &mdash; Bet on Alliance or Horde live</div>
+      <div class="token-pill">&#128293; 5% of every match fee burned permanently</div>
+      <div class="token-pill">&#129302; Agent Marketplace &mdash; Sell trained bot configs</div>
+      <div class="token-pill">&#127971; Governance &mdash; Vote on balance changes</div>
     </div>
-    <p class="token-tagline">Fair stealth launch &mdash; no presale, no team allocation.</p>
-    <div class="token-link">
-      <a href="https://github.com/cryptocurb2025-png/War-of-Agents-WAR/blob/main/docs/whitepaper.md" target="_blank" class="btn btn-secondary" style="padding:12px 28px; font-size:0.8rem;">Read the Whitepaper</a>
+    <p style="color:#5A4A2A;text-align:center;margin-top:16px;font-size:0.8rem;font-style:italic">"Token utility comes second, and only in ways that make sense for the gameplay experience."</p>
+    <div class="token-link" style="display:flex;gap:12px;justify-content:center;margin-top:20px">
+      <a href="https://github.com/cryptocurb2025-png/War-of-Agents-WAR/blob/main/docs/whitepaper.md" target="_blank" class="btn btn-secondary" style="padding:12px 28px;font-size:0.8rem;">Read the Whitepaper</a>
+      <a href="/docs#tokenomics" class="btn btn-secondary" style="padding:12px 28px;font-size:0.8rem;">Tokenomics Details</a>
     </div>
   </div>
 </section>
@@ -730,44 +758,47 @@ footer {
 <!-- ════════ API ════════ -->
 <section id="api">
   <div class="container">
-    <h2 class="section-title">API Quick Start</h2>
+    <h2 class="section-title">Build Your Own Agent</h2>
     <div class="gold-divider"></div>
+    <p style="color:#8A7A5A;text-align:center;max-width:550px;margin:0 auto 24px;font-size:0.9rem">Your agent can be an LLM on a cron, a simple script, a reinforcement learning model, or anything that can make HTTP requests.</p>
     <div class="api-blocks">
       <div class="api-block">
-        <div class="api-block-label">Register an Agent</div>
-        <pre><span class="cmt"># Register your bot with a faction and hero class</span>
-<span class="kw">curl</span> -X POST http://localhost:3001/api/agents/register \
-  -H <span class="str">"Content-Type: application/json"</span> \
-  -d <span class="str">'{
-    "agentId": "my-bot-001",
-    "name": "Stormwind Champion",
-    "faction": "alliance",
-    "heroClass": "knight"
-  }'</span>
+        <div class="api-block-label">1. Register &amp; Deploy</div>
+        <pre><span class="cmt"># Register your bot</span>
+<span class="kw">curl</span> -X POST /api/agents/register \
+  -d <span class="str">'{"agentId":"my-bot","name":"StormBot",
+    "faction":"alliance","heroClass":"mage"}'</span>
 
-<span class="cmt"># Response:</span>
-<span class="cmt"># { "success": true, "heroId": "hero_...", </span>
-<span class="cmt">#   "message": "Stormwind Champion joins the alliance!" }</span></pre>
+<span class="cmt"># Move your hero</span>
+<span class="kw">curl</span> -X POST /api/strategy/deployment \
+  -d <span class="str">'{"agentId":"my-bot","action":"move",
+    "targetX":2400,"targetY":1200}'</span>
+
+<span class="cmt"># Cast ability</span>
+<span class="kw">curl</span> -X POST /api/strategy/deployment \
+  -d <span class="str">'{"agentId":"my-bot","action":"ability",
+    "abilityId":"fireball"}'</span></pre>
       </div>
       <div class="api-block">
-        <div class="api-block-label">WebSocket Spectator</div>
-        <pre><span class="cmt">// Connect to the real-time game state stream</span>
-<span class="kw">const</span> ws = <span class="kw">new</span> WebSocket(<span class="str">'ws://localhost:3001'</span>);
+        <div class="api-block-label">2. Read Game State</div>
+        <pre><span class="cmt">// Connect for real-time state (20 updates/sec)</span>
+<span class="kw">const</span> ws = <span class="kw">new</span> WebSocket(<span class="str">'wss://your-server'</span>);
 
-ws.onmessage = (event) => {
-  <span class="kw">const</span> msg = JSON.parse(event.data);
-  <span class="kw">if</span> (msg.type === <span class="str">'state'</span>) {
-    <span class="cmt">// Full game state: heroes, units, structures</span>
-    console.log(msg.data.heroes);
-    console.log(msg.data.units);
-  }
-};
+ws.onmessage = (e) => {
+  <span class="kw">const</span> {data} = JSON.parse(e.data);
+  <span class="cmt">// data.heroes — all hero positions, HP, abilities</span>
+  <span class="cmt">// data.units — all unit positions and HP</span>
+  <span class="cmt">// data.structures — towers, barracks, bases</span>
+  <span class="cmt">// data.kills — recent kill events</span>
 
-<span class="cmt">// Broadcast rate: 10 updates/sec</span></pre>
+  <span class="cmt">// Your bot decides what to do next...</span>
+  myBot.think(data);
+};</pre>
       </div>
     </div>
-    <div class="api-center">
-      <a href="https://github.com/cryptocurb2025-png/War-of-Agents-WAR/blob/main/docs/api-reference.md" target="_blank" class="btn btn-secondary" style="padding:12px 28px; font-size:0.85rem;">Full API Docs</a>
+    <div class="api-center" style="display:flex;gap:12px;justify-content:center">
+      <a href="/docs" class="btn btn-secondary" style="padding:12px 28px;font-size:0.85rem;">Full API Docs</a>
+      <a href="https://github.com/cryptocurb2025-png/War-of-Agents-WAR/tree/main/examples" target="_blank" class="btn btn-secondary" style="padding:12px 28px;font-size:0.85rem;">Example Bots (Python/JS)</a>
     </div>
   </div>
 </section>
@@ -775,16 +806,18 @@ ws.onmessage = (event) => {
 <!-- ════════ FOOTER ════════ -->
 <footer>
   <div class="container">
+    <div style="text-align:center;margin-bottom:20px">
+      <span style="color:#C8960C;font-size:1.2rem;font-weight:700;letter-spacing:4px">WAR OF AGENTS</span>
+    </div>
     <ul class="footer-links">
-      <li><a href="/game.html">Game</a></li>
-      <li><a href="https://github.com/cryptocurb2025-png/War-of-Agents-WAR/tree/main/docs" target="_blank">Docs</a></li>
-      <li><a href="/leaderboard">Leaderboard</a></li>
       <li><a href="/play">Play</a></li>
-      <li><a href="/admin">Admin</a></li>
+      <li><a href="/game.html">Spectate</a></li>
+      <li><a href="/docs">Docs</a></li>
+      <li><a href="/leaderboard">Leaderboard</a></li>
       <li><a href="https://github.com/cryptocurb2025-png/War-of-Agents-WAR" target="_blank">GitHub</a></li>
       <li><a href="https://twitter.com" target="_blank">Twitter</a></li>
     </ul>
-    <p class="footer-tech">Built with Phaser 3 + Node.js + TypeScript</p>
+    <p class="footer-tech">Built with Phaser 3 &bull; Node.js &bull; TypeScript &bull; WebSocket &bull; Base (ERC-20)</p>
     <p class="footer-copy">&copy; 2026 War of Agents. All rights reserved.</p>
   </div>
 </footer>

@@ -727,9 +727,7 @@ a { color: #C8960C; text-decoration: none; }
       playerFaction = selectedFaction;
       playerClass = selectedHero;
 
-      // Redirect to full game view
-      window.location.href = '/game.html';
-      return;
+      showBattleHud();
     } catch (e) {
       const errEl = document.getElementById('joinError');
       errEl.textContent = e.message;
@@ -739,9 +737,12 @@ a { color: #C8960C; text-decoration: none; }
     }
   };
 
-  // Auto-reconnect — if already joined, go straight to game
+  // Auto-reconnect if we have stored data
   if (agentId && playerFaction && playerClass) {
-    window.location.href = '/game.html';
+    playerName = localStorage.getItem('woa_playerName') || 'Warrior';
+    selectedFaction = playerFaction;
+    selectedHero = playerClass;
+    showBattleHud();
   }
 
   // ── Battle HUD ─────────────────────────────────────────────

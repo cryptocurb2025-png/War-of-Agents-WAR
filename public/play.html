@@ -749,7 +749,7 @@ a { color: #C8960C; text-decoration: none; }
   function showBattleHud() {
     // Redirect to full Phaser game with player controls
     // Session is in localStorage so game.html can read it
-    window.location.href = '/game.html?player=' + encodeURIComponent(playerAgentId);
+    window.location.href = '/game.html?player=' + encodeURIComponent(agentId);
     return;
 
     // Below is the old basic HUD — keeping for reference but never reached

@@ -357,7 +357,7 @@
 
       function connect() {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const url = `${protocol}//${window.location.host}/ws`;
+        const url = `${protocol}//${window.location.host}/ws?mode=pvp`;
         ws = new WebSocket(url);
 
         ws.onopen = () => {

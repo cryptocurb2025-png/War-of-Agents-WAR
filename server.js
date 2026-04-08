@@ -290,6 +290,114 @@ function estimateRoundWoa(state, winner) {
 
 let gameState = initRoundState(fightClub.roundIndex);
 
+// ─── PvP Arena System ────────────────────────────────────────────────────────
+import { isAlive, regenMana } from "./Agent.js";
+import { heroBasicAttack, heroUseAbility as pvpUseAbility } from "./CombatEngine.js";
+import { isAbilityReady, canAffordAbility } from "./Ability.js";
+
+const HERO_CLASSES = ["WARRIOR", "MAGE", "RANGER", "HEALER"];
+const pvpPlayers = new Map();
+const pvpQueue = [];
+const pvpGames = new Map();
+let pvpGameIdCounter = 1;
+
+const WOA_PER_MATCH_CAP = 150;
+
+function createPvpPlayer(id, name) {
+  return { id, name, joinedAt: new Date().toISOString(), gamesPlayed: 0, wins: 0, losses: 0, gameId: null, faction: null };
+}
+
+function findPvpMatch() {
+  if (pvpQueue.length < 1) return null;
+  const p1 = pvpQueue.shift();
+  const vsAI = pvpQueue.length < 1;
+  const p2 = vsAI ? { id: "ai_bot", name: "AI Commander", isAI: true } : pvpQueue.shift();
+
+  const gameId = `pvp_${pvpGameIdCounter++}`;
+  const game = createGameState(gameId);
+  game.mode = "pvp";
+  game.isPractice = vsAI;
+  game.players = { alliance: { id: p1.id, name: p1.name }, horde: { id: p2.id, name: p2.name } };
+  game.phase = "hero_select";
+  game.heroSelectTimer = 0;
+  game.maxHeroSelectTime = 600;
+  game.selectedHeroes = { alliance: null, horde: null };
+  game.playerInputs = { alliance: {}, horde: {} };
+  game.spawnConfig = { mid: { spawnEvery: 3, maxPerSide: 20, burst: 2, allianceType: "FOOTMAN", hordeType: "GRUNT" } };
+
+  pvpGames.set(gameId, game);
+  p1.gameId = gameId;
+  p1.faction = "alliance";
+  if (!vsAI) { p2.gameId = gameId; p2.faction = "horde"; }
+  return { gameId, p1, p2 };
+}
+
+function initPvpGameState(gameId) {
+  const game = pvpGames.get(gameId);
+  if (!game) return;
+  const aHero = createAgent(`${game.players.alliance.name}`, game.selectedHeroes.alliance || "WARRIOR");
+  const hHero = createAgent(game.isPractice ? "AI Commander" : game.players.horde.name, game.selectedHeroes.horde || "MAGE");
+  addHeroToGame(game, aHero, "alliance", "mid");
+  addHeroToGame(game, hHero, "horde", "mid");
+  game.phase = "active";
+  game.tick = 0;
+}
+
+function pvpAILogic(game) {
+  if (!game.isPractice) return;
+  const playerHero = game.heroes.alliance[0];
+  const aiHero = game.heroes.horde[0];
+  if (!playerHero || !aiHero || !isAlive(aiHero)) return;
+  regenMana(aiHero);
+  if (isAlive(playerHero)) {
+    const bestAb = aiHero.abilities.find((ab) => isAbilityReady(ab) && canAffordAbility(aiHero, ab) && ab.type !== "heal");
+    if (game.tick % 3 === 0) {
+      if (bestAb) pvpUseAbility(aiHero, playerHero, game, bestAb);
+      else heroBasicAttack(aiHero, playerHero, game);
+    }
+  }
+}
+
+// PvP tick loop
+setInterval(() => {
+  const match = findPvpMatch();
+  if (match) {
+    for (const ws of pvpWsClients) {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify({ type: "match_found", gameId: match.gameId, state: getFullGameStatus(pvpGames.get(match.gameId)) }));
+      }
+    }
+  }
+  for (const [gid, game] of pvpGames) {
+    if (game.phase === "hero_select") {
+      game.heroSelectTimer++;
+      const ready = game.selectedHeroes.alliance && (game.selectedHeroes.horde || game.isPractice);
+      if (ready || game.heroSelectTimer >= game.maxHeroSelectTime) {
+        if (!game.selectedHeroes.alliance) game.selectedHeroes.alliance = "WARRIOR";
+        if (!game.selectedHeroes.horde) game.selectedHeroes.horde = "MAGE";
+        initPvpGameState(gid);
+      }
+    }
+    if (game.phase === "active") {
+      pvpAILogic(game);
+      processTick(game);
+      // Check win
+      if (game.strongholds.alliance.hp <= 0) { game.phase = "ended"; game.winner = "horde"; }
+      else if (game.strongholds.horde.hp <= 0) { game.phase = "ended"; game.winner = "alliance"; }
+      // Broadcast
+      const payload = JSON.stringify({ type: "state", data: { ...getFullGameStatus(game), mode: "pvp", phase: game.phase, players: game.players } });
+      for (const ws of pvpWsClients) {
+        if (ws.readyState === ws.OPEN) ws.send(payload);
+      }
+    }
+    if (game.phase === "ended") {
+      setTimeout(() => pvpGames.delete(gid), 5000);
+    }
+  }
+}, 100);
+
+const pvpWsClients = new Set();
+
 function initRoundState(index) {
   const round = FIGHT_CLUB_ROUNDS[index];
   const state = createGameState(`fightclub_${round.id}_${Date.now()}`);
@@ -661,6 +769,31 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // ─── PvP API routes ───
+  if (req.method === "POST" && pathname === "/api/join") {
+    try {
+      const body = await readJsonBody(req);
+      const name = String(body.name || "").trim() || `Player${Date.now() % 10000}`;
+      const playerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const player = createPvpPlayer(playerId, name);
+      pvpPlayers.set(playerId, player);
+      return sendJson(res, 200, { success: true, playerId, player });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (req.method === "GET" && pathname === "/api/queue") {
+    return sendJson(res, 200, { queued: pvpQueue.length });
+  }
+
+  if (req.method === "GET" && pathname === "/api/status") {
+    const playerId = url.searchParams.get("playerId");
+    const player = pvpPlayers.get(playerId);
+    if (!player) return sendJson(res, 404, { error: "Player not found" });
+    return sendJson(res, 200, { player, inQueue: pvpQueue.some((p) => p.id === playerId), inGame: !!player.gameId, gameId: player.gameId });
+  }
+
   if (req.method !== "GET") {
     return sendText(res, 405, "Method Not Allowed");
   }
@@ -748,11 +881,64 @@ server.on("upgrade", (req, socket, head) => {
 });
 
 wss.on("connection", (ws, req) => {
-  // Extract or generate session ID
   const wsUrl = new URL(req.url || "/ws", `http://${req.headers.host || "localhost"}`);
   let sessionId = wsUrl.searchParams.get("sessionId") || generateSessionId();
+  const mode = wsUrl.searchParams.get("mode"); // "pvp" or null (spectator)
   ensurePlayer(sessionId);
 
+  // PvP mode WS
+  if (mode === "pvp") {
+    pvpWsClients.add(ws);
+    let playerId = null;
+
+    ws.on("message", (data) => {
+      try {
+        const msg = JSON.parse(data);
+        if (msg.type === "join") {
+          playerId = msg.playerId;
+          const player = pvpPlayers.get(playerId);
+          if (!player) { ws.send(JSON.stringify({ type: "error", message: "Player not found. Register via /api/join first." })); return; }
+          if (!pvpQueue.some((p) => p.id === playerId) && !player.gameId) {
+            pvpQueue.push(player);
+          }
+          ws.send(JSON.stringify({ type: "joined", inQueue: true }));
+        }
+        if (msg.type === "leave_queue") {
+          const idx = pvpQueue.findIndex((p) => p.id === playerId);
+          if (idx !== -1) pvpQueue.splice(idx, 1);
+          ws.send(JSON.stringify({ type: "left_queue" }));
+        }
+        if (msg.type === "select_hero") {
+          const player = pvpPlayers.get(playerId);
+          if (!player?.gameId) return;
+          const game = pvpGames.get(player.gameId);
+          if (!game || game.phase !== "hero_select") return;
+          if (HERO_CLASSES.includes(msg.heroClass)) {
+            game.selectedHeroes[player.faction] = msg.heroClass;
+            ws.send(JSON.stringify({ type: "hero_selected", heroClass: msg.heroClass }));
+          }
+        }
+        if (msg.type === "input") {
+          const player = pvpPlayers.get(playerId);
+          if (!player?.gameId) return;
+          const game = pvpGames.get(player.gameId);
+          if (!game || game.phase !== "active") return;
+          game.playerInputs[player.faction] = msg.input || {};
+        }
+      } catch {}
+    });
+
+    ws.on("close", () => {
+      pvpWsClients.delete(ws);
+      if (playerId) {
+        const idx = pvpQueue.findIndex((p) => p.id === playerId);
+        if (idx !== -1) pvpQueue.splice(idx, 1);
+      }
+    });
+    return;
+  }
+
+  // Spectator mode WS
   const info = { sessionId, connectedAt: Date.now(), ticksPresent: 0 };
   sessions.set(ws, info);
   if (!sessionIndex.has(sessionId)) sessionIndex.set(sessionId, new Set());
@@ -780,10 +966,12 @@ setInterval(() => {
 }, Math.floor(1000 / BROADCAST_RATE));
 
 server.listen(PORT, () => {
-  console.log("World of Agents Fight Club server running:");
-  console.log(`  http://localhost:${PORT}`);
-  console.log(`  http://localhost:${PORT}/api/state`);
-  console.log(`  http://localhost:${PORT}/api/fightclub`);
-  console.log(`  http://localhost:${PORT}/api/rewards`);
-  console.log(`  ws://localhost:${PORT}/ws`);
+  console.log("War of Agents server running:");
+  console.log(`  http://localhost:${PORT}          (Landing Page)`);
+  console.log(`  http://localhost:${PORT}/arena     (Fight Club Arena)`);
+  console.log(`  http://localhost:${PORT}/arena/pvp  (PvP Mode)`);
+  console.log(`  http://localhost:${PORT}/docs       (Documentation)`);
+  console.log(`  http://localhost:${PORT}/api/state  (Game State API)`);
+  console.log(`  ws://localhost:${PORT}/ws           (Spectator WS)`);
+  console.log(`  ws://localhost:${PORT}/ws?mode=pvp  (PvP WS)`);
 });

@@ -105,33 +105,62 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 #hero {
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
-  background: #050302;
+  background: #030201;
   position: relative;
   overflow: hidden;
   text-align: center;
   padding-top: 80px;
 }
-/* Diagonal split — Alliance blue left, Horde fire right */
+
+/* Layer 1: Diagonal faction split with war fog */
 #hero::before {
   content: '';
   position: absolute; inset: 0;
   background:
-    linear-gradient(135deg, rgba(30,50,100,0.15) 0%, transparent 50%, rgba(120,20,0,0.15) 100%),
-    radial-gradient(ellipse 70% 80% at 15% 50%, rgba(74,143,224,0.1) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 80% at 85% 50%, rgba(180,40,0,0.12) 0%, transparent 60%);
+    /* Diagonal split */
+    linear-gradient(135deg, rgba(20,40,80,0.2) 0%, rgba(5,3,1,0.8) 45%, rgba(5,3,1,0.8) 55%, rgba(100,15,0,0.2) 100%),
+    /* Alliance glow */
+    radial-gradient(ellipse 60% 70% at 10% 50%, rgba(74,143,224,0.12) 0%, transparent 60%),
+    /* Horde fire glow */
+    radial-gradient(ellipse 60% 70% at 90% 50%, rgba(200,40,0,0.15) 0%, transparent 60%),
+    /* Center dark vignette */
+    radial-gradient(ellipse 80% 80% at 50% 50%, transparent 30%, rgba(0,0,0,0.4) 100%);
   pointer-events: none;
 }
-/* Stone texture overlay */
+
+/* Layer 2: Stone/metal texture + gold trim border */
 #hero::after {
   content: '';
   position: absolute; inset: 0;
-  background: repeating-linear-gradient(
-    0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
-  ), repeating-linear-gradient(
-    90deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px
-  );
+  background:
+    /* Stone texture grid */
+    repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(200,150,12,0.008) 3px, rgba(200,150,12,0.008) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(200,150,12,0.006) 3px, rgba(200,150,12,0.006) 4px),
+    /* Rough stone noise effect */
+    repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(0,0,0,0.015) 8px, rgba(0,0,0,0.015) 9px),
+    repeating-linear-gradient(-45deg, transparent, transparent 12px, rgba(200,150,12,0.01) 12px, rgba(200,150,12,0.01) 13px);
   pointer-events: none;
   z-index: 1;
+}
+
+/* Gold trim border around entire hero section */
+#hero { border-bottom: 3px solid; border-image: linear-gradient(90deg, #3A2A0A, #C8960C, #F0C040, #C8960C, #3A2A0A) 1; }
+
+/* Floating hero icon collage — positioned around edges */
+.hero-icon-float {
+  position: absolute;
+  width: 48px; height: 48px;
+  border-radius: 6px;
+  border: 2px solid rgba(200,150,12,0.2);
+  opacity: 0.15;
+  animation: iconFloat 8s ease-in-out infinite;
+  z-index: 0;
+  box-shadow: 0 0 20px rgba(200,150,12,0.1);
+}
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.12; }
+  50% { transform: translateY(-15px) rotate(3deg); opacity: 0.2; }
+}
 }
 #particles-canvas {
   position: absolute; inset: 0;
@@ -609,6 +638,19 @@ footer {
 
 <!-- ════════ HERO ════════ -->
 <section id="hero">
+  <!-- Floating WoW icons around edges for depth -->
+  <img src="/icons/spell_fire.jpg" class="hero-icon-float" style="top:12%;left:5%;animation-delay:0s" alt="">
+  <img src="/icons/spell_frost.jpg" class="hero-icon-float" style="top:25%;left:8%;animation-delay:1s" alt="">
+  <img src="/icons/helmet.jpg" class="hero-icon-float" style="top:60%;left:4%;animation-delay:2s" alt="">
+  <img src="/icons/hero_warrior.jpg" class="hero-icon-float" style="top:75%;left:10%;animation-delay:3s" alt="">
+  <img src="/icons/spell_holy.jpg" class="hero-icon-float" style="top:40%;left:3%;animation-delay:4s" alt="">
+  <img src="/icons/spell_arcane.jpg" class="hero-icon-float" style="top:15%;right:6%;animation-delay:0.5s" alt="">
+  <img src="/icons/boss_fire.jpg" class="hero-icon-float" style="top:30%;right:4%;animation-delay:1.5s" alt="">
+  <img src="/icons/orc_skull.jpg" class="hero-icon-float" style="top:55%;right:8%;animation-delay:2.5s" alt="">
+  <img src="/icons/hero_rogue.jpg" class="hero-icon-float" style="top:70%;right:5%;animation-delay:3.5s" alt="">
+  <img src="/icons/sword.jpg" class="hero-icon-float" style="top:85%;right:10%;animation-delay:4.5s" alt="">
+  <img src="/icons/hero_mage.jpg" class="hero-icon-float" style="bottom:10%;left:15%;animation-delay:5s" alt="">
+  <img src="/icons/knight.jpg" class="hero-icon-float" style="bottom:15%;right:15%;animation-delay:5.5s" alt="">
   <canvas id="particles-canvas"></canvas>
   <div class="hero-content">
     <div class="hero-factions">

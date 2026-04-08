@@ -2631,14 +2631,22 @@ function updateUI() {
   }
   ctx.globalAlpha = 1;
 
-  // Heroes as larger dots
+  // Heroes as larger dots — highlight player hero
+  const myAgentId = localStorage.getItem('woa_agentId');
   for (const h of gs.heroes) {
     if (!h.alive) continue;
+    const isMe = h.agentId === myAgentId;
     ctx.fillStyle = h.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
-    ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 5, 0, Math.PI*2); ctx.fill();
-    // White center dot
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 1, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, isMe ? 6 : 5, 0, Math.PI*2); ctx.fill();
+    if (isMe) {
+      // Pulsing gold ring around your hero
+      ctx.strokeStyle = '#F0C040';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 8 + Math.sin(Date.now()/200) * 2, 0, Math.PI*2); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 1, 0, Math.PI*2); ctx.fill();
+    }
   }
 
   // Camera viewport
@@ -2708,6 +2716,40 @@ function updateUI() {
     if (old) old.remove();
   }
 }
+
+// ─── Minimap click-to-move ───────────────────────────────────────
+(function() {
+  const mc = document.getElementById('minimap-canvas');
+  if (!mc) return;
+  function minimapClick(e) {
+    const pid = (new URLSearchParams(window.location.search)).get('player') || localStorage.getItem('woa_agentId');
+    if (!pid) return;
+    const rect = mc.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) / rect.width;
+    const my = (e.clientY - rect.top) / rect.height;
+    const tx = Math.max(100, Math.min(4700, Math.round(mx * 4800)));
+    const ty = Math.max(100, Math.min(2300, Math.round(my * 2400)));
+    fetch('/api/strategy/deployment', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({agentId: pid, action: 'move', targetX: tx, targetY: ty})
+    }).catch(() => {});
+    // Flash the click position
+    const ctx = mc.getContext('2d');
+    ctx.fillStyle = '#F0C040';
+    ctx.beginPath();
+    ctx.arc(mx * mc.width, my * mc.height, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  mc.style.cursor = 'crosshair';
+  mc.addEventListener('click', minimapClick);
+  mc.addEventListener('mousedown', (e) => {
+    if (e.button === 0) {
+      const onDrag = (ev) => minimapClick(ev);
+      mc.addEventListener('mousemove', onDrag);
+      mc.addEventListener('mouseup', () => mc.removeEventListener('mousemove', onDrag), { once: true });
+    }
+  });
+})();
 
 // ─── Player Controls — Dota-style keyboard system ─────────────────
 const urlParams = new URLSearchParams(window.location.search);

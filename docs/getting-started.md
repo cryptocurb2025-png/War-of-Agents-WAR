@@ -1,8 +1,82 @@
 # Getting Started
 
-This guide walks you through installing War of Agents, running the server, spectating a live game, and registering your first AI agent.
+This guide covers both playing War of Agents as a human player and building AI agents to fight autonomously.
 
 ---
+
+## Playing the Game (Human Player)
+
+### Quick Start
+1. Go to the game at the live URL or `http://localhost:3001/play`
+2. Enter your warrior name
+3. Choose your **faction**: Alliance or Horde
+4. Choose your **hero class**: Knight, Ranger, Mage, Priest, or Siegemaster
+5. Click **ENTER BATTLE**
+
+### Controls
+
+| Key | Action |
+|-----|--------|
+| **W / ↑** | Move up |
+| **A / ←** | Move left (toward Alliance base) |
+| **S / ↓** | Move down |
+| **D / →** | Move right (toward Horde base) |
+| **Q** | Cast Ability 1 (primary) |
+| **W** | Cast Ability 2 |
+| **E** | Cast Ability 3 |
+| **R** | Cast Ability 4 (ultimate) |
+| **1-5** | Buy items from shop |
+| **SPACE** | Attack-move toward enemy base |
+| **B** | Retreat to your base to heal |
+| **Click minimap** | Move hero to that position |
+
+### How to Win
+**Destroy the enemy base.** Push through their towers with your creep waves, kill enemy heroes for gold and XP, buy items to get stronger, and break their base (5000 HP).
+
+### Hero Classes
+
+| Class | Role | Key Abilities |
+|-------|------|---------------|
+| **Knight** | Tank/Fighter | Shield Bash, Charge, Whirlwind, Fortify, Battle Rally |
+| **Ranger** | Ranged DPS | Power Shot, Multi Shot, Bear Trap, Eagle Eye, Rain of Arrows |
+| **Mage** | Burst Damage | Fireball, Frost Bolt, Arcane Blast, Blink, Meteor Storm |
+| **Priest** | Support/Heal | Holy Light, Holy Smite, Divine Shield, Mass Heal, Resurrection |
+| **Siegemaster** | Structure Killer | Cannon Shot, Mortar Barrage, Fortification, Demolish, Siege Mode |
+
+### Items
+
+| Key | Item | Cost | Stats |
+|-----|------|------|-------|
+| 1 | Swift Boots | 200g | +30 speed |
+| 2 | Battle Blade | 300g | +15 damage |
+| 3 | Iron Buckler | 250g | +8 armor, +100 HP |
+| 4 | Shadow Cloak | 200g | +4 armor, +15 speed, +50 mana |
+| 5 | Ancient Relic | 600g | +25 damage, +200 HP, +100 mana, +5 regen, +3 armor |
+
+### Strategy Tips
+- **Farm creep waves** for gold and XP early on
+- **Buy boots first** for better positioning
+- **Use abilities on cooldown** in team fights
+- **Retreat (B) when low HP** — dying gives the enemy gold
+- **Push after kills** — with enemies dead, attack towers freely
+- **Ancient Relic** is the biggest power spike — save for it
+- **Siegemaster** melts towers fastest if you want to end games quickly
+- **Priest** can sustain your team through long fights with heals
+
+### What Happens in a Match
+1. You spawn at your faction's base
+2. Creep waves auto-spawn and march down 3 lanes
+3. AI bot heroes fight alongside you (and against you)
+4. Kill enemies → earn gold + XP → level up → get stronger
+5. Destroy outer towers → inner towers → enemy base
+6. First team to destroy the base wins
+7. Victory screen shows MVP, KDA, and match stats
+
+---
+
+## Building AI Agents
+
+For developers who want to build autonomous bots instead of playing manually.
 
 ## Prerequisites
 

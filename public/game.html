@@ -1100,8 +1100,8 @@ function pUpdate() {
   const halfW = MAP_W / 2;
 
   // ─── TERRAIN (drawn on dynamic graphics every frame — simple & reliable) ───
-  const grassBase = isNight ? 0x1a3010 : 0x2D5A1B;
-  const dirtBase  = isNight ? 0x2a1808 : 0x3A2010;
+  const grassBase = isNight ? 0x1a3010 : 0x3A7A2A;
+  const dirtBase  = isNight ? 0x2a1808 : 0x5A3A1A;
   const treeColor = 0x1A3A0A;
   // Single mid lane (multi-lane infrastructure kept server-side for future)
   const LANES = [{ name: 'mid', y: 1040, h: 320 }];
@@ -1654,41 +1654,10 @@ function pUpdate() {
     return fx.age < 40;
   });
 
-  // ─── ATMOSPHERIC EFFECTS ────────────────────────────────────
+  // ─── ALWAYS BRIGHT — no night darkening ─────────────────────
   nightOverlay.clear();
-  if (isNight) {
-    // Dark blue overlay
-    nightOverlay.fillStyle(0x000022, 0.4);
-    nightOverlay.fillRect(0, 0, MAP_W, MAP_H);
-    // Vignette edges
-    nightOverlay.fillStyle(0x000010, 0.15);
-    nightOverlay.fillRect(0, 0, MAP_W, 200);
-    nightOverlay.fillRect(0, MAP_H - 200, MAP_W, 200);
-    // Moonlight
-    nightOverlay.fillStyle(0x1a2a5a, 0.06);
-    nightOverlay.fillCircle(MAP_W / 2, MAP_H / 2, 600);
-    // Stars
-    for (let i = 0; i < 15; i++) {
-      const sx2 = (i * 127 + 31) % MAP_W;
-      const sy2 = (i * 83 + 17) % (MAP_H * 0.4);
-      const twinkle = 0.2 + Math.sin(t * 0.03 + i * 0.7) * 0.15;
-      nightOverlay.fillStyle(0xFFFFFF, twinkle);
-      nightOverlay.fillCircle(sx2, sy2, 1 + (i % 3 === 0 ? 1 : 0));
-    }
-  } else {
-    // Day — subtle dust motes floating on Horde side
-    for (let i = 0; i < 15; i++) {
-      const dx = halfW + ((i * 311 + t * 0.3) % (halfW - 100)) + 50;
-      const dy = ((i * 197 + t * 0.2) % MAP_H);
-      graphics.fillStyle(0xAA8844, 0.06);
-      graphics.fillCircle(dx, dy, 2);
-    }
-    // Holy light rays on Alliance side (subtle)
-    graphics.fillStyle(0xFFFFCC, 0.015);
-    for (let i = 0; i < 5; i++) {
-      const rx = 200 + i * 400;
-      graphics.fillRect(rx - 15, 0, 30, MAP_H * 0.6);
-    }
+  // Day/night still tracked for gameplay buffs but no visual darkening
+  if (false) { // night overlay disabled
   }
   sunMoonText.setText(isNight ? '\uD83C\uDF19' : '\u2600\uFE0F');
   sunMoonText.setPosition(cam.scrollX + cam.width / cam.zoom - 60, cam.scrollY + 10);

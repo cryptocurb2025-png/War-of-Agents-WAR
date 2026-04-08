@@ -854,9 +854,8 @@ const config = {
   parent: 'game-container',
   width: window.innerWidth,
   height: window.innerHeight - BOT_H - TOP_H,
-  backgroundColor: '#1a3a1a',
+  backgroundColor: '#2A5A1A',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
 };
 
 const game = new Phaser.Game(config);
@@ -876,10 +875,12 @@ function pPreload() {
 
   // Helper: draw into a texture
   function genTex(key, w, h, drawFn) {
-    const g = scene.make.graphics({ x: 0, y: 0, add: false });
-    drawFn(g, w, h);
-    g.generateTexture(key, w, h);
-    g.destroy();
+    try {
+      const g = scene.make.graphics({ x: 0, y: 0, add: false });
+      drawFn(g, w, h);
+      g.generateTexture(key, w, h);
+      g.destroy();
+    } catch(e) { console.warn('genTex failed:', key, e); }
   }
 
   // ─── UNIT TEXTURES (52x52) ────────────────────────

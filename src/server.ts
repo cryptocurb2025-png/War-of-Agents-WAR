@@ -1472,6 +1472,10 @@ app.get('/api/admin/stats', (_req, res) => {
   });
 });
 
+app.get('/play', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'play.html'));
+});
+
 app.get('/landing', (_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'landing.html'));
 });

@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>War of Agents — Play</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  font-family: 'Cinzel', serif;
+  background: #0A0804;
+  color: #D4C9A8;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+a { color: #C8960C; text-decoration: none; }
+
+/* ── Shared ─────────────────────────────────────────────── */
+.hidden { display: none !important; }
+.gold { color: #C8960C; }
+.alliance-color { color: #4A8FE0; }
+.horde-color { color: #E24B4A; }
+
+/* ── Join Screen ────────────────────────────────────────── */
+#joinScreen {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(170deg, #0A0804 0%, #1A1208 40%, #0F0A04 100%);
+  padding: 24px;
+}
+.join-card {
+  background: linear-gradient(145deg, #12100A, #0E0C07);
+  border: 1px solid rgba(200,150,12,0.25);
+  border-radius: 12px;
+  padding: 40px 36px;
+  max-width: 560px;
+  width: 100%;
+  box-shadow: 0 0 60px rgba(200,150,12,0.08);
+}
+.join-title {
+  text-align: center;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  font-weight: 900;
+  color: #C8960C;
+  text-shadow: 0 0 30px rgba(200,150,12,0.4);
+  margin-bottom: 32px;
+  letter-spacing: 4px;
+}
+.join-label {
+  display: block;
+  color: #9A8B6E;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  margin-top: 20px;
+}
+.join-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: #0A0804;
+  border: 1px solid rgba(200,150,12,0.2);
+  border-radius: 6px;
+  color: #D4C9A8;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.join-input:focus { border-color: #C8960C; }
+.join-input::placeholder { color: #5A5040; }
+
+/* Faction buttons */
+.faction-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+.faction-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 20px 12px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #0A0804;
+  font-family: 'Cinzel', serif;
+}
+.faction-btn .faction-icon { font-size: 2.4rem; }
+.faction-btn .faction-name { font-size: 0.9rem; font-weight: 900; letter-spacing: 2px; }
+.faction-btn.alliance { border-color: rgba(74,143,224,0.3); }
+.faction-btn.alliance .faction-name { color: #4A8FE0; }
+.faction-btn.alliance:hover, .faction-btn.alliance.selected { border-color: #4A8FE0; background: rgba(74,143,224,0.08); box-shadow: 0 0 20px rgba(74,143,224,0.15); }
+.faction-btn.horde { border-color: rgba(226,75,74,0.3); }
+.faction-btn.horde .faction-name { color: #E24B4A; }
+.faction-btn.horde:hover, .faction-btn.horde.selected { border-color: #E24B4A; background: rgba(226,75,74,0.08); box-shadow: 0 0 20px rgba(226,75,74,0.15); }
+
+/* Hero class buttons */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+@media (max-width: 480px) { .hero-grid { grid-template-columns: 1fr; } }
+.hero-btn {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  border: 2px solid rgba(200,150,12,0.15);
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #0A0804;
+  font-family: 'Cinzel', serif;
+  text-align: left;
+}
+.hero-btn:hover { border-color: rgba(200,150,12,0.5); background: rgba(200,150,12,0.04); }
+.hero-btn.selected { border-color: #C8960C; background: rgba(200,150,12,0.08); box-shadow: 0 0 16px rgba(200,150,12,0.12); }
+.hero-btn .hero-icon { font-size: 1.6rem; flex-shrink: 0; margin-top: 2px; }
+.hero-btn .hero-info { flex: 1; }
+.hero-btn .hero-class-name { font-size: 0.85rem; font-weight: 700; color: #C8960C; }
+.hero-btn .hero-desc { font-size: 0.68rem; color: #8A7D66; margin: 2px 0; font-weight: 400; }
+.hero-btn .hero-stats { font-size: 0.62rem; color: #6A5E48; font-weight: 600; letter-spacing: 0.5px; }
+.hero-grid .hero-btn:last-child:nth-child(odd) { grid-column: span 2; max-width: 50%; justify-self: center; }
+@media (max-width: 480px) { .hero-grid .hero-btn:last-child:nth-child(odd) { max-width: 100%; grid-column: span 1; } }
+
+.enter-btn {
+  width: 100%;
+  margin-top: 28px;
+  padding: 16px;
+  background: linear-gradient(135deg, #C8960C, #A07A08);
+  color: #0A0804;
+  border: 2px solid #C8960C;
+  border-radius: 6px;
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.enter-btn:hover { background: linear-gradient(135deg, #E0B020, #C8960C); box-shadow: 0 0 30px rgba(200,150,12,0.4); transform: translateY(-2px); }
+.enter-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.join-error {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(226,75,74,0.1);
+  border: 1px solid rgba(226,75,74,0.4);
+  color: #E24B4A;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* ── Battle HUD ─────────────────────────────────────────── */
+#battleHud {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1A2A1A 0%, #0A1408 50%, #2A1A0A 100%);
+}
+
+/* Top bar */
+.hud-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #12100A, #0E0C07);
+  border-bottom: 1px solid rgba(200,150,12,0.15);
+  flex-wrap: wrap;
+}
+.hero-badge {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px;
+  border: 1px solid rgba(200,150,12,0.25);
+  border-radius: 6px;
+  background: rgba(200,150,12,0.04);
+}
+.hero-badge .badge-icon { font-size: 1.4rem; }
+.hero-badge .badge-info { display: flex; flex-direction: column; }
+.hero-badge .badge-name { font-size: 0.85rem; font-weight: 700; color: #C8960C; }
+.hero-badge .badge-class { font-size: 0.65rem; color: #8A7D66; letter-spacing: 1px; text-transform: uppercase; }
+
+.bars-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 180px; flex: 1; max-width: 300px; }
+.bar-outer {
+  height: 20px;
+  border-radius: 10px;
+  background: #1A1812;
+  border: 1px solid rgba(200,150,12,0.12);
+  overflow: hidden;
+  position: relative;
+}
+.bar-inner {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.4s ease;
+}
+.bar-hp .bar-inner { background: linear-gradient(90deg, #2E8B2E, #4ADE4A); }
+.bar-mana .bar-inner { background: linear-gradient(90deg, #2E5E8B, #4A9EDE); }
+.bar-label {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000;
+  letter-spacing: 1px;
+}
+
+.stat-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.stat-pill {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(200,150,12,0.06);
+  border: 1px solid rgba(200,150,12,0.15);
+  color: #D4C9A8;
+  white-space: nowrap;
+}
+.stat-pill .pill-val { color: #C8960C; }
+
+/* Main area */
+.hud-main {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 12px;
+  padding: 12px 16px;
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 800px) {
+  .hud-main { grid-template-columns: 1fr; }
+}
+
+/* Canvas */
+.map-wrap {
+  border: 1px solid rgba(200,150,12,0.2);
+  border-radius: 8px;
+  background: #08060300;
+  overflow: hidden;
+  position: relative;
+  min-height: 260px;
+}
+#battleCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Right sidebar */
+.hud-sidebar {
+  display: flex; flex-direction: column; gap: 12px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+/* Panel */
+.panel {
+  background: linear-gradient(145deg, #12100A, #0E0C07);
+  border: 1px solid rgba(200,150,12,0.15);
+  border-radius: 8px;
+  padding: 14px;
+}
+.panel-title {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #C8960C;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Strategy buttons */
+.strat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.strat-btn {
+  padding: 10px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(200,150,12,0.25);
+  background: rgba(200,150,12,0.04);
+  color: #D4C9A8;
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.strat-btn:hover { background: rgba(200,150,12,0.12); border-color: #C8960C; }
+.strat-btn:active { transform: scale(0.95); }
+.strat-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Ability buttons */
+.ability-grid {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ability-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(200,150,12,0.2);
+  background: rgba(200,150,12,0.03);
+  color: #D4C9A8;
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.ability-btn:hover:not(:disabled) { background: rgba(200,150,12,0.1); border-color: rgba(200,150,12,0.5); }
+.ability-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.ability-btn .ab-name { flex: 1; font-weight: 700; }
+.ability-btn .ab-cost { color: #4A9EDE; font-size: 0.62rem; font-weight: 700; }
+.ability-btn .ab-cd { color: #E24B4A; font-size: 0.62rem; font-weight: 700; }
+.ability-cd-overlay {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: rgba(200,150,12,0.06);
+  transition: width 0.3s;
+  pointer-events: none;
+}
+
+/* Shop */
+.shop-grid {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.shop-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(200,150,12,0.12);
+  background: rgba(200,150,12,0.02);
+  font-size: 0.72rem;
+}
+.shop-item .si-name { flex: 1; font-weight: 700; color: #D4C9A8; }
+.shop-item .si-stats { color: #8A7D66; font-size: 0.6rem; }
+.shop-item .si-cost { color: #C8960C; font-weight: 700; font-size: 0.68rem; margin-left: 4px; }
+.shop-buy {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(200,150,12,0.3);
+  background: rgba(200,150,12,0.08);
+  color: #C8960C;
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.shop-buy:hover:not(:disabled) { background: rgba(200,150,12,0.2); }
+.shop-buy:disabled { opacity: 0.3; cursor: not-allowed; }
+.shop-owned {
+  color: #4ADE4A;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* Kill feed */
+.kill-feed {
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.kill-entry {
+  font-size: 0.65rem;
+  color: #8A7D66;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(200,150,12,0.03);
+}
+.kill-entry.mine { background: rgba(200,150,12,0.1); color: #C8960C; font-weight: 700; }
+
+/* Items owned */
+.owned-items {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-top: 4px;
+}
+.owned-tag {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: rgba(74,222,74,0.08);
+  border: 1px solid rgba(74,222,74,0.25);
+  color: #4ADE4A;
+}
+
+/* Dead overlay */
+.dead-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,8,4,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  flex-direction: column; gap: 16px;
+}
+.dead-overlay .dead-text {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #E24B4A;
+  text-shadow: 0 0 30px rgba(226,75,74,0.5);
+  letter-spacing: 4px;
+}
+.dead-overlay .dead-timer {
+  font-size: 1.2rem;
+  color: #D4C9A8;
+}
+
+/* Game over */
+.gameover-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,8,4,0.92);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  flex-direction: column; gap: 20px;
+}
+.gameover-overlay .go-title {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 900;
+  letter-spacing: 6px;
+  text-shadow: 0 0 40px currentColor;
+}
+.go-victory { color: #C8960C; }
+.go-defeat { color: #E24B4A; }
+.go-stats {
+  display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+}
+.go-stat {
+  text-align: center;
+  padding: 12px 20px;
+  border: 1px solid rgba(200,150,12,0.2);
+  border-radius: 8px;
+  background: rgba(200,150,12,0.04);
+}
+.go-stat .go-val { font-size: 1.6rem; font-weight: 900; color: #C8960C; }
+.go-stat .go-lbl { font-size: 0.65rem; color: #8A7D66; letter-spacing: 1px; text-transform: uppercase; }
+.play-again-btn {
+  padding: 14px 40px;
+  background: linear-gradient(135deg, #C8960C, #A07A08);
+  color: #0A0804;
+  border: 2px solid #C8960C;
+  border-radius: 6px;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.play-again-btn:hover { background: linear-gradient(135deg, #E0B020, #C8960C); box-shadow: 0 0 30px rgba(200,150,12,0.4); }
+
+/* WS status */
+.ws-status {
+  position: fixed; bottom: 12px; right: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  z-index: 50;
+}
+.ws-status.connected { background: rgba(74,222,74,0.15); color: #4ADE4A; border: 1px solid rgba(74,222,74,0.3); }
+.ws-status.disconnected { background: rgba(226,75,74,0.15); color: #E24B4A; border: 1px solid rgba(226,75,74,0.3); }
+
+/* Back link */
+.back-link {
+  position: fixed; top: 12px; left: 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9A8B6E;
+  letter-spacing: 1px;
+  z-index: 50;
+}
+.back-link:hover { color: #C8960C; }
+</style>
+</head>
+<body>
+
+<a href="/" class="back-link">&#8592; WAR OF AGENTS</a>
+
+<!-- ════════ JOIN SCREEN ════════ -->
+<div id="joinScreen">
+  <div class="join-card">
+    <h1 class="join-title">Join the War</h1>
+
+    <label class="join-label">Your Name</label>
+    <input type="text" id="playerName" class="join-input" placeholder="Enter your warrior name" maxlength="24">
+
+    <label class="join-label">Choose Faction</label>
+    <div class="faction-row">
+      <div class="faction-btn alliance" data-faction="alliance" onclick="selectFaction('alliance')">
+        <span class="faction-icon">&#x1F6E1;&#xFE0F;</span>
+        <span class="faction-name">Alliance</span>
+      </div>
+      <div class="faction-btn horde" data-faction="horde" onclick="selectFaction('horde')">
+        <span class="faction-icon">&#x1F480;</span>
+        <span class="faction-name">Horde</span>
+      </div>
+    </div>
+
+    <div id="heroSection" class="hidden">
+      <label class="join-label">Choose Hero Class</label>
+      <div class="hero-grid">
+        <div class="hero-btn" data-class="knight" onclick="selectHero('knight')">
+          <span class="hero-icon">&#x1F6E1;&#xFE0F;</span>
+          <div class="hero-info">
+            <div class="hero-class-name">Knight</div>
+            <div class="hero-desc">Tank. High HP, armor. Protects allies.</div>
+            <div class="hero-stats">HP 900 | DMG 25 | SPD 90</div>
+          </div>
+        </div>
+        <div class="hero-btn" data-class="ranger" onclick="selectHero('ranger')">
+          <span class="hero-icon">&#x1F3F9;</span>
+          <div class="hero-info">
+            <div class="hero-class-name">Ranger</div>
+            <div class="hero-desc">DPS. Fast, high range. Glass cannon.</div>
+            <div class="hero-stats">HP 550 | DMG 38 | SPD 120</div>
+          </div>
+        </div>
+        <div class="hero-btn" data-class="mage" onclick="selectHero('mage')">
+          <span class="hero-icon">&#x2B50;</span>
+          <div class="hero-info">
+            <div class="hero-class-name">Mage</div>
+            <div class="hero-desc">Burst. Massive AoE damage. Fragile.</div>
+            <div class="hero-stats">HP 450 | DMG 48 | SPD 95</div>
+          </div>
+        </div>
+        <div class="hero-btn" data-class="priest" onclick="selectHero('priest')">
+          <span class="hero-icon">&#x271D;&#xFE0F;</span>
+          <div class="hero-info">
+            <div class="hero-class-name">Priest</div>
+            <div class="hero-desc">Healer. Keeps the team alive.</div>
+            <div class="hero-stats">HP 520 | DMG 15 | SPD 100</div>
+          </div>
+        </div>
+        <div class="hero-btn" data-class="siegemaster" onclick="selectHero('siegemaster')">
+          <span class="hero-icon">&#x1F4A3;</span>
+          <div class="hero-info">
+            <div class="hero-class-name">Siegemaster</div>
+            <div class="hero-desc">Siege. Destroys towers fast.</div>
+            <div class="hero-stats">HP 700 | DMG 55 | SPD 60</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button id="enterBtn" class="enter-btn" disabled onclick="enterBattle()">Enter Battle</button>
+    <div id="joinError" class="join-error hidden"></div>
+  </div>
+</div>
+
+<!-- ════════ BATTLE HUD ════════ -->
+<div id="battleHud" class="hidden">
+
+  <!-- Top bar -->
+  <div class="hud-top">
+    <div class="hero-badge">
+      <span class="badge-icon" id="hudIcon"></span>
+      <div class="badge-info">
+        <span class="badge-name" id="hudName"></span>
+        <span class="badge-class" id="hudClass"></span>
+      </div>
+    </div>
+    <div class="bars-wrap">
+      <div class="bar-outer bar-hp">
+        <div class="bar-inner" id="hpBar" style="width:100%"></div>
+        <div class="bar-label" id="hpLabel">900 / 900</div>
+      </div>
+      <div class="bar-outer bar-mana">
+        <div class="bar-inner" id="manaBar" style="width:100%"></div>
+        <div class="bar-label" id="manaLabel">150 / 150</div>
+      </div>
+    </div>
+    <div class="stat-pills">
+      <div class="stat-pill">&#x1F4B0; <span class="pill-val" id="hudGold">0</span></div>
+      <div class="stat-pill">KDA <span class="pill-val" id="hudKDA">0/0/0</span></div>
+      <div class="stat-pill">Lv <span class="pill-val" id="hudLevel">1</span></div>
+    </div>
+    <div class="owned-items" id="hudItems"></div>
+  </div>
+
+  <!-- Main area -->
+  <div class="hud-main">
+    <div class="map-wrap">
+      <canvas id="battleCanvas"></canvas>
+    </div>
+    <div class="hud-sidebar">
+
+      <!-- Strategy -->
+      <div class="panel">
+        <div class="panel-title">Strategy</div>
+        <div class="strat-row">
+          <button class="strat-btn" id="btnRetreat" onclick="doStrategy('retreat')">&#x1F3C3; Retreat</button>
+          <button class="strat-btn" id="btnPushMid" onclick="doStrategy('push')">&#9876;&#65039; Push</button>
+          <button class="strat-btn" id="btnAttack" onclick="doStrategy('attack')">&#x2694;&#xFE0F; Attack</button>
+        </div>
+      </div>
+
+      <!-- Abilities -->
+      <div class="panel">
+        <div class="panel-title">Abilities</div>
+        <div class="ability-grid" id="abilityGrid"></div>
+      </div>
+
+      <!-- Shop -->
+      <div class="panel">
+        <div class="panel-title">Item Shop</div>
+        <div class="shop-grid" id="shopGrid"></div>
+      </div>
+
+      <!-- Kill feed -->
+      <div class="panel">
+        <div class="panel-title">Kill Feed</div>
+        <div class="kill-feed" id="killFeed"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Dead overlay -->
+<div id="deadOverlay" class="dead-overlay hidden">
+  <div class="dead-text">YOU ARE DEAD</div>
+  <div class="dead-timer" id="deadTimer">Respawning in 10s...</div>
+</div>
+
+<!-- Game over overlay -->
+<div id="gameoverOverlay" class="gameover-overlay hidden">
+  <div class="go-title" id="goTitle">VICTORY</div>
+  <div class="go-stats" id="goStats"></div>
+  <button class="play-again-btn" onclick="playAgain()">Play Again</button>
+</div>
+
+<!-- WS status -->
+<div class="ws-status disconnected" id="wsStatus">DISCONNECTED</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── Constants ──────────────────────────────────────────────
+  const MAP_W = 4800, MAP_H = 2400;
+  const SHOP_ITEMS = [
+    { id: 'boots',  name: 'Swift Boots',  cost: 200, stats: 'SPD +30',        icon: '&#x1F462;' },
+    { id: 'sword',  name: 'Battle Blade', cost: 300, stats: 'DMG +15',        icon: '&#x2694;&#xFE0F;' },
+    { id: 'shield', name: 'Iron Buckler', cost: 250, stats: 'ARM +8, HP +100', icon: '&#x1F6E1;&#xFE0F;' },
+    { id: 'cloak',  name: 'Shadow Cloak', cost: 200, stats: 'ARM +4, SPD +15, MP +50', icon: '&#x1F9E5;' },
+    { id: 'relic',  name: 'Ancient Relic', cost: 600, stats: 'DMG +25, HP +200, MP +100', icon: '&#x1F48E;' },
+  ];
+  const HERO_ICONS = { knight: '\u{1F6E1}\uFE0F', ranger: '\u{1F3F9}', mage: '\u2B50', priest: '\u271D\uFE0F', siegemaster: '\u{1F4A3}' };
+
+  // ── State ──────────────────────────────────────────────────
+  let selectedFaction = null;
+  let selectedHero = null;
+  let agentId = localStorage.getItem('woa_agentId');
+  let playerName = localStorage.getItem('woa_playerName') || '';
+  let playerFaction = localStorage.getItem('woa_faction');
+  let playerClass = localStorage.getItem('woa_heroClass');
+  let ws = null;
+  let gameState = null;
+  let myHero = null;
+  let lastKillCount = 0;
+  let killFeedEntries = [];
+  let wsReconnectTimer = null;
+  let gameOverShown = false;
+
+  // ── Join Screen Logic ──────────────────────────────────────
+  window.selectFaction = function(f) {
+    selectedFaction = f;
+    document.querySelectorAll('.faction-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector(`.faction-btn.${f}`).classList.add('selected');
+    document.getElementById('heroSection').classList.remove('hidden');
+    checkReady();
+  };
+
+  window.selectHero = function(hc) {
+    selectedHero = hc;
+    document.querySelectorAll('.hero-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector(`.hero-btn[data-class="${hc}"]`).classList.add('selected');
+    checkReady();
+  };
+
+  function checkReady() {
+    const name = document.getElementById('playerName').value.trim();
+    document.getElementById('enterBtn').disabled = !(name && selectedFaction && selectedHero);
+  }
+  document.getElementById('playerName').addEventListener('input', checkReady);
+
+  window.enterBattle = async function() {
+    const name = document.getElementById('playerName').value.trim();
+    if (!name || !selectedFaction || !selectedHero) return;
+
+    const btn = document.getElementById('enterBtn');
+    btn.disabled = true;
+    btn.textContent = 'JOINING...';
+
+    if (!agentId) {
+      agentId = 'player_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    }
+
+    try {
+      const resp = await fetch('/api/agents/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId, name, faction: selectedFaction, heroClass: selectedHero }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Registration failed');
+
+      // Store
+      localStorage.setItem('woa_agentId', agentId);
+      localStorage.setItem('woa_playerName', name);
+      localStorage.setItem('woa_faction', selectedFaction);
+      localStorage.setItem('woa_heroClass', selectedHero);
+      playerName = name;
+      playerFaction = selectedFaction;
+      playerClass = selectedHero;
+
+      showBattleHud();
+    } catch (e) {
+      const errEl = document.getElementById('joinError');
+      errEl.textContent = e.message;
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'ENTER BATTLE';
+    }
+  };
+
+  // Auto-reconnect if we have stored data
+  if (agentId && playerFaction && playerClass) {
+    playerName = localStorage.getItem('woa_playerName') || 'Warrior';
+    selectedFaction = playerFaction;
+    selectedHero = playerClass;
+    showBattleHud();
+  }
+
+  // ── Battle HUD ─────────────────────────────────────────────
+  function showBattleHud() {
+    // Redirect to full Phaser game with player controls
+    // Session is in localStorage so game.html can read it
+    window.location.href = '/game.html?player=' + encodeURIComponent(playerAgentId);
+    return;
+
+    // Below is the old basic HUD — keeping for reference but never reached
+    document.getElementById('joinScreen').classList.add('hidden');
+    document.getElementById('battleHud').classList.remove('hidden');
+
+    document.getElementById('hudIcon').textContent = HERO_ICONS[playerClass] || '';
+    document.getElementById('hudName').textContent = playerName;
+    document.getElementById('hudClass').textContent = playerClass + ' - ' + playerFaction;
+
+    // Set faction color on badge
+    const badge = document.querySelector('.hero-badge');
+    if (playerFaction === 'alliance') {
+      badge.style.borderColor = 'rgba(74,143,224,0.4)';
+    } else {
+      badge.style.borderColor = 'rgba(226,75,74,0.4)';
+    }
+
+    renderShop();
+    connectWS();
+  }
+
+  // ── WebSocket ──────────────────────────────────────────────
+  function connectWS() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${location.host}`);
+    const statusEl = document.getElementById('wsStatus');
+
+    ws.onopen = function() {
+      statusEl.className = 'ws-status connected';
+      statusEl.textContent = 'CONNECTED';
+      if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    };
+
+    ws.onclose = function() {
+      statusEl.className = 'ws-status disconnected';
+      statusEl.textContent = 'DISCONNECTED';
+      scheduleReconnect();
+    };
+
+    ws.onerror = function() {
+      statusEl.className = 'ws-status disconnected';
+      statusEl.textContent = 'ERROR';
+    };
+
+    ws.onmessage = function(event) {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'state') {
+          gameState = msg.data;
+          updateHud();
+          drawCanvas();
+        }
+      } catch (e) {}
+    };
+  }
+
+  function scheduleReconnect() {
+    if (wsReconnectTimer) return;
+    wsReconnectTimer = setTimeout(function() {
+      wsReconnectTimer = null;
+      connectWS();
+    }, 3000);
+  }
+
+  // ── Find my hero ───────────────────────────────────────────
+  function findMyHero() {
+    if (!gameState || !gameState.heroes) return null;
+    const heroes = gameState.heroes;
+    for (let i = 0; i < heroes.length; i++) {
+      if (heroes[i].agentId === agentId) return heroes[i];
+    }
+    return null;
+  }
+
+  // ── Update HUD ─────────────────────────────────────────────
+  function updateHud() {
+    myHero = findMyHero();
+    if (!myHero) return;
+
+    // HP / Mana bars
+    const hpPct = Math.max(0, (myHero.hp / myHero.maxHp) * 100);
+    const manaPct = Math.max(0, (myHero.mana / myHero.maxMana) * 100);
+    document.getElementById('hpBar').style.width = hpPct + '%';
+    document.getElementById('manaBar').style.width = manaPct + '%';
+    document.getElementById('hpLabel').textContent = Math.round(myHero.hp) + ' / ' + myHero.maxHp;
+    document.getElementById('manaLabel').textContent = Math.round(myHero.mana) + ' / ' + myHero.maxMana;
+
+    // Stats
+    document.getElementById('hudGold').textContent = myHero.gold || 0;
+    document.getElementById('hudKDA').textContent = (myHero.kills || 0) + '/' + (myHero.deaths || 0) + '/' + (myHero.assists || 0);
+    document.getElementById('hudLevel').textContent = myHero.level || 1;
+
+    // Items
+    const itemsEl = document.getElementById('hudItems');
+    itemsEl.innerHTML = '';
+    if (myHero.items && myHero.items.length) {
+      myHero.items.forEach(function(it) {
+        const tag = document.createElement('span');
+        tag.className = 'owned-tag';
+        tag.textContent = it.name;
+        itemsEl.appendChild(tag);
+      });
+    }
+
+    // Abilities
+    renderAbilities();
+
+    // Shop — update affordability
+    updateShopState();
+
+    // Dead overlay
+    if (!myHero.alive) {
+      document.getElementById('deadOverlay').classList.remove('hidden');
+      document.getElementById('deadTimer').textContent = 'Respawning in ' + Math.ceil((myHero.respawnTimer || 0) / 20) + 's...';
+      disableControls(true);
+    } else {
+      document.getElementById('deadOverlay').classList.add('hidden');
+      disableControls(false);
+    }
+
+    // Kill feed
+    if (gameState.kills && gameState.kills.length !== lastKillCount) {
+      const newKills = gameState.kills.slice(lastKillCount);
+      newKills.forEach(function(k) {
+        const isMine = k.killerId === myHero.id || k.killerAgent === agentId;
+        killFeedEntries.unshift({ text: (k.killerName || 'Unknown') + ' killed ' + (k.victimName || 'Unknown'), mine: isMine });
+      });
+      killFeedEntries = killFeedEntries.slice(0, 20);
+      lastKillCount = gameState.kills.length;
+      renderKillFeed();
+    }
+
+    // Game over
+    if (gameState.winner && !gameOverShown) {
+      gameOverShown = true;
+      showGameOver(gameState.winner);
+    }
+  }
+
+  function disableControls(disabled) {
+    document.querySelectorAll('.strat-btn, .ability-btn, .shop-buy').forEach(function(b) {
+      b.disabled = disabled;
+    });
+  }
+
+  // ── Abilities ──────────────────────────────────────────────
+  function renderAbilities() {
+    if (!myHero || !myHero.abilities) return;
+    const grid = document.getElementById('abilityGrid');
+    // Only rebuild if count changed
+    if (grid.children.length !== myHero.abilities.length) {
+      grid.innerHTML = '';
+      myHero.abilities.forEach(function(ab) {
+        const btn = document.createElement('button');
+        btn.className = 'ability-btn';
+        btn.dataset.abilityId = ab.id;
+        btn.innerHTML = '<span class="ab-name">' + ab.name + '</span><span class="ab-cost">' + ab.manaCost + ' MP</span><span class="ab-cd"></span>';
+        btn.onclick = function() { castAbility(ab.id); };
+        grid.appendChild(btn);
+      });
+    }
+    // Update states
+    myHero.abilities.forEach(function(ab, i) {
+      const btn = grid.children[i];
+      if (!btn) return;
+      const onCd = ab.currentCd > 0;
+      const noMana = myHero.mana < ab.manaCost;
+      btn.disabled = onCd || noMana || !myHero.alive;
+      const cdSpan = btn.querySelector('.ab-cd');
+      if (onCd) {
+        cdSpan.textContent = Math.ceil(ab.currentCd / 20) + 's';
+      } else {
+        cdSpan.textContent = '';
+      }
+    });
+  }
+
+  // ── Shop ───────────────────────────────────────────────────
+  function renderShop() {
+    const grid = document.getElementById('shopGrid');
+    grid.innerHTML = '';
+    SHOP_ITEMS.forEach(function(item) {
+      const row = document.createElement('div');
+      row.className = 'shop-item';
+      row.id = 'shop-' + item.id;
+      row.innerHTML =
+        '<span class="si-name">' + item.icon + ' ' + item.name + '</span>' +
+        '<span class="si-stats">' + item.stats + '</span>' +
+        '<span class="si-cost">' + item.cost + 'g</span>' +
+        '<button class="shop-buy" data-item="' + item.id + '" onclick="buyItem(\'' + item.id + '\')">BUY</button>';
+      grid.appendChild(row);
+    });
+  }
+
+  function updateShopState() {
+    if (!myHero) return;
+    const ownedIds = (myHero.items || []).map(function(it) { return it.id; });
+    SHOP_ITEMS.forEach(function(item) {
+      const row = document.getElementById('shop-' + item.id);
+      if (!row) return;
+      const btn = row.querySelector('.shop-buy');
+      if (ownedIds.indexOf(item.id) >= 0) {
+        btn.outerHTML = '<span class="shop-owned">&#10003;</span>';
+      } else {
+        btn.disabled = (myHero.gold || 0) < item.cost || !myHero.alive;
+      }
+    });
+  }
+
+  // ── Kill Feed ──────────────────────────────────────────────
+  function renderKillFeed() {
+    const el = document.getElementById('killFeed');
+    el.innerHTML = '';
+    killFeedEntries.slice(0, 10).forEach(function(k) {
+      const div = document.createElement('div');
+      div.className = 'kill-entry' + (k.mine ? ' mine' : '');
+      div.textContent = k.text;
+      el.appendChild(div);
+    });
+  }
+
+  // ── Strategy Actions ───────────────────────────────────────
+  window.doStrategy = async function(type) {
+    if (!myHero || !myHero.alive) return;
+    let targetX, targetY;
+    const myFaction = playerFaction;
+
+    if (type === 'retreat') {
+      targetX = myFaction === 'alliance' ? 200 : MAP_W - 200;
+      targetY = MAP_H / 2;
+    } else if (type === 'attack') {
+      targetX = myFaction === 'alliance' ? MAP_W - 200 : 200;
+      targetY = MAP_H / 2;
+    } else {
+      targetX = MAP_W / 2;
+      targetY = MAP_H / 2;
+    }
+
+    try {
+      await fetch('/api/strategy/deployment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId, action: 'move', targetX, targetY }),
+      });
+    } catch (e) {}
+  };
+
+  window.castAbility = async function(abilityId) {
+    if (!myHero || !myHero.alive) return;
+    try {
+      const resp = await fetch('/api/strategy/deployment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId, action: 'ability', abilityId }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        // silently ignore cooldown / mana errors
+      }
+    } catch (e) {}
+  };
+
+  window.buyItem = async function(itemId) {
+    if (!myHero || !myHero.alive) return;
+    try {
+      await fetch('/api/strategy/deployment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId, action: 'buy', itemId }),
+      });
+    } catch (e) {}
+  };
+
+  // ── Game Over ──────────────────────────────────────────────
+  function showGameOver(winner) {
+    const isVictory = winner === playerFaction;
+    const overlay = document.getElementById('gameoverOverlay');
+    overlay.classList.remove('hidden');
+    const title = document.getElementById('goTitle');
+    title.textContent = isVictory ? 'VICTORY' : 'DEFEAT';
+    title.className = 'go-title ' + (isVictory ? 'go-victory' : 'go-defeat');
+
+    const stats = document.getElementById('goStats');
+    stats.innerHTML = '';
+    if (myHero) {
+      [
+        { val: myHero.kills || 0, lbl: 'Kills' },
+        { val: myHero.deaths || 0, lbl: 'Deaths' },
+        { val: myHero.assists || 0, lbl: 'Assists' },
+        { val: myHero.gold || 0, lbl: 'Gold' },
+        { val: myHero.level || 1, lbl: 'Level' },
+      ].forEach(function(s) {
+        const div = document.createElement('div');
+        div.className = 'go-stat';
+        div.innerHTML = '<div class="go-val">' + s.val + '</div><div class="go-lbl">' + s.lbl + '</div>';
+        stats.appendChild(div);
+      });
+    }
+  }
+
+  window.playAgain = function() {
+    localStorage.removeItem('woa_agentId');
+    localStorage.removeItem('woa_playerName');
+    localStorage.removeItem('woa_faction');
+    localStorage.removeItem('woa_heroClass');
+    location.reload();
+  };
+
+  // ── Canvas Drawing ─────────────────────────────────────────
+  const canvas = document.getElementById('battleCanvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+
+  function drawCanvas() {
+    if (!ctx || !gameState) return;
+    const wrap = canvas.parentElement;
+    canvas.width = wrap.clientWidth;
+    canvas.height = wrap.clientHeight;
+    const cw = canvas.width, ch = canvas.height;
+    const scaleX = cw / MAP_W, scaleY = ch / MAP_H;
+
+    // Background — Alliance green left, Horde brown right
+    ctx.fillStyle = '#2A5A1A';
+    ctx.fillRect(0, 0, cw / 2, ch);
+    ctx.fillStyle = '#4A2A10';
+    ctx.fillRect(cw / 2, 0, cw / 2, ch);
+    // Lane road
+    const laneTop = 1040 * scaleY, laneBot = 1360 * scaleY;
+    ctx.fillStyle = '#5A4A2A';
+    ctx.fillRect(0, laneTop, cw / 2, laneBot - laneTop);
+    ctx.fillStyle = '#3A2010';
+    ctx.fillRect(cw / 2, laneTop, cw / 2, laneBot - laneTop);
+    // River divider
+    ctx.fillStyle = '#2A5080';
+    ctx.fillRect(cw / 2 - 2, 0, 4, ch);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(200,150,12,0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < MAP_W; x += 400) {
+      const sx = x * scaleX;
+      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, ch); ctx.stroke();
+    }
+    for (let y = 0; y < MAP_H; y += 400) {
+      const sy = y * scaleY;
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(cw, sy); ctx.stroke();
+    }
+
+    // Lane center line
+    ctx.strokeStyle = 'rgba(200,150,12,0.08)';
+    ctx.setLineDash([4, 8]);
+    const midY = (MAP_H / 2) * scaleY;
+    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(cw, midY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Structures
+    if (gameState.structures) {
+      gameState.structures.forEach(function(s) {
+        if (!s.alive) return;
+        const sx = (s.x || (s.pos && s.pos.x) || 0) * scaleX;
+        const sy = (s.y || (s.pos && s.pos.y) || 0) * scaleY;
+        const size = s.structureType === 'base' ? 14 : (s.structureType === 'barracks' ? 10 : 8);
+        ctx.fillStyle = s.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+        ctx.fillRect(sx - size / 2, sy - size / 2, size, size);
+        ctx.strokeStyle = s.faction === 'alliance' ? '#6AAFFF' : '#FF7A7A';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(sx - size / 2, sy - size / 2, size, size);
+      });
+    }
+
+    // Units
+    if (gameState.units) {
+      gameState.units.forEach(function(u) {
+        if (!u.alive) return;
+        const ux = u.pos.x * scaleX, uy = u.pos.y * scaleY;
+        ctx.beginPath();
+        ctx.arc(ux, uy, 3, 0, Math.PI * 2);
+        ctx.fillStyle = u.faction === 'alliance' ? 'rgba(74,143,224,0.7)' : 'rgba(226,75,74,0.7)';
+        ctx.fill();
+      });
+    }
+
+    // Heroes
+    if (gameState.heroes) {
+      gameState.heroes.forEach(function(h) {
+        if (!h.alive) return;
+        const hx = h.pos.x * scaleX, hy = h.pos.y * scaleY;
+        const isMe = h.agentId === agentId;
+        const radius = isMe ? 7 : 5;
+
+        // Glow for player
+        if (isMe) {
+          ctx.beginPath();
+          ctx.arc(hx, hy, 12, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(200,150,12,0.15)';
+          ctx.fill();
+        }
+
+        ctx.beginPath();
+        ctx.arc(hx, hy, radius, 0, Math.PI * 2);
+        if (isMe) {
+          ctx.fillStyle = '#C8960C';
+        } else {
+          ctx.fillStyle = h.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+        }
+        ctx.fill();
+        ctx.strokeStyle = isMe ? '#F0C040' : (h.faction === 'alliance' ? '#6AAFFF' : '#FF7A7A');
+        ctx.lineWidth = isMe ? 2 : 1;
+        ctx.stroke();
+
+        // Name label
+        ctx.fillStyle = isMe ? '#C8960C' : '#8A7D66';
+        ctx.font = (isMe ? 'bold ' : '') + '9px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(h.name || h.heroClass, hx, hy - radius - 4);
+      });
+    }
+
+    // Jungle camps
+    if (gameState.camps) {
+      gameState.camps.forEach(function(c) {
+        if (!c.monsters) return;
+        c.monsters.forEach(function(m) {
+          if (!m.alive) return;
+          const mx = m.pos.x * scaleX, my = m.pos.y * scaleY;
+          ctx.beginPath();
+          ctx.arc(mx, my, 4, 0, Math.PI * 2);
+          ctx.fillStyle = c.isBoss ? '#C8960C' : '#6A5E48';
+          ctx.fill();
+        });
+      });
+    }
+  }
+
+  // Resize canvas on window resize
+  window.addEventListener('resize', function() {
+    if (gameState) drawCanvas();
+  });
+
+})();
+</script>
+</body>
+</html>

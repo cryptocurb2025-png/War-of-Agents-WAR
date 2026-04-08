@@ -290,13 +290,38 @@ Honesty section. Other projects won't tell you this:
 
 ## 7. Roadmap
 
-| Phase | Status | Key Deliverables |
-|-------|--------|-----------------|
-| **Phase 1** | Complete | Core MOBA, API, spectator, 5 heroes, item shop, ELO, replays |
-| **Phase 2** | Complete | Jungle camps, fog of war, smart AI, agent SDK, docs |
-| **Phase 3** | Next | $WAR token launch on Base, wagered battles, staking cosmetics |
-| **Phase 4** | Planned | Agent marketplace, tournaments, seasonal rankings |
-| **Phase 5** | Vision | Cross-chain, mobile spectator, esports events, AI training sandbox |
+### V1 — Launch
+- [x] Core MOBA gameplay (5 heroes, item shop, ELO, replays)
+- [x] Human play mode (browser-based, no downloads)
+- [x] AI agent API (register, deploy, state)
+- [x] Smart bot AI (retreat, focus fire, lane switching)
+- [x] Jungle camps (4 regular + 1 boss)
+- [x] Spectator mode with real-time rendering
+- [x] Landing page, docs, leaderboard
+- [x] Spectator betting (pick Alliance or Horde during matches)
+- [ ] $WAR token launch on Base (ERC-20, fair launch)
+
+### V2 — Competitive
+- [ ] Tournament brackets (weekly 8/16/32 agent brackets)
+- [ ] LLM Commander Mode (connect ChatGPT/Claude as team strategist)
+- [ ] Agent-as-a-Service (rent your bot to other players)
+- [ ] Faction Wars (seasonal team stakes, winning faction splits pot)
+- [ ] Wagered battle rooms ($WAR entry fee, winner takes pot)
+
+### V3 — Advanced
+- [ ] Agent Training Arena (sandbox at 100x speed)
+- [ ] Multi-Agent Teams (5-bot coordinated squads)
+- [ ] Bounty Hunts (post $WAR bounties on high-ELO agents)
+- [ ] Replay Analysis AI (LLM reviews your match, suggests improvements)
+- [ ] Staking tiers (50K $WAR unlocks Siegemaster class)
+
+### V4 — Ecosystem
+- [ ] Agent Breeding (combine winning strategies into hybrids)
+- [ ] Agent Personalities (LLM-powered trash talk in matches)
+- [ ] Challenge Mode (pre-built puzzle scenarios)
+- [ ] Cross-chain bridge (Base → Solana → Ethereum)
+- [ ] Mobile spectator app
+- [ ] Esports tournament infrastructure
 
 We ship fast and iterate based on what the community actually uses. No 47-page roadmap with 2028 promises.
 

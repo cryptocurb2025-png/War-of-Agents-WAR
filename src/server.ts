@@ -214,6 +214,19 @@ interface KillEvent {
   bounty: number;
 }
 
+interface Bet {
+  oddsId: string;
+  oddsName: string;
+  oddsAmount: number;
+  faction: 'alliance' | 'horde';
+  timestamp: number;
+}
+
+interface BettingState {
+  bets: { alliance: number; horde: number };
+  betters: Bet[];
+}
+
 interface AgentRegistration {
   agentId: string;
   name: string;
@@ -432,6 +445,47 @@ function moveToward(pos: Position, target: Position, speed: number, dt: number, 
 let currentMatchId = `match_${Date.now()}`;
 let paused = false;
 const serverStartTime = Date.now();
+
+// ─── Betting State ──────────────────────────────────────────────────────────
+const bettingState: BettingState = {
+  bets: { alliance: 0, horde: 0 },
+  betters: [],
+};
+
+function resetBets() {
+  bettingState.bets = { alliance: 0, horde: 0 };
+  bettingState.betters = [];
+}
+
+function calculateOdds(): { alliance: string; horde: string; display: string } {
+  const a = bettingState.bets.alliance || 1;
+  const h = bettingState.bets.horde || 1;
+  const total = a + h;
+  return {
+    alliance: (total / a).toFixed(1),
+    horde: (total / h).toFixed(1),
+    display: `${(total / a).toFixed(1)}:${(total / h).toFixed(1)}`,
+  };
+}
+
+function calculatePayouts(winner: Faction) {
+  const loser: Faction = winner === 'alliance' ? 'horde' : 'alliance';
+  const winPool = bettingState.bets[winner];
+  const losePool = bettingState.bets[loser];
+  const winningBets = bettingState.betters.filter(b => b.faction === winner);
+
+  if (winPool === 0 || winningBets.length === 0) {
+    console.log(`[BETTING] No winning bets for ${winner}. Lose pool: ${losePool}`);
+    return;
+  }
+
+  console.log(`[BETTING] ${winner.toUpperCase()} wins! Win pool: ${winPool}, Lose pool: ${losePool}`);
+  for (const bet of winningBets) {
+    const share = bet.oddsAmount / winPool;
+    const payout = bet.oddsAmount + Math.floor(share * losePool);
+    console.log(`[BETTING] ${bet.oddsName} bet ${bet.oddsAmount} on ${bet.faction} => payout ${payout}`);
+  }
+}
 
 const state: GameState = {
   tick: 0,
@@ -752,6 +806,8 @@ function onKill(killerId: string, victim: Entity) {
     try {
       stmtEndMatch.run(Date.now(), state.winner, currentMatchId);
     } catch (_e) { /* ignore */ }
+    // Calculate betting payouts
+    calculatePayouts(state.winner);
   }
 }
 
@@ -1278,6 +1334,11 @@ function serializeState() {
     })),
     kills: state.kills.slice(-5),
     fogOfWar,
+    bets: {
+      alliance: bettingState.bets.alliance,
+      horde: bettingState.bets.horde,
+      count: bettingState.betters.length,
+    },
   };
 }
 
@@ -1407,6 +1468,56 @@ app.get('/api/shop', (_req, res) => {
   res.json({ items: SHOP_ITEMS });
 });
 
+// ─── Betting API ──────────────────────────────────────────────────────────────
+app.post('/api/bet', (req, res) => {
+  const { name, faction, amount } = req.body;
+  if (!name || !faction || !amount) {
+    return res.status(400).json({ error: 'Missing required fields: name, faction, amount' });
+  }
+  if (!['alliance', 'horde'].includes(faction)) {
+    return res.status(400).json({ error: 'Faction must be alliance or horde' });
+  }
+  const betAmount = Math.max(1, Math.floor(Number(amount)));
+  if (isNaN(betAmount) || betAmount <= 0) {
+    return res.status(400).json({ error: 'Amount must be a positive number' });
+  }
+  if (state.winner) {
+    return res.status(400).json({ error: 'Bets are locked — match is over' });
+  }
+
+  const bet: Bet = {
+    oddsId: `bet_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    oddsName: String(name).slice(0, 32),
+    oddsAmount: betAmount,
+    faction: faction as 'alliance' | 'horde',
+    timestamp: Date.now(),
+  };
+
+  bettingState.betters.push(bet);
+  bettingState.bets[bet.faction] += betAmount;
+
+  const odds = calculateOdds();
+  res.json({
+    success: true,
+    totalAlliance: bettingState.bets.alliance,
+    totalHorde: bettingState.bets.horde,
+    odds: odds.display,
+  });
+});
+
+app.get('/api/bets', (_req, res) => {
+  const odds = calculateOdds();
+  res.json({
+    alliance: bettingState.bets.alliance,
+    horde: bettingState.bets.horde,
+    count: bettingState.betters.length,
+    odds: {
+      alliance: odds.alliance,
+      horde: odds.horde,
+    },
+  });
+});
+
 // ─── Match History & Replay API ─────────────────────────────────────────────
 app.get('/api/matches', (_req, res) => {
   const rows = stmtGetMatches.all();
@@ -1434,6 +1545,9 @@ function resetGame() {
   state.waveCount = 0;
   state.dayNightTimer = 0;
   state.phase = 'day';
+
+  // Reset bets
+  resetBets();
 
   // Start new match
   currentMatchId = `match_${Date.now()}`;

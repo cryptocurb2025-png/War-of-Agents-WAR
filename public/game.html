@@ -476,6 +476,125 @@
     #chat-send { padding: 8px 14px; }
   }
 
+  /* ─── BETTING PANEL ────────────────────────────────── */
+  #betting-panel {
+    position: fixed;
+    top: 50px;
+    left: 10px;
+    width: 200px;
+    background: #0A0804ee;
+    border: 1px solid #5A4A2A;
+    border-radius: 6px;
+    padding: 10px;
+    z-index: 30;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: #AAA080;
+  }
+  #betting-panel .bet-title {
+    color: #C8960C;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    text-shadow: 0 0 4px rgba(200,150,12,0.4);
+    cursor: pointer;
+    user-select: none;
+  }
+  #betting-panel .bet-title:hover { color: #F0C040; }
+  #betting-panel.collapsed .bet-body { display: none; }
+  .bet-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+  .bet-bar-wrap .bet-label { min-width: 22px; font-weight: 700; }
+  .bet-bar-wrap .bet-label.blue { color: #4A8FE0; }
+  .bet-bar-wrap .bet-label.red { color: #E24B4A; }
+  .bet-bar-bg {
+    flex: 1;
+    height: 10px;
+    background: #0A0804;
+    border: 1px solid #2A2218;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bet-bar-fill-a { height: 100%; background: linear-gradient(90deg, #1A3A8A, #4A8FE0); border-radius: 2px; transition: width 0.3s; }
+  .bet-bar-fill-h { height: 100%; background: linear-gradient(90deg, #8A1A1A, #E24B4A); border-radius: 2px; transition: width 0.3s; }
+  .bet-bar-wrap .bet-amount { min-width: 36px; text-align: right; color: #C8960C; font-weight: 700; font-size: 10px; }
+  .bet-odds {
+    text-align: center;
+    font-size: 10px;
+    color: #8A7A5A;
+    margin: 4px 0;
+  }
+  .bet-odds .odds-val { color: #F0C040; font-weight: 700; }
+  .bet-input-row {
+    display: flex;
+    gap: 4px;
+    margin: 6px 0;
+  }
+  .bet-input-row input {
+    flex: 1;
+    background: #0A0804;
+    border: 1px solid #5A4A2A;
+    color: #d4c08a;
+    padding: 4px 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    border-radius: 3px;
+    outline: none;
+    text-align: center;
+  }
+  .bet-btn-row { display: flex; gap: 4px; }
+  .bet-btn {
+    flex: 1;
+    padding: 5px 0;
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .bet-btn.alliance {
+    background: linear-gradient(135deg, #1A3A8A, #2A5ABB);
+    color: #AAD0FF;
+    border: 1px solid #4A8FE044;
+  }
+  .bet-btn.alliance:hover { background: linear-gradient(135deg, #2A5ABB, #4A8FE0); box-shadow: 0 0 8px rgba(74,143,224,0.3); }
+  .bet-btn.horde {
+    background: linear-gradient(135deg, #5A1A1A, #8A2A2A);
+    color: #FFAAAA;
+    border: 1px solid #E24B4A44;
+  }
+  .bet-btn.horde:hover { background: linear-gradient(135deg, #8A2A2A, #CC3322); box-shadow: 0 0 8px rgba(226,75,74,0.3); }
+  .bet-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .bet-status {
+    text-align: center;
+    font-size: 9px;
+    margin-top: 4px;
+    min-height: 12px;
+  }
+  .bet-locked {
+    text-align: center;
+    color: #E24B4A;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-top: 6px;
+  }
+  .bet-count {
+    text-align: center;
+    font-size: 9px;
+    color: #5A4A3A;
+    margin-top: 2px;
+  }
+
   /* ─── WINNER OVERLAY ───────────────────────────────── */
   #winner-overlay {
     display: none;
@@ -664,6 +783,34 @@
   </div>
 </div>
 
+<!-- ─── BETTING PANEL ──────────────────────────────── -->
+<div id="betting-panel">
+  <div class="bet-title" id="bet-toggle">SPECTATOR BETS</div>
+  <div class="bet-body">
+    <div class="bet-bar-wrap">
+      <span class="bet-label blue">A</span>
+      <div class="bet-bar-bg"><div class="bet-bar-fill-a" id="bet-bar-a" style="width:50%"></div></div>
+      <span class="bet-amount" id="bet-amt-a">0</span>
+    </div>
+    <div class="bet-bar-wrap">
+      <span class="bet-label red">H</span>
+      <div class="bet-bar-bg"><div class="bet-bar-fill-h" id="bet-bar-h" style="width:50%"></div></div>
+      <span class="bet-amount" id="bet-amt-h">0</span>
+    </div>
+    <div class="bet-odds">ODDS: <span class="odds-val" id="bet-odds-a">1.0</span> : <span class="odds-val" id="bet-odds-h">1.0</span></div>
+    <div class="bet-count" id="bet-count">0 bets placed</div>
+    <div class="bet-input-row">
+      <input type="number" id="bet-amount-input" value="100" min="1" max="99999">
+    </div>
+    <div class="bet-btn-row">
+      <button class="bet-btn alliance" id="bet-alliance-btn">BET ALLIANCE</button>
+      <button class="bet-btn horde" id="bet-horde-btn">BET HORDE</button>
+    </div>
+    <div class="bet-status" id="bet-status"></div>
+    <div class="bet-locked" id="bet-locked" style="display:none">BETS LOCKED</div>
+  </div>
+</div>
+
 <div id="winner-overlay">
   <h1 id="winner-text">VICTORY</h1>
   <h2 id="winner-faction"></h2>
@@ -792,6 +939,81 @@ document.getElementById('chat-send').onclick = () => {
   }
 };
 document.getElementById('chat-input').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('chat-send').click(); };
+
+// ─── Betting Panel ──────────────────────────────────────
+document.getElementById('bet-toggle').onclick = () => {
+  document.getElementById('betting-panel').classList.toggle('collapsed');
+};
+
+async function placeBet(faction) {
+  const amountInput = document.getElementById('bet-amount-input');
+  const amount = parseInt(amountInput.value) || 100;
+  const statusEl = document.getElementById('bet-status');
+  statusEl.textContent = 'Placing bet...';
+  statusEl.style.color = '#8A7A5A';
+  try {
+    const r = await fetch('/api/bet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: chatName, faction, amount }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      statusEl.textContent = 'Bet placed! Odds: ' + d.odds;
+      statusEl.style.color = '#44AA44';
+    } else {
+      statusEl.textContent = d.error || 'Bet failed';
+      statusEl.style.color = '#E24B4A';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+    statusEl.style.color = '#E24B4A';
+  }
+  setTimeout(() => { statusEl.textContent = ''; }, 4000);
+}
+
+document.getElementById('bet-alliance-btn').onclick = () => placeBet('alliance');
+document.getElementById('bet-horde-btn').onclick = () => placeBet('horde');
+
+function updateBettingPanel() {
+  if (!gameState || !gameState.bets) return;
+  const bets = gameState.bets;
+  const total = (bets.alliance || 0) + (bets.horde || 0);
+  const aPct = total > 0 ? (bets.alliance / total * 100) : 50;
+  const hPct = total > 0 ? (bets.horde / total * 100) : 50;
+
+  document.getElementById('bet-bar-a').style.width = aPct + '%';
+  document.getElementById('bet-bar-h').style.width = hPct + '%';
+  document.getElementById('bet-amt-a').textContent = bets.alliance || 0;
+  document.getElementById('bet-amt-h').textContent = bets.horde || 0;
+
+  const aOdds = total > 0 ? (total / (bets.alliance || 1)).toFixed(1) : '1.0';
+  const hOdds = total > 0 ? (total / (bets.horde || 1)).toFixed(1) : '1.0';
+  document.getElementById('bet-odds-a').textContent = aOdds;
+  document.getElementById('bet-odds-h').textContent = hOdds;
+  document.getElementById('bet-count').textContent = (bets.count || 0) + ' bets placed';
+
+  const locked = !!gameState.winner;
+  document.getElementById('bet-locked').style.display = locked ? 'block' : 'none';
+  document.getElementById('bet-alliance-btn').disabled = locked;
+  document.getElementById('bet-horde-btn').disabled = locked;
+
+  // Show payout info when game ends
+  if (locked && !document.getElementById('bet-payout-info')) {
+    const info = document.createElement('div');
+    info.id = 'bet-payout-info';
+    info.style.cssText = 'text-align:center;font-size:9px;color:#F0C040;margin-top:4px;';
+    const winner = gameState.winner;
+    const winColor = winner === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    info.innerHTML = '<span style="color:' + winColor + '">' + winner.toUpperCase() + '</span> wins the pot!';
+    document.querySelector('.bet-body').appendChild(info);
+  }
+  if (!locked) {
+    const old = document.getElementById('bet-payout-info');
+    if (old) old.remove();
+  }
+}
+
 function addChatMsg(name, text) {
   const div = document.getElementById('chat-messages');
   const msg = document.createElement('div');
@@ -2155,6 +2377,7 @@ function updateUI() {
   // Kill announcements + event ticker + structure events
   checkKillAnnouncements(gs);
   updateEventTicker(gs);
+  updateBettingPanel();
 
   // Tower/base destroyed announcements
   if (!window._prevStructures) window._prevStructures = {};

@@ -55,6 +55,10 @@ a:hover { color: #F0C040; }
   box-shadow: 0 6px 30px rgba(255,102,0,0.5);
   color: #fff;
 }
+@keyframes tickerPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
 @keyframes stickyPulse {
   0%, 100% { box-shadow: 0 4px 20px rgba(255,102,0,0.3); }
   50% { box-shadow: 0 4px 30px rgba(255,102,0,0.5); }
@@ -205,10 +209,11 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 .hero-title-wrap { display: flex; flex-direction: column; align-items: center; }
 .hero-title {
   font-family: 'MedievalSharp', 'Cinzel', serif;
-  font-size: clamp(2.8rem, 8vw, 5.5rem);
-  font-weight: 900;
+  font-size: clamp(1.8rem, 5vw, 3.8rem);
+  font-weight: 400;
   color: #C8960C;
-  letter-spacing: 10px;
+  letter-spacing: 6px;
+  white-space: nowrap;
   text-transform: uppercase;
   text-shadow:
     0 0 60px rgba(200,150,12,0.6),
@@ -620,23 +625,49 @@ footer {
   <canvas id="particles-canvas"></canvas>
   <div class="hero-content">
     <div class="hero-factions">
+      <!-- Alliance emblem — pure SVG shield -->
       <div class="faction-emblem alliance" title="Alliance">
-        <img src="/icons/alliance_crest.jpg" style="width:56px;height:56px;border-radius:4px;border:2px solid #4A8FE0;box-shadow:0 0 15px rgba(74,143,224,0.4)" alt="Alliance">
+        <svg width="64" height="76" viewBox="0 0 64 76" style="filter:drop-shadow(0 0 12px rgba(74,143,224,0.5))">
+          <path d="M32 2 L60 14 L60 48 L32 74 L4 48 L4 14 Z" fill="#1A3388" stroke="#4A8FE0" stroke-width="2"/>
+          <path d="M32 12 L50 20 L50 44 L32 62 L14 44 L14 20 Z" fill="#2244AA" stroke="#6AAFFF" stroke-width="1" opacity="0.6"/>
+          <line x1="32" y1="18" x2="32" y2="58" stroke="#C8960C" stroke-width="2.5"/>
+          <line x1="18" y1="36" x2="46" y2="36" stroke="#C8960C" stroke-width="2.5"/>
+          <circle cx="32" cy="36" r="4" fill="#C8960C" opacity="0.7"/>
+        </svg>
         <div class="alliance-label">ALLIANCE</div>
       </div>
       <div class="hero-title-wrap">
         <h1 class="hero-title">War of Agents</h1>
         <p class="hero-subtitle">A MOBA-style strategy game where humans play alongside AI agents</p>
       </div>
+      <!-- Horde emblem — pure SVG iron skull -->
       <div class="faction-emblem horde" title="Iron Horde">
-        <img src="/icons/horde_crest.jpg" style="width:56px;height:56px;border-radius:4px;border:2px solid #E24B4A;box-shadow:0 0 15px rgba(226,75,74,0.4)" alt="Horde">
+        <svg width="68" height="72" viewBox="0 0 68 72" style="filter:drop-shadow(0 0 12px rgba(226,75,74,0.5))">
+          <path d="M10 4 L58 4 L66 18 L66 54 L58 68 L10 68 L2 54 L2 18 Z" fill="#1A0A00" stroke="#AA3322" stroke-width="2"/>
+          <circle cx="34" cy="30" r="14" fill="#D4C8A0" opacity="0.9"/>
+          <rect x="26" y="42" width="16" height="8" rx="2" fill="#D4C8A0" opacity="0.8"/>
+          <circle cx="28" cy="27" r="3.5" fill="#1A0A00"/>
+          <circle cx="40" cy="27" r="3.5" fill="#1A0A00"/>
+          <circle cx="28" cy="27" r="1.5" fill="#CC2222" opacity="0.8"/>
+          <circle cx="40" cy="27" r="1.5" fill="#CC2222" opacity="0.8"/>
+          <path d="M34 34 L31 40 L37 40 Z" fill="#1A0A00" opacity="0.7"/>
+          <line x1="28" y1="44" x2="28" y2="48" stroke="#D4C8A0" stroke-width="1.5" opacity="0.6"/>
+          <line x1="31" y1="44" x2="31" y2="48" stroke="#D4C8A0" stroke-width="1.5" opacity="0.6"/>
+          <line x1="34" y1="44" x2="34" y2="48" stroke="#D4C8A0" stroke-width="1.5" opacity="0.6"/>
+          <line x1="37" y1="44" x2="37" y2="48" stroke="#D4C8A0" stroke-width="1.5" opacity="0.6"/>
+          <line x1="40" y1="44" x2="40" y2="48" stroke="#D4C8A0" stroke-width="1.5" opacity="0.6"/>
+        </svg>
         <div class="horde-label">IRON HORDE</div>
       </div>
     </div>
-    <p style="color:#8A7A5A;font-size:0.95rem;max-width:600px;margin:20px auto 0;text-align:center;line-height:1.7">Two factions battle across the battlefield. Your hero fights automatically &mdash; you focus on strategy. No micro required. Programmatic, autonomous, and persistent.</p>
+    <p style="color:#8A7A5A;font-size:0.95rem;max-width:600px;margin:20px auto 0;text-align:center;line-height:1.7">Two factions battle across the battlefield. Your hero fights automatically &mdash; you focus on strategy. No micro required.</p>
     <div class="hero-buttons">
       <a href="/play" class="btn btn-primary">Play Now</a>
       <a href="/game.html" class="btn btn-secondary">Watch Live</a>
+    </div>
+    <!-- Live game ticker -->
+    <div id="hero-ticker" style="margin-top:24px;font-size:0.8rem;color:#5A4A2A;letter-spacing:1px;animation:tickerPulse 3s ease-in-out infinite">
+      <span id="ticker-text">Connecting to battlefield...</span>
     </div>
   </div>
   <div class="hero-scroll-hint">&#9660; SCROLL TO EXPLORE &#9660;</div>
@@ -919,14 +950,25 @@ ws.onmessage = (e) => {
 
   async function fetchStats() {
     try {
-      const [statsRes, betsRes, matchesRes] = await Promise.all([
+      const [statsRes, betsRes, matchesRes, gameRes] = await Promise.all([
         fetch('/api/admin/stats').then(r => r.json()),
         fetch('/api/bets').then(r => r.json()),
         fetch('/api/matches').then(r => r.json()),
+        fetch('/api/game/state').then(r => r.json()),
       ]);
       animateNumber(document.getElementById('stat-matches'), matchesRes.length || 0);
       animateNumber(document.getElementById('stat-agents'), statsRes.heroCount || 0);
       animateNumber(document.getElementById('stat-bets'), betsRes.count || 0);
+
+      // Update hero ticker
+      const ticker = document.getElementById('ticker-text');
+      if (ticker && gameRes) {
+        const aKills = gameRes.heroes.filter(h=>h.faction==='alliance').reduce((s,h)=>s+h.kills,0);
+        const hKills = gameRes.heroes.filter(h=>h.faction==='horde').reduce((s,h)=>s+h.kills,0);
+        const alive = gameRes.heroes.filter(h=>h.alive).length;
+        ticker.textContent = `${alive} heroes fighting \u2022 Wave ${gameRes.waveCount} \u2022 Alliance ${aKills} \u2014 ${hKills} Horde \u2022 ${gameRes.winner ? 'MATCH OVER' : 'LIVE'}`;
+        ticker.style.color = gameRes.winner ? '#C8960C' : '#5A4A2A';
+      }
     } catch(e) {}
   }
 

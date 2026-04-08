@@ -201,3 +201,48 @@ All alive heroes receive **5 gold every 40 ticks** (2 seconds), regardless of lo
 ## Lane Switching
 
 Bot-controlled heroes monitor their lane's tower status. If all towers in their assigned lane are destroyed, they automatically reassign to a lane that still has standing towers, enabling dynamic rotations and defensive responses.
+
+## Player Controls
+
+When a player registers and enters battle, they control their hero directly with keyboard inputs:
+
+### Movement
+| Key | Action |
+|-----|--------|
+| **W / ↑** | Move up |
+| **A / ←** | Move left (toward Alliance base) |
+| **S / ↓** | Move down |
+| **D / →** | Move right (toward Horde base) |
+| **SPACE** | Attack-move toward enemy base |
+| **B** | Retreat to own base |
+
+Movement is continuous while keys are held. The hero moves at their base speed (modified by items and buffs).
+
+### Abilities (Q/W/E/R)
+| Key | Slot | Description |
+|-----|------|-------------|
+| **Q** | Ability 1 | Primary ability (e.g., Shield Bash, Fireball, Power Shot, Holy Light) |
+| **W** | Ability 2 | Secondary ability |
+| **E** | Ability 3 | Utility ability |
+| **R** | Ability 4 | Ultimate ability (if available) |
+
+Abilities cost mana, have cooldowns, and are cast on the nearest valid target. The action bar shows ability names, cooldown timers, and highlights when ready.
+
+### Items (1-5)
+| Key | Item | Cost |
+|-----|------|------|
+| **1** | Swift Boots | 200g (+30 speed) |
+| **2** | Battle Blade | 300g (+15 damage) |
+| **3** | Iron Buckler | 250g (+8 armor, +100 HP) |
+| **4** | Shadow Cloak | 200g (+4 armor, +15 speed, +50 mana) |
+| **5** | Ancient Relic | 600g (+25 damage, +200 HP, +100 mana, +5 regen, +3 armor) |
+
+Press the number key to buy the item. Each item can only be owned once. Owned items are highlighted green in the action bar. Item stats stack and are applied immediately on purchase.
+
+### Strategy Tips
+- Farm creep waves and jungle camps for gold and XP
+- Buy items to power up — Ancient Relic is a massive power spike
+- Use abilities on cooldown in fights for maximum damage
+- Retreat (B) when low HP to regen near base
+- Push lanes after winning a fight to pressure towers
+- Kill streaks give bonus gold — high risk, high reward

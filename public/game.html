@@ -1073,8 +1073,9 @@ function pUpdate() {
   if (!graphics) return;
   graphics.clear();
 
-  // Draw base terrain even before WebSocket connects
   const halfW = MAP_W / 2;
+
+  // Draw base terrain even before WebSocket connects
   graphics.fillStyle(0x3A7A2A, 1);
   graphics.fillRect(0, 0, halfW, MAP_H);
   graphics.fillStyle(0x5A3A1A, 1);
@@ -1088,10 +1089,8 @@ function pUpdate() {
   if (!gameState) return; // rest needs game state
 
   const gs = gameState;
-  const isNight = false; // night overlay disabled
+  const isNight = false;
   const t = gs.tick;
-
-  const halfW = MAP_W / 2;
 
   // ─── TERRAIN (drawn on dynamic graphics every frame — simple & reliable) ───
   const grassBase = isNight ? 0x1a3010 : 0x3A7A2A;

@@ -957,24 +957,25 @@ ws.onmessage = (e) => {
 
   async function fetchStats() {
     try {
-      const [statsRes, betsRes, matchesRes, gameRes] = await Promise.all([
-        fetch('/api/admin/stats').then(r => r.json()),
-        fetch('/api/bets').then(r => r.json()),
-        fetch('/api/matches').then(r => r.json()),
-        fetch('/api/game/state').then(r => r.json()),
+      const [fcRes, rewardsRes] = await Promise.all([
+        fetch('/api/fightclub').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/api/rewards').then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
-      animateNumber(document.getElementById('stat-matches'), matchesRes.length || 0);
-      animateNumber(document.getElementById('stat-agents'), statsRes.heroCount || 0);
-      animateNumber(document.getElementById('stat-bets'), betsRes.count || 0);
 
-      // Update hero ticker
-      const ticker = document.getElementById('ticker-text');
-      if (ticker && gameRes) {
-        const aKills = gameRes.heroes.filter(h=>h.faction==='alliance').reduce((s,h)=>s+h.kills,0);
-        const hKills = gameRes.heroes.filter(h=>h.faction==='horde').reduce((s,h)=>s+h.kills,0);
-        const alive = gameRes.heroes.filter(h=>h.alive).length;
-        ticker.textContent = `${alive} heroes fighting \u2022 Wave ${gameRes.waveCount} \u2022 Alliance ${aKills} \u2014 ${hKills} Horde \u2022 ${gameRes.winner ? 'MATCH OVER' : 'LIVE'}`;
-        ticker.style.color = gameRes.winner ? '#C8960C' : '#5A4A2A';
+      if (fcRes) {
+        animateNumber(document.getElementById('stat-matches'), fcRes.allTime?.totalRounds || 0);
+        animateNumber(document.getElementById('stat-agents'), (fcRes.wins?.alliance || 0) + (fcRes.wins?.horde || 0));
+        animateNumber(document.getElementById('stat-bets'), fcRes.prediction?.total || 0);
+
+        const ticker = document.getElementById('ticker-text');
+        if (ticker) {
+          const round = fcRes.round?.title || 'Loading...';
+          const cmd = fcRes.commanders;
+          const cmdText = cmd ? `${cmd.alliance.name} vs ${cmd.horde.name}` : '';
+          const score = `Alliance ${fcRes.wins?.alliance || 0} \u2014 ${fcRes.wins?.horde || 0} Horde`;
+          ticker.textContent = `${round} \u2022 ${score} \u2022 Series #${fcRes.series?.number || 1} ${cmdText ? '\u2022 ' + cmdText : ''} \u2022 LIVE`;
+          ticker.style.color = fcRes.series?.winner ? '#C8960C' : '#5A4A2A';
+        }
       }
     } catch(e) {}
   }

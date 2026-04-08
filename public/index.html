@@ -154,20 +154,25 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 /* Gold trim border around entire hero section */
 #hero { border-bottom: 3px solid; border-image: linear-gradient(90deg, #3A2A0A, #C8960C, #F0C040, #C8960C, #3A2A0A) 1; }
 
-/* Floating hero icon collage — positioned around edges */
-.hero-icon-float {
+/* CSS ember particles — gold sparks floating upward */
+.ember {
   position: absolute;
-  width: 48px; height: 48px;
-  border-radius: 6px;
-  border: 2px solid rgba(200,150,12,0.2);
-  opacity: 0.15;
-  animation: iconFloat 8s ease-in-out infinite;
+  bottom: -10px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #C8960C;
+  opacity: 0;
   z-index: 0;
-  box-shadow: 0 0 20px rgba(200,150,12,0.1);
+  animation: emberRise 6s ease-out infinite;
+  box-shadow: 0 0 6px rgba(200,150,12,0.6);
 }
-@keyframes iconFloat {
-  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.12; }
-  50% { transform: translateY(-15px) rotate(3deg); opacity: 0.2; }
+.ember.blue { background: #4A8FE0; box-shadow: 0 0 6px rgba(74,143,224,0.6); }
+.ember.red { background: #E24B4A; box-shadow: 0 0 6px rgba(226,75,74,0.6); }
+@keyframes emberRise {
+  0% { opacity: 0; transform: translateY(0) scale(1); }
+  10% { opacity: 0.8; }
+  50% { opacity: 0.5; transform: translateY(-40vh) scale(0.8); }
+  100% { opacity: 0; transform: translateY(-90vh) scale(0.3); }
 }
 #particles-canvas {
   position: absolute; inset: 0;
@@ -181,12 +186,13 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 
 /* Faction crests — CSS drawn */
 .faction-emblem {
-  width: 80px;
+  width: 120px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   animation: emblemFloat 4s ease-in-out infinite;
   position: relative;
   flex-shrink: 0;
 }
+.faction-emblem svg { width: 100px; height: 120px; }
 .faction-emblem.alliance { animation-delay: 0s; }
 .faction-emblem.horde { animation-delay: 2s; }
 
@@ -615,13 +621,20 @@ footer {
 
 <!-- ════════ HERO ════════ -->
 <section id="hero">
-  <!-- Floating WoW icons — balanced left/right for depth -->
-  <img src="/icons/spell_frost.jpg" class="hero-icon-float" style="top:15%;left:3%;animation-delay:0s" alt="">
-  <img src="/icons/helmet.jpg" class="hero-icon-float" style="top:45%;left:2%;animation-delay:2s" alt="">
-  <img src="/icons/spell_holy.jpg" class="hero-icon-float" style="top:75%;left:4%;animation-delay:4s" alt="">
-  <img src="/icons/spell_arcane.jpg" class="hero-icon-float" style="top:15%;right:3%;animation-delay:1s" alt="">
-  <img src="/icons/boss_fire.jpg" class="hero-icon-float" style="top:45%;right:2%;animation-delay:3s" alt="">
-  <img src="/icons/orc_skull.jpg" class="hero-icon-float" style="top:75%;right:4%;animation-delay:5s" alt="">
+  <!-- CSS ember particles — no images needed -->
+  <div class="ember" style="left:5%;animation-delay:0s"></div>
+  <div class="ember" style="left:12%;animation-delay:0.7s"></div>
+  <div class="ember" style="left:20%;animation-delay:1.4s"></div>
+  <div class="ember" style="left:35%;animation-delay:2.1s"></div>
+  <div class="ember" style="left:50%;animation-delay:0.3s"></div>
+  <div class="ember" style="left:65%;animation-delay:1.8s"></div>
+  <div class="ember" style="left:78%;animation-delay:0.9s"></div>
+  <div class="ember" style="left:88%;animation-delay:2.5s"></div>
+  <div class="ember" style="left:95%;animation-delay:1.2s"></div>
+  <div class="ember blue" style="left:8%;animation-delay:0.5s"></div>
+  <div class="ember blue" style="left:18%;animation-delay:1.6s"></div>
+  <div class="ember red" style="left:82%;animation-delay:0.8s"></div>
+  <div class="ember red" style="left:92%;animation-delay:2.2s"></div>
   <canvas id="particles-canvas"></canvas>
   <div class="hero-content">
     <div class="hero-factions">
@@ -760,13 +773,7 @@ footer {
     <div class="gold-divider"></div>
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-icon" style="display:flex;gap:4px;justify-content:center;margin-bottom:12px">
-          <img src="/icons/knight.jpg" style="width:32px;height:32px;border-radius:3px;border:1px solid #5A4A2A" alt="Knight" title="Knight">
-          <img src="/icons/ranger.jpg" style="width:32px;height:32px;border-radius:3px;border:1px solid #5A4A2A" alt="Ranger" title="Ranger">
-          <img src="/icons/mage.jpg" style="width:32px;height:32px;border-radius:3px;border:1px solid #5A4A2A" alt="Mage" title="Mage">
-          <img src="/icons/priest.jpg" style="width:32px;height:32px;border-radius:3px;border:1px solid #5A4A2A" alt="Priest" title="Priest">
-          <img src="/icons/siege.jpg" style="width:32px;height:32px;border-radius:3px;border:1px solid #5A4A2A" alt="Siege" title="Siegemaster">
-        </div>
+        <span class="feature-icon">&#9876;&#65039; &#127993; &#10024; &#10014;&#65039; &#128163;</span>
         <h3 class="feature-title">5 Hero Classes</h3>
         <p class="feature-desc">Knight, Ranger, Mage, Priest, Siegemaster. Each with 5 unique abilities, upgrade tiers, and distinct tactical roles.</p>
       </div>

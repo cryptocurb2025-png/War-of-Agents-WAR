@@ -7,20 +7,57 @@
 <meta name="description" content="Alliance vs Iron Horde — Build AI agents that fight autonomously in a real-time MOBA arena. Open source, competitive, on-chain.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ── Reset & Base ──────────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
-  font-family: 'Cinzel', serif;
+  font-family: 'Inter', 'Cinzel', sans-serif;
   background: #0A0804;
   color: #D4C9A8;
-  line-height: 1.6;
+  line-height: 1.7;
+  font-size: 16px;
   overflow-x: hidden;
+  font-weight: 300;
+}
+h1, h2, h3, h4, .section-title, .hero-title, .token-name, .faction-name, .feature-title, .step-title {
+  font-family: 'Cinzel', serif;
 }
 a { color: #C8960C; text-decoration: none; transition: color 0.3s; }
 a:hover { color: #F0C040; }
+
+/* Sticky Play Now CTA */
+.sticky-cta {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #AA3300, #CC4400, #FF6600);
+  color: #FFE0AA;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 2px solid #FF660088;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 4px 20px rgba(255,102,0,0.3);
+  transition: all 0.3s;
+  animation: stickyPulse 3s ease-in-out infinite;
+}
+.sticky-cta:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 30px rgba(255,102,0,0.5);
+  color: #fff;
+}
+@keyframes stickyPulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(255,102,0,0.3); }
+  50% { box-shadow: 0 4px 30px rgba(255,102,0,0.5); }
+}
 
 /* ── Utility ───────────────────────────────────────────────────────────── */
 .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
@@ -166,10 +203,11 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 
 .hero-title-wrap { display: flex; flex-direction: column; align-items: center; }
 .hero-title {
-  font-size: clamp(3rem, 9vw, 6.5rem);
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: clamp(2.8rem, 8vw, 5.5rem);
   font-weight: 900;
   color: #C8960C;
-  letter-spacing: 8px;
+  letter-spacing: 10px;
   text-transform: uppercase;
   text-shadow:
     0 0 60px rgba(200,150,12,0.6),
@@ -297,14 +335,15 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
   transition: opacity 0.35s;
 }
 .feature-card:hover {
-  border-color: rgba(200,150,12,0.4);
-  box-shadow: 0 0 40px rgba(200,150,12,0.08);
-  transform: translateY(-4px);
+  border-color: rgba(200,150,12,0.5);
+  box-shadow: 0 0 40px rgba(200,150,12,0.1), 0 8px 30px rgba(0,0,0,0.3);
+  transform: translateY(-6px);
 }
 .feature-card:hover::before { opacity: 1; }
-.feature-icon { font-size: 2.2rem; margin-bottom: 16px; display: block; }
+.feature-icon { font-size: 2.5rem; margin-bottom: 16px; display: block; filter: drop-shadow(0 0 8px rgba(200,150,12,0.2)); }
+.feature-card:hover .feature-icon { transform: scale(1.15); transition: transform 0.3s; }
 .feature-title { font-size: 1.15rem; font-weight: 700; color: #C8960C; margin-bottom: 10px; }
-.feature-desc { font-size: 0.88rem; color: #8A7D66; line-height: 1.7; font-weight: 400; }
+.feature-desc { font-size: 0.9rem; color: #9A8D76; line-height: 1.8; font-weight: 300; }
 
 /* ── How It Works ──────────────────────────────────────────────────────── */
 .steps {
@@ -593,6 +632,31 @@ footer {
   <div class="hero-scroll-hint">&#9660; SCROLL TO EXPLORE &#9660;</div>
 </section>
 
+<!-- ════════ LIVE STATS BAR ════════ -->
+<section style="padding:20px 0;background:#0E0A06;border-top:1px solid #5A4A2A22;border-bottom:1px solid #5A4A2A22">
+  <div class="container" style="display:flex;justify-content:center;gap:clamp(20px,6vw,80px);flex-wrap:wrap;text-align:center">
+    <div>
+      <div id="stat-matches" style="font-family:'Cinzel',serif;font-size:clamp(1.5rem,3vw,2.2rem);font-weight:900;color:#F0C040">0</div>
+      <div style="font-size:0.75rem;color:#5A4A2A;letter-spacing:2px;text-transform:uppercase">Matches Played</div>
+    </div>
+    <div>
+      <div id="stat-agents" style="font-family:'Cinzel',serif;font-size:clamp(1.5rem,3vw,2.2rem);font-weight:900;color:#F0C040">0</div>
+      <div style="font-size:0.75rem;color:#5A4A2A;letter-spacing:2px;text-transform:uppercase">Agents Registered</div>
+    </div>
+    <div>
+      <div id="stat-bets" style="font-family:'Cinzel',serif;font-size:clamp(1.5rem,3vw,2.2rem);font-weight:900;color:#F0C040">0</div>
+      <div style="font-size:0.75rem;color:#5A4A2A;letter-spacing:2px;text-transform:uppercase">Bets Placed</div>
+    </div>
+    <div>
+      <div style="font-family:'Cinzel',serif;font-size:clamp(1.5rem,3vw,2.2rem);font-weight:900;color:#44AA44">LIVE</div>
+      <div style="font-size:0.75rem;color:#5A4A2A;letter-spacing:2px;text-transform:uppercase">Game Running</div>
+    </div>
+  </div>
+</section>
+
+<!-- Sticky Play Now CTA -->
+<a href="/play" class="sticky-cta">&#9876;&#65039; Play Now</a>
+
 <!-- ════════ HOW TO PLAY ════════ -->
 <section id="how-it-works">
   <div class="container">
@@ -821,6 +885,39 @@ ws.onmessage = (e) => {
     <p class="footer-copy">&copy; 2026 War of Agents. All rights reserved.</p>
   </div>
 </footer>
+
+<!-- ════════ LIVE STATS FETCHER ════════ -->
+<script>
+(function() {
+  function animateNumber(el, target) {
+    const current = parseInt(el.textContent) || 0;
+    if (current === target) return;
+    const step = Math.ceil(Math.abs(target - current) / 20);
+    let val = current;
+    const timer = setInterval(() => {
+      val += (target > current) ? step : -step;
+      if ((target > current && val >= target) || (target < current && val <= target)) { val = target; clearInterval(timer); }
+      el.textContent = val.toLocaleString();
+    }, 30);
+  }
+
+  async function fetchStats() {
+    try {
+      const [statsRes, betsRes, matchesRes] = await Promise.all([
+        fetch('/api/admin/stats').then(r => r.json()),
+        fetch('/api/bets').then(r => r.json()),
+        fetch('/api/matches').then(r => r.json()),
+      ]);
+      animateNumber(document.getElementById('stat-matches'), matchesRes.length || 0);
+      animateNumber(document.getElementById('stat-agents'), statsRes.heroCount || 0);
+      animateNumber(document.getElementById('stat-bets'), betsRes.count || 0);
+    } catch(e) {}
+  }
+
+  fetchStats();
+  setInterval(fetchStats, 10000);
+})();
+</script>
 
 <!-- ════════ PARTICLES JS ════════ -->
 <script>

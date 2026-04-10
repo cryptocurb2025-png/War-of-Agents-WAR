@@ -954,14 +954,30 @@ function updateEventTicker(gs) {
   const ticker = document.getElementById('event-ticker');
   for (let i = _lastTickerKillCount; i < gs.kills.length; i++) {
     const k = gs.kills[i];
-    const killer = gs.heroes.find(h => h.id === k.killerId);
-    const victim = gs.heroes.find(h => h.id === k.victimId);
-    if (!killer || !victim) continue;
-    const kC = killer.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
-    const vC = victim.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    // Prefer the rich kill data baked into the kill event itself; fall back to live hero lookup
+    const kFaction = k.killerFaction || (gs.heroes.find(h => h.id === k.killerId) || {}).faction;
+    const vFaction = k.victimFaction || (gs.heroes.find(h => h.id === k.victimId) || {}).faction;
+    if (!kFaction || !vFaction) continue;
+    const killerName = k.killerName || k.killerClass || (gs.heroes.find(h => h.id === k.killerId) || {}).heroClass || 'unknown';
+    const victimName = k.victimName || k.victimClass || (gs.heroes.find(h => h.id === k.victimId) || {}).heroClass || 'unknown';
+    const kC = kFaction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    const vC = vFaction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    // Player names get a gold tint to stand out from bot class names
+    const kStyle = k.killerIsPlayer ? `color:${kC};text-shadow:0 0 6px #FFD70066;font-weight:700` : `color:${kC}`;
+    const vStyle = k.victimIsPlayer ? `color:${vC};text-shadow:0 0 6px #FFD70066;font-weight:700` : `color:${vC}`;
+    // Highlight if you (the player) were involved
+    const youInvolved = playerAgentId && (
+      (k.killerIsPlayer && (gs.heroes.find(h => h.id === k.killerId) || {}).agentId === playerAgentId) ||
+      (k.victimIsPlayer && (gs.heroes.find(h => h.id === k.victimId) || {}).agentId === playerAgentId)
+    );
     const ev = document.createElement('div');
     ev.className = 'ticker-event';
-    ev.innerHTML = `<span style="color:${kC}">${killer.heroClass}</span> <span style="color:#C8960C">\u2694</span> <span style="color:${vC}">${victim.heroClass}</span>`;
+    ev.innerHTML = `<span style="${kStyle}">${killerName}</span> <span style="color:#C8960C">\u2694</span> <span style="${vStyle}">${victimName}</span>`;
+    if (youInvolved) {
+      ev.style.background = 'rgba(255,215,0,0.18)';
+      ev.style.borderLeft = '3px solid #FFD700';
+      ev.style.paddingLeft = '6px';
+    }
     ticker.appendChild(ev);
     setTimeout(() => { if (ev.parentNode) ev.remove(); }, 5000);
     while (ticker.children.length > 5) ticker.removeChild(ticker.firstChild);
@@ -1961,13 +1977,26 @@ function pUpdate() {
     currentTargetId = null;
   }
 
-  // ─── PLAYER HERO HIGHLIGHT — green arrow above own hero ────
+  // ─── PLAYER HERO HIGHLIGHT — unmistakable "YOU" marker ────
   if (myH && myH.alive) {
+    const pulse = 0.6 + Math.sin(t * 0.15) * 0.25;
+    // Big pulsing green ring
+    graphics.lineStyle(4, 0x44FF44, pulse);
+    graphics.strokeCircle(myH.x, myH.y, 42);
+    graphics.lineStyle(2, 0x88FF88, pulse * 0.6);
+    graphics.strokeCircle(myH.x, myH.y, 50);
+    // Dotted ground ring
+    for (let i = 0; i < 16; i++) {
+      const ang = (i / 16) * Math.PI * 2 + t * 0.02;
+      graphics.fillStyle(0x44FF44, 0.7);
+      graphics.fillCircle(myH.x + Math.cos(ang) * 56, myH.y + Math.sin(ang) * 56, 2.5);
+    }
+    // Bobbing arrow above
     const bobArr = Math.sin(t * 0.12) * 5;
-    graphics.fillStyle(0x44FF44, 0.7);
-    graphics.fillTriangle(myH.x, myH.y - 95 + bobArr, myH.x - 8, myH.y - 110 + bobArr, myH.x + 8, myH.y - 110 + bobArr);
-    graphics.lineStyle(2, 0x44FF44, 0.5);
-    graphics.strokeCircle(myH.x, myH.y, 35);
+    graphics.fillStyle(0x44FF44, 0.95);
+    graphics.fillTriangle(myH.x, myH.y - 100 + bobArr, myH.x - 12, myH.y - 122 + bobArr, myH.x + 12, myH.y - 122 + bobArr);
+    graphics.lineStyle(2, 0x002200, 0.9);
+    graphics.strokeTriangle(myH.x, myH.y - 100 + bobArr, myH.x - 12, myH.y - 122 + bobArr, myH.x + 12, myH.y - 122 + bobArr);
   }
 
   // ─── PROJECTILES with ability effects ───────────────────────
@@ -2253,15 +2282,25 @@ function renderSprite(id, texKey, entity, t, isHero) {
     const glowKey = isA ? 'glow_blue' : 'glow_red';
     sp._glow = phaserScene.add.image(entity.x, clampedY + 40, glowKey).setDepth(9).setScale(1.2).setAlpha(0.2);
 
-    // Name label
+    // Name label — bot heroes show class, player heroes show display name in gold
     const classNames = { footman:'Knight', ironwarrior:'Knight', archer:'Ranger', shredder:'Ranger',
       gryphon:'Gryphon', warlock:'Mage', ballista:'Siege', colossus:'Siege',
       knight:'Knight', ranger:'Ranger', mage:'Mage', priest:'Priest', siegemaster:'Siege' };
-    const labelText = classNames[entity.heroClass || entity.unitType] || '';
+    const isPlayerHero = isHero && entity.agentId && entity.displayName;
+    const labelText = isPlayerHero
+      ? entity.displayName
+      : (classNames[entity.heroClass || entity.unitType] || '');
     sp._label = phaserScene.add.text(entity.x, clampedY + 50, labelText, {
-      fontSize: '10px', fontFamily: 'Cinzel', color: '#ffffff',
-      backgroundColor: '#00000088', padding: { x: 3, y: 1 },
+      fontSize: isPlayerHero ? '12px' : '10px',
+      fontFamily: 'Cinzel',
+      color: isPlayerHero ? '#FFD700' : '#ffffff',
+      fontStyle: isPlayerHero ? 'bold' : 'normal',
+      backgroundColor: isPlayerHero ? '#000000CC' : '#00000088',
+      padding: { x: isPlayerHero ? 5 : 3, y: isPlayerHero ? 2 : 1 },
+      stroke: isPlayerHero ? '#000' : undefined,
+      strokeThickness: isPlayerHero ? 2 : 0,
     }).setOrigin(0.5, 0).setDepth(22);
+    sp._isPlayerHero = isPlayerHero;
   }
 
   // Update position — smooth interpolation (lerp) for fluid movement
@@ -2281,18 +2320,24 @@ function renderSprite(id, texKey, entity, t, isHero) {
     sp._glow.setAlpha(0.2);
   }
 
-  // Label — hide if another unit is within 60px (proximity check)
+  // Label — player heroes always visible (you need to know who you are);
+  // bots/units hide if another entity is within 60px (proximity check)
   if (sp._label) {
-    let tooClose = false;
-    for (const pos of _renderedPositions) {
-      const dx = entity.x - pos.x, dy = clampedY - pos.y;
-      if (Math.sqrt(dx * dx + dy * dy) < 60) { tooClose = true; break; }
-    }
-    if (tooClose) {
-      sp._label.setVisible(false);
-    } else {
+    if (sp._isPlayerHero) {
       sp._label.setVisible(true);
       sp._label.setPosition(newX, newY + 52);
+    } else {
+      let tooClose = false;
+      for (const pos of _renderedPositions) {
+        const dx = entity.x - pos.x, dy = clampedY - pos.y;
+        if (Math.sqrt(dx * dx + dy * dy) < 60) { tooClose = true; break; }
+      }
+      if (tooClose) {
+        sp._label.setVisible(false);
+      } else {
+        sp._label.setVisible(true);
+        sp._label.setPosition(newX, newY + 52);
+      }
     }
   }
   _renderedPositions.push({ x: entity.x, y: clampedY });
@@ -3241,18 +3286,81 @@ if (playerAgentId) {
       if (key) document.dispatchEvent(new KeyboardEvent('keydown', {key}));
     });
   });
+
+  // ─── Ghost-state banner: server lost track of our hero ──────
+  function ensureGhostBanner() {
+    let el = document.getElementById('ghost-banner');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'ghost-banner';
+    el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:200;background:linear-gradient(145deg,#1A1208,#0F0A04);border:2px solid #C8960C;border-radius:12px;padding:32px 40px;text-align:center;box-shadow:0 0 60px rgba(200,150,12,0.4);font-family:Cinzel,serif;display:none;max-width:480px';
+    el.innerHTML = `
+      <div style="font-size:2.4rem;margin-bottom:8px">&#128123;</div>
+      <div style="color:#C8960C;font-size:1.1rem;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">You're Not in the Match</div>
+      <div style="color:#9A8B6E;font-size:0.85rem;margin-bottom:18px;line-height:1.5">The match reset and your slot wasn't carried over. This shouldn't happen anymore — let's get you back in.</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button id="ghost-rejoin" style="padding:10px 22px;background:linear-gradient(135deg,#C8960C,#A07A08);color:#0A0804;border:none;border-radius:4px;font-family:Cinzel,serif;font-weight:900;letter-spacing:2px;text-transform:uppercase;font-size:0.78rem;cursor:pointer">Rejoin Match</button>
+        <button id="ghost-spectate" style="padding:10px 22px;background:transparent;color:#9A8B6E;border:1px solid rgba(154,139,110,0.4);border-radius:4px;font-family:Cinzel,serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:0.78rem;cursor:pointer">Just Spectate</button>
+      </div>`;
+    document.body.appendChild(el);
+    document.getElementById('ghost-rejoin').onclick = rejoinMatch;
+    document.getElementById('ghost-spectate').onclick = () => {
+      window.location.href = '/game.html';
+    };
+    return el;
+  }
+  window.showGhostBanner = function() {
+    const el = ensureGhostBanner();
+    el.style.display = 'block';
+  };
+  window.hideGhostBanner = function() {
+    const el = document.getElementById('ghost-banner');
+    if (el) el.style.display = 'none';
+  };
+  async function rejoinMatch() {
+    const name = localStorage.getItem('woa_playerName') || 'Warrior';
+    const faction = localStorage.getItem('woa_faction') || 'alliance';
+    const heroClass = localStorage.getItem('woa_class') || localStorage.getItem('woa_heroClass') || 'knight';
+    try {
+      const r = await fetch('/api/agents/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: playerAgentId, name, faction, heroClass }),
+      });
+      const d = await r.json();
+      if (d.queued) {
+        // Faction full, redirect to play page where the queue overlay lives
+        window.location.href = '/play.html';
+        return;
+      }
+      window.hideGhostBanner();
+    } catch (e) {
+      console.error('rejoin failed', e);
+    }
+  }
 }
 
 // Update player hero HUD from game state
+let _ghostStateSince = 0;
 function updatePlayerControls() {
   if (!playerAgentId || !gameState) return;
   const hero = gameState.heroes.find(h => h.agentId === playerAgentId);
-  if (!hero) return;
+
+  // Ghost-state detection: stored agentId but no matching hero on the server.
+  // This used to happen on every match reset before we added carry-over.
+  if (!hero) {
+    if (_ghostStateSince === 0) _ghostStateSince = Date.now();
+    if (Date.now() - _ghostStateSince > 2000) showGhostBanner();
+    return;
+  }
+  _ghostStateSince = 0;
+  hideGhostBanner();
 
   const info = document.getElementById('pc-hero-info');
   const hpPct = Math.round(hero.hp / hero.maxHp * 100);
   if (hero.alive) {
-    info.innerHTML = `HP: <span style="color:${hpPct>50?'#66AA66':hpPct>25?'#CCAA44':'#CC4444'}">${hero.hp}/${hero.maxHp}</span> | MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> | Gold: <span style="color:#F0C040">${hero.gold}</span> | Lv${hero.level}`;
+    const nameSpan = hero.displayName ? `<span style="color:#FFD700;font-weight:700">${hero.displayName}</span> · ` : '';
+    info.innerHTML = `${nameSpan}HP: <span style="color:${hpPct>50?'#66AA66':hpPct>25?'#CCAA44':'#CC4444'}">${hero.hp}/${hero.maxHp}</span> | MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> | Gold: <span style="color:#F0C040">${hero.gold}</span> | Lv${hero.level}`;
   } else {
     const respawnSec = hero.respawnIn ? Math.ceil(hero.respawnIn / 20) : '?';
     info.innerHTML = `<span style="color:#CC4444;font-weight:700">DEAD — respawning in ${respawnSec}s</span>`;

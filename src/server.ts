@@ -140,6 +140,7 @@ interface HeroEntity extends Entity {
   items: Item[];
   respawnTimer: number;
   agentId: string | null;
+  displayName: string | null;
   lastDamagedBy: string[];
   lane: LaneName;
   focusTargetId: string | null;
@@ -227,6 +228,14 @@ interface KillEvent {
   tick: number;
   killerId: string;
   victimId: string;
+  killerName: string;
+  victimName: string;
+  killerFaction: Faction;
+  victimFaction: Faction;
+  killerClass: HeroClass;
+  victimClass: HeroClass;
+  killerIsPlayer: boolean;
+  victimIsPlayer: boolean;
   isRampage: boolean;
   bounty: number;
 }
@@ -653,7 +662,7 @@ function initJungleCamps() {
 }
 
 // ─── Hero Factory ────────────────────────────────────────────────────────────
-function createHero(faction: Faction, heroClass: HeroClass, agentId: string | null, lane: LaneName = 'mid'): HeroEntity {
+function createHero(faction: Faction, heroClass: HeroClass, agentId: string | null, lane: LaneName = 'mid', displayName: string | null = null): HeroEntity {
   const stats = heroBaseStats(heroClass);
   const laneInfo = LANES[lane];
   const spawnX = faction === 'alliance' ? 200 + Math.random() * 100 : MAP_W - 300 + Math.random() * 100;
@@ -678,6 +687,7 @@ function createHero(faction: Faction, heroClass: HeroClass, agentId: string | nu
     items: [],
     respawnTimer: 0,
     agentId,
+    displayName,
     lastDamagedBy: [],
     lane,
     focusTargetId: null,
@@ -761,12 +771,12 @@ function findReplaceableBotHero(faction: Faction): HeroEntity | null {
   return dead;
 }
 
-function claimHeroSlot(agentId: string, _name: string, faction: Faction, heroClass: HeroClass): HeroEntity | null {
+function claimHeroSlot(agentId: string, name: string, faction: Faction, heroClass: HeroClass): HeroEntity | null {
   if (countPlayerHeroes(faction) >= MAX_PLAYERS_PER_FACTION) return null;
   const bot = findReplaceableBotHero(faction);
   if (!bot) return null;
   state.heroes.delete(bot.id);
-  const playerHero = createHero(faction, heroClass, agentId);
+  const playerHero = createHero(faction, heroClass, agentId, 'mid', name);
   state.heroes.set(playerHero.id, playerHero);
   return playerHero;
 }
@@ -867,7 +877,16 @@ function onKill(killerId: string, victim: Entity) {
       }
 
       const isRampage = kHero.killStreak >= 5;
-      state.kills.push({ tick: state.tick, killerId: kHero.id, victimId: vHero.id, isRampage, bounty: baseGold });
+      state.kills.push({
+        tick: state.tick, killerId: kHero.id, victimId: vHero.id,
+        killerName: kHero.displayName || kHero.heroClass,
+        victimName: vHero.displayName || vHero.heroClass,
+        killerFaction: kHero.faction, victimFaction: vHero.faction,
+        killerClass: kHero.heroClass, victimClass: vHero.heroClass,
+        killerIsPlayer: kHero.agentId !== null,
+        victimIsPlayer: vHero.agentId !== null,
+        isRampage, bounty: baseGold,
+      });
 
       // ELO update
       if (kHero.agentId && vHero.agentId) {
@@ -1600,6 +1619,7 @@ function serializeState() {
       items: h.items.map(i => i.name),
       abilities: h.abilities.map(a => ({ id: a.id, name: a.name, tier: a.tier, cd: a.currentCd })),
       agentId: h.agentId,
+      displayName: h.displayName,
       respawnIn: h.alive ? 0 : h.respawnTimer,
       lane: h.lane,
       focusTargetId: h.focusTargetId,
@@ -1952,6 +1972,17 @@ app.get('/api/matches/:id/replay', (req, res) => {
 
 // ─── Admin Panel Routes ─────────────────────────────────────────────────────
 function resetGame() {
+  // Capture player heroes still in the active match — they should persist
+  // across the reset rather than being silently dropped back into the void.
+  const carryOverPlayers = [...state.heroes.values()]
+    .filter(h => h.agentId !== null)
+    .map(h => ({
+      agentId: h.agentId as string,
+      name: h.displayName || '',
+      faction: h.faction,
+      heroClass: h.heroClass,
+    }));
+
   // Clear all entities
   state.heroes.clear();
   state.units.clear();
@@ -1981,7 +2012,19 @@ function resetGame() {
   spawnBotHeroes();
   spawnWave();
 
-  // Drain the queue: queued players get priority slots in the new match.
+  // Re-claim slots for players who were in the previous match — they get
+  // priority over the queue (since they were already playing).
+  for (const p of carryOverPlayers) {
+    if (!claimHeroSlot(p.agentId, p.name, p.faction, p.heroClass)) {
+      // Faction full somehow — fall through to queue so they at least don't vanish.
+      joinQueue.push({
+        agentId: p.agentId, name: p.name, faction: p.faction, heroClass: p.heroClass,
+        queuedAt: Date.now(),
+      });
+    }
+  }
+
+  // Drain the queue: queued players get the remaining slots in the new match.
   drainQueue();
 }
 

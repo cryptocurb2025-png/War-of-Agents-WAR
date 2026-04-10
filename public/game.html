@@ -1069,6 +1069,71 @@ function addChatMsg(name, text) {
   while (div.children.length > 50) div.removeChild(div.firstChild);
 }
 
+// ─── Ability Effect System ──────────────────────────────────────
+let abilityEffects = []; // visual FX from combat events
+
+function spawnAbilityEffect(evt) {
+  if (evt.type === 'ability_heal') {
+    // Green heal numbers + healing glow
+    if (phaserScene) {
+      const txt = phaserScene.add.text(evt.x, evt.y - 30, '+' + evt.healed, {
+        fontSize: '20px', fontFamily: 'Cinzel', color: '#44FF44', fontStyle: 'bold',
+        stroke: '#003300', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(92);
+      phaserScene.tweens.add({ targets: txt, y: evt.y - 90, alpha: 0, duration: 1200, onComplete: () => txt.destroy() });
+    }
+    abilityEffects.push({ type: 'heal_glow', x: evt.x, y: evt.y, age: 0, maxAge: 25 });
+  } else if (evt.type === 'ability_hit' && evt.damage) {
+    // Orange/red ability damage numbers
+    if (phaserScene) {
+      const txt = phaserScene.add.text(evt.x + (Math.random()-0.5)*20, evt.y - 40, '-' + evt.damage, {
+        fontSize: evt.aoe ? '18px' : '22px', fontFamily: 'Cinzel',
+        color: evt.aoe ? '#FF8844' : '#FF4444', fontStyle: 'bold',
+        stroke: '#000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(92);
+      phaserScene.tweens.add({ targets: txt, y: evt.y - 100, alpha: 0, duration: 1000, onComplete: () => txt.destroy() });
+
+      // Ability name label
+      if (evt.abilityName) {
+        const lbl = phaserScene.add.text(evt.x, evt.y - 55, evt.abilityName, {
+          fontSize: '11px', fontFamily: 'Cinzel', color: '#FFD700',
+          stroke: '#000', strokeThickness: 2,
+        }).setOrigin(0.5).setDepth(92);
+        phaserScene.tweens.add({ targets: lbl, y: evt.y - 110, alpha: 0, duration: 1500, onComplete: () => lbl.destroy() });
+      }
+    }
+    // Impact flash
+    abilityEffects.push({ type: 'hit_flash', x: evt.x, y: evt.y, age: 0, maxAge: 15, color: evt.aoe ? 0xFF6600 : 0xFF2222 });
+    if (evt.aoe) {
+      abilityEffects.push({ type: 'aoe_ring', x: evt.x, y: evt.y, age: 0, maxAge: 20, color: 0xFF6600 });
+    }
+    // Effect-specific visuals
+    if (evt.effect === 'stun') {
+      abilityEffects.push({ type: 'stun_stars', x: evt.x, y: evt.y, age: 0, maxAge: 30 });
+    } else if (evt.effect === 'burn') {
+      abilityEffects.push({ type: 'burn', x: evt.x, y: evt.y, age: 0, maxAge: 30 });
+    } else if (evt.effect === 'slow') {
+      abilityEffects.push({ type: 'slow_ice', x: evt.x, y: evt.y, age: 0, maxAge: 25 });
+    }
+  } else if (evt.type === 'ability_hit' && evt.effect) {
+    // Buff/utility effects (no damage)
+    if (evt.effect === 'dash' || evt.effect === 'teleport') {
+      abilityEffects.push({ type: 'dash_trail', x: evt.x, y: evt.y, age: 0, maxAge: 15 });
+    } else if (evt.effect === 'armor_buff' || evt.effect === 'invuln') {
+      abilityEffects.push({ type: 'shield_glow', x: evt.x, y: evt.y, age: 0, maxAge: 25 });
+    } else if (evt.effect === 'team_buff') {
+      abilityEffects.push({ type: 'rally_burst', x: evt.x, y: evt.y, age: 0, maxAge: 30 });
+    }
+    if (phaserScene && evt.abilityName) {
+      const lbl = phaserScene.add.text(evt.x, evt.y - 50, evt.abilityName, {
+        fontSize: '12px', fontFamily: 'Cinzel', color: '#66CCFF',
+        stroke: '#000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(92);
+      phaserScene.tweens.add({ targets: lbl, y: evt.y - 100, alpha: 0, duration: 1400, onComplete: () => lbl.destroy() });
+    }
+  }
+}
+
 ws.onmessage = (e) => {
   const msg = JSON.parse(e.data);
   if (msg.type === 'chat') { addChatMsg(msg.name, msg.text); return; }
@@ -1085,6 +1150,19 @@ ws.onmessage = (e) => {
         }
         if (prevMap[h.id] && h.level > prevMap[h.id].level) {
           levelUpEffects.push({ x: h.x, y: h.y, age: 0 });
+        }
+      }
+    }
+    // Process combat events for ability visuals
+    if (gameState.combatEvents) {
+      const myHeroState = playerAgentId && gameState.heroes.find(h => h.agentId === playerAgentId);
+      const myHeroId = myHeroState ? myHeroState.id : null;
+      for (const evt of gameState.combatEvents) {
+        spawnAbilityEffect(evt);
+        // Play sounds for own hero's abilities
+        if (myHeroId && evt.sourceId === myHeroId) {
+          if (evt.type === 'ability_heal') sfxHeal();
+          else if (evt.type === 'ability_hit' && evt.damage) sfxAbilityHit();
         }
       }
     }
@@ -1115,6 +1193,8 @@ function sfxKill() { playTone(600, 0.15, 0.1, 'square'); playTone(800, 0.2, 0.08
 function sfxGold() { playTone(1200, 0.1, 0.05, 'sine'); setTimeout(() => playTone(1500, 0.1, 0.04, 'sine'), 80); }
 function sfxDeath() { playTone(100, 0.3, 0.08, 'sawtooth'); }
 function sfxRampage() { playTone(400, 0.1, 0.12, 'square'); setTimeout(() => playTone(600, 0.1, 0.1, 'square'), 100); setTimeout(() => playTone(900, 0.2, 0.08, 'square'), 200); }
+function sfxAbilityHit() { playTone(350, 0.1, 0.07, 'square'); playTone(500, 0.08, 0.05, 'sine'); }
+function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTone(1000, 0.12, 0.05, 'sine'), 80); setTimeout(() => playTone(1200, 0.1, 0.04, 'sine'), 160); }
 
 // ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────
 const config = {
@@ -1135,6 +1215,11 @@ const dmgTexts = []; // floating damage numbers
 let terrainDrawn = false;
 let terrainGfx, nightOverlay, sunMoonText;
 let prevHpMap = {}; // track HP changes for damage numbers
+
+// ─── Click-to-Target System ─────────────────────────────────────────
+let currentTargetId = null; // entity ID of current attack target
+let lastSeenMatchId = null; // detect server-side match resets
+let targetRingAngle = 0;   // animated rotation for target ring
 
 // ─── Generate textures programmatically ─────────────────────────
 function pPreload() {
@@ -1310,6 +1395,65 @@ function pCreate() {
   // Sun/Moon text
   sunMoonText = this.add.text(MAP_W - 80, 20, '\u2600', { fontSize: '32px', color: '#FFD700' });
   sunMoonText.setDepth(101).setScrollFactor(0);
+
+  // ─── Right-click targeting ─────────────────────────────────
+  this.input.mouse.disableContextMenu();
+  this.input.on('pointerdown', (pointer) => {
+    if (!playerAgentId || !gameState) return;
+    if (pointer.rightButtonDown()) {
+      // Convert screen coords to world coords
+      const worldX = pointer.worldX;
+      const worldY = pointer.worldY;
+
+      // Find closest enemy entity under cursor (within 60px)
+      const myHero = gameState.heroes.find(h => h.agentId === playerAgentId);
+      if (!myHero) return;
+
+      let bestEntity = null;
+      let bestDist = 60; // click radius threshold
+
+      // Check enemy heroes
+      for (const h of gameState.heroes) {
+        if (!h.alive || h.faction === myHero.faction) continue;
+        const dx = h.x - worldX, dy = h.y - worldY;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < bestDist) { bestDist = d; bestEntity = h; }
+      }
+      // Check enemy units
+      for (const u of gameState.units) {
+        if (!u.alive || u.faction === myHero.faction) continue;
+        const dx = u.x - worldX, dy = u.y - worldY;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < bestDist) { bestDist = d; bestEntity = u; }
+      }
+      // Check enemy structures
+      for (const s of gameState.structures) {
+        if (!s.alive || s.faction === myHero.faction) continue;
+        const dx = s.x - worldX, dy = s.y - worldY;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < bestDist) { bestDist = d; bestEntity = s; }
+      }
+
+      if (bestEntity) {
+        // Send attack command to server
+        currentTargetId = bestEntity.id;
+        sendCmd({ action: 'attack', targetId: bestEntity.id }).then(d => {
+          if (d.success) {
+            document.getElementById('pc-status').textContent = 'ATTACKING ' + (d.targetName || 'enemy').toUpperCase();
+          }
+        });
+        // Play target sound
+        initAudio();
+        playTone(800, 0.06, 0.08, 'sine');
+        playTone(1200, 0.06, 0.06, 'sine');
+      } else {
+        // Right-click on ground = move (clear target)
+        currentTargetId = null;
+        sendCmd({ action: 'move', targetX: worldX, targetY: worldY });
+        document.getElementById('pc-status').textContent = 'MOVING';
+      }
+    }
+  });
 }
 
 // ─── Texture key lookup ─────────────────────────────────────────
@@ -1776,6 +1920,56 @@ function pUpdate() {
     }
   }
 
+  // ─── TARGET INDICATOR RING ──────────────────────────────────
+  if (currentTargetId && playerAgentId) {
+    const targetEntity = gs.heroes.find(h => h.id === currentTargetId && h.alive)
+      || gs.units.find(u => u.id === currentTargetId && u.alive)
+      || gs.structures.find(s => s.id === currentTargetId && s.alive);
+    if (targetEntity) {
+      targetRingAngle += 0.04;
+      const tx = targetEntity.x, ty = targetEntity.y;
+      const ringR = 40;
+      // Pulsing red ring
+      const pulse = 0.5 + Math.sin(t * 0.1) * 0.2;
+      graphics.lineStyle(3, 0xFF2222, pulse);
+      graphics.strokeCircle(tx, ty, ringR);
+      graphics.lineStyle(1.5, 0xFF6644, pulse * 0.6);
+      graphics.strokeCircle(tx, ty, ringR + 6);
+      // Rotating dashes around ring
+      for (let i = 0; i < 4; i++) {
+        const angle = targetRingAngle + (i * Math.PI / 2);
+        const x1 = tx + Math.cos(angle) * (ringR + 10);
+        const y1 = ty + Math.sin(angle) * (ringR + 10);
+        const x2 = tx + Math.cos(angle) * (ringR + 18);
+        const y2 = ty + Math.sin(angle) * (ringR + 18);
+        graphics.lineStyle(2, 0xFF4444, 0.8);
+        graphics.lineBetween(x1, y1, x2, y2);
+      }
+      // Small crosshair at center
+      graphics.lineStyle(1, 0xFF4444, 0.4);
+      graphics.lineBetween(tx - 8, ty, tx + 8, ty);
+      graphics.lineBetween(tx, ty - 8, tx, ty + 8);
+    } else {
+      currentTargetId = null; // target died or removed
+    }
+  }
+  // Also sync from server state if player's hero has a focusTargetId
+  const myH = playerAgentId && gs.heroes.find(h => h.agentId === playerAgentId);
+  if (myH && myH.focusTargetId) {
+    currentTargetId = myH.focusTargetId;
+  } else if (myH && !myH.focusTargetId) {
+    currentTargetId = null;
+  }
+
+  // ─── PLAYER HERO HIGHLIGHT — green arrow above own hero ────
+  if (myH && myH.alive) {
+    const bobArr = Math.sin(t * 0.12) * 5;
+    graphics.fillStyle(0x44FF44, 0.7);
+    graphics.fillTriangle(myH.x, myH.y - 95 + bobArr, myH.x - 8, myH.y - 110 + bobArr, myH.x + 8, myH.y - 110 + bobArr);
+    graphics.lineStyle(2, 0x44FF44, 0.5);
+    graphics.strokeCircle(myH.x, myH.y, 35);
+  }
+
   // ─── PROJECTILES with ability effects ───────────────────────
   for (const p of gs.projectiles) {
     const cx = p.fx + (p.tx - p.fx) * p.p, cy = p.fy + (p.ty - p.fy) * p.p;
@@ -1851,6 +2045,105 @@ function pUpdate() {
     }
     window._prevGoldMap[h.id] = h.gold;
   }
+
+  // ─── ABILITY VISUAL EFFECTS ──────────────────────────────────
+  abilityEffects = abilityEffects.filter(fx => {
+    fx.age++;
+    const prog = fx.age / fx.maxAge, alpha = 1 - prog;
+
+    if (fx.type === 'heal_glow') {
+      // Green healing circle expanding outward
+      graphics.fillStyle(0x44FF44, alpha * 0.15);
+      graphics.fillCircle(fx.x, fx.y, 20 + prog * 40);
+      graphics.lineStyle(2, 0x44FF44, alpha * 0.5);
+      graphics.strokeCircle(fx.x, fx.y, 15 + prog * 35);
+      // Rising sparkles
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2 + fx.age * 0.15;
+        const r = 10 + prog * 25;
+        graphics.fillStyle(0x88FF88, alpha * 0.6);
+        graphics.fillCircle(fx.x + Math.cos(angle) * r, fx.y + Math.sin(angle) * r - prog * 15, 2);
+      }
+    } else if (fx.type === 'hit_flash') {
+      // Bright impact flash
+      graphics.fillStyle(0xFFFFFF, alpha * 0.6);
+      graphics.fillCircle(fx.x, fx.y, 8 * (1 - prog * 0.5));
+      graphics.fillStyle(fx.color, alpha * 0.4);
+      graphics.fillCircle(fx.x, fx.y, 15 + prog * 20);
+      // Sparks
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + fx.age * 0.2;
+        const r = prog * 30;
+        graphics.fillStyle(fx.color, alpha * 0.5);
+        graphics.fillCircle(fx.x + Math.cos(angle) * r, fx.y + Math.sin(angle) * r, 2 * alpha);
+      }
+    } else if (fx.type === 'aoe_ring') {
+      // Expanding orange ring for AoE abilities
+      const radius = 20 + prog * 80;
+      graphics.lineStyle(3, fx.color, alpha * 0.6);
+      graphics.strokeCircle(fx.x, fx.y, radius);
+      graphics.fillStyle(fx.color, alpha * 0.08);
+      graphics.fillCircle(fx.x, fx.y, radius);
+    } else if (fx.type === 'stun_stars') {
+      // Yellow stars circling above target
+      for (let i = 0; i < 3; i++) {
+        const angle = fx.age * 0.2 + (i / 3) * Math.PI * 2;
+        const sx = fx.x + Math.cos(angle) * 20;
+        const sy = fx.y - 40 + Math.sin(angle) * 8;
+        graphics.fillStyle(0xFFDD00, alpha * 0.8);
+        // Draw a small star shape
+        graphics.fillCircle(sx, sy, 3);
+        graphics.fillStyle(0xFFFF88, alpha * 0.5);
+        graphics.fillCircle(sx, sy, 1.5);
+      }
+    } else if (fx.type === 'burn') {
+      // Flickering fire effect
+      for (let i = 0; i < 5; i++) {
+        const ox = (Math.sin(fx.age * 0.3 + i * 1.5) * 12);
+        const oy = -prog * 30 - i * 6;
+        const flicker = 0.3 + Math.sin(fx.age * 0.5 + i) * 0.2;
+        graphics.fillStyle(0xFF4400, alpha * flicker);
+        graphics.fillCircle(fx.x + ox, fx.y + oy, 5 - i * 0.5);
+        graphics.fillStyle(0xFFAA00, alpha * flicker * 0.5);
+        graphics.fillCircle(fx.x + ox, fx.y + oy - 4, 3);
+      }
+    } else if (fx.type === 'slow_ice') {
+      // Blue ice crystals
+      graphics.fillStyle(0x88CCFF, alpha * 0.15);
+      graphics.fillCircle(fx.x, fx.y, 25);
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2 + fx.age * 0.05;
+        const cx = fx.x + Math.cos(angle) * 15;
+        const cy = fx.y + Math.sin(angle) * 15;
+        graphics.fillStyle(0xAADDFF, alpha * 0.6);
+        graphics.fillRect(cx - 2, cy - 4, 4, 8);
+      }
+    } else if (fx.type === 'dash_trail') {
+      // Quick motion blur trail
+      graphics.fillStyle(0x66CCFF, alpha * 0.3);
+      graphics.fillRect(fx.x - 20, fx.y - 5, 40, 10);
+      graphics.fillStyle(0xFFFFFF, alpha * 0.5);
+      graphics.fillCircle(fx.x, fx.y, 8 * alpha);
+    } else if (fx.type === 'shield_glow') {
+      // Golden/white protective dome
+      graphics.lineStyle(2, 0xFFD700, alpha * 0.6);
+      graphics.strokeCircle(fx.x, fx.y, 30 + Math.sin(fx.age * 0.2) * 5);
+      graphics.fillStyle(0xFFD700, alpha * 0.08);
+      graphics.fillCircle(fx.x, fx.y, 30);
+    } else if (fx.type === 'rally_burst') {
+      // Golden expanding burst with rays
+      const radius = 10 + prog * 60;
+      graphics.lineStyle(2, 0xFFD700, alpha * 0.5);
+      graphics.strokeCircle(fx.x, fx.y, radius);
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        graphics.lineStyle(1, 0xFFD700, alpha * 0.4);
+        graphics.lineBetween(fx.x, fx.y, fx.x + Math.cos(angle) * radius, fx.y + Math.sin(angle) * radius);
+      }
+    }
+
+    return fx.age < fx.maxAge;
+  });
 
   // ─── DEATH EFFECTS — dramatic explosion ─────────────────────
   deathEffects = deathEffects.filter(fx => {
@@ -2656,6 +2949,15 @@ function updateUI() {
     ctx.strokeRect(cam.scrollX*sx, cam.scrollY*sy, (cam.width/cam.zoom)*sx, (cam.height/cam.zoom)*sy);
   }
 
+  // Detect new match — clear stale overlay so a fresh build happens next victory
+  if (gs.matchId && gs.matchId !== lastSeenMatchId) {
+    lastSeenMatchId = gs.matchId;
+    const oldStats = document.getElementById('mvp-stats');
+    if (oldStats) oldStats.remove();
+    const oldCountdown = document.getElementById('next-match-countdown');
+    if (oldCountdown) oldCountdown.remove();
+  }
+
   // Winner overlay — full stats screen
   const overlay = document.getElementById('winner-overlay');
   if (gs.winner) {
@@ -2665,6 +2967,20 @@ function updateUI() {
       gs.winner==='alliance' ? 'THE ALLIANCE TRIUMPHS' : 'THE IRON HORDE CONQUERS';
     document.getElementById('winner-faction').style.color =
       gs.winner==='alliance' ? '#4A8FE0' : '#E24B4A';
+
+    // Live countdown to next match (auto-restart)
+    if (gs.winnerAt && gs.postgameDelayMs) {
+      let cd = document.getElementById('next-match-countdown');
+      if (!cd) {
+        cd = document.createElement('div');
+        cd.id = 'next-match-countdown';
+        cd.style.cssText = 'margin-top:10px;text-align:center;color:#C8960C;font-family:Cinzel;font-size:14px;letter-spacing:0.1em';
+        overlay.appendChild(cd);
+      }
+      const remainingMs = Math.max(0, gs.postgameDelayMs - (Date.now() - gs.winnerAt));
+      const secs = Math.ceil(remainingMs / 1000);
+      cd.textContent = secs > 0 ? `NEXT MATCH IN ${secs}s` : 'STARTING NEW MATCH...';
+    }
 
     // Build MVP stats table (only once)
     if (!document.getElementById('mvp-stats')) {
@@ -2829,31 +3145,56 @@ if (playerAgentId) {
     const key = e.key.toLowerCase();
     keysDown[key] = true;
 
-    // WASD / Arrow movement
+    // WASD / Arrow movement (clears target focus)
     if (['a','d','w','s','arrowleft','arrowright','arrowup','arrowdown'].includes(key)) {
       e.preventDefault();
+      currentTargetId = null;
       startMoveLoop();
       return;
     }
 
-    // SPACE = attack nearest enemy (move toward enemy base)
+    // SPACE = attack current target or push toward enemy base
     if (key === ' ') {
       e.preventDefault();
-      const faction = localStorage.getItem('woa_faction') || 'alliance';
-      const tx = faction === 'alliance' ? 4600 : 200;
-      sendCmd({action:'move', targetX:tx, targetY:1200}).then(d => {
-        document.getElementById('pc-status').textContent = 'ATTACKING';
-      });
+      if (currentTargetId) {
+        sendCmd({ action: 'attack', targetId: currentTargetId }).then(d => {
+          document.getElementById('pc-status').textContent = d.success ? 'ATTACKING' : (d.error || 'No target');
+        });
+      } else {
+        const faction = localStorage.getItem('woa_faction') || 'alliance';
+        const tx = faction === 'alliance' ? 4600 : 200;
+        sendCmd({action:'move', targetX:tx, targetY:1200}).then(d => {
+          document.getElementById('pc-status').textContent = 'PUSHING LANE';
+        });
+      }
       return;
     }
 
-    // Q W E R = abilities
+    // ESC / H = stop and clear target
+    if (key === 'escape' || key === 'h') {
+      currentTargetId = null;
+      sendCmd({ action: 'stop' });
+      document.getElementById('pc-status').textContent = 'STOPPED';
+      return;
+    }
+
+    // Q W E R = abilities (send targetId if we have a focus target)
     const abIdx = ABILITY_KEYS.indexOf(key);
     if (abIdx >= 0 && myHeroAbilities[abIdx]) {
       e.preventDefault();
       flashSlot('hk-' + key);
-      sendCmd({action:'ability', abilityId:myHeroAbilities[abIdx].id}).then(d => {
-        document.getElementById('pc-status').textContent = d.success ? 'Cast ' + myHeroAbilities[abIdx].name + '!' : (d.error||'Failed');
+      const abCmd = { action:'ability', abilityId:myHeroAbilities[abIdx].id };
+      if (currentTargetId) abCmd.targetId = currentTargetId;
+      sendCmd(abCmd).then(d => {
+        if (d.success) {
+          let msg = d.ability + '!';
+          if (d.damage) msg += ' -' + d.damage + ' dmg';
+          if (d.healed) msg += ' +' + d.healed + ' heal';
+          if (d.targets > 1) msg += ' (' + d.targets + ' hit)';
+          document.getElementById('pc-status').textContent = msg;
+        } else {
+          document.getElementById('pc-status').textContent = d.error || 'Failed';
+        }
       });
       return;
     }
@@ -2913,7 +3254,8 @@ function updatePlayerControls() {
   if (hero.alive) {
     info.innerHTML = `HP: <span style="color:${hpPct>50?'#66AA66':hpPct>25?'#CCAA44':'#CC4444'}">${hero.hp}/${hero.maxHp}</span> | MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> | Gold: <span style="color:#F0C040">${hero.gold}</span> | Lv${hero.level}`;
   } else {
-    info.innerHTML = `<span style="color:#CC4444;font-weight:700">DEAD — respawning...</span>`;
+    const respawnSec = hero.respawnIn ? Math.ceil(hero.respawnIn / 20) : '?';
+    info.innerHTML = `<span style="color:#CC4444;font-weight:700">DEAD — respawning in ${respawnSec}s</span>`;
   }
 
   // Update ability hotkey slots

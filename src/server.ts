@@ -142,7 +142,23 @@ interface HeroEntity extends Entity {
   agentId: string | null;
   lastDamagedBy: string[];
   lane: LaneName;
+  focusTargetId: string | null;
 }
+
+// Combat events for frontend feedback (cleared each broadcast)
+interface CombatEvent {
+  type: 'ability_hit' | 'ability_heal' | 'ability_miss' | 'auto_attack';
+  sourceId: string;
+  targetId: string | null;
+  abilityName?: string;
+  damage?: number;
+  healed?: number;
+  effect?: string;
+  aoe?: boolean;
+  x: number;
+  y: number;
+}
+let combatEvents: CombatEvent[] = [];
 
 interface Structure extends Entity {
   structureType: 'tower_t1' | 'tower_t2' | 'barracks' | 'base';
@@ -189,6 +205,7 @@ interface GameState {
   projectiles: Projectile[];
   kills: KillEvent[];
   winner: Faction | null;
+  winnerAt: number | null;
   waveTimer: number;
   waveCount: number;
 }
@@ -499,6 +516,7 @@ const state: GameState = {
   projectiles: [],
   kills: [],
   winner: null,
+  winnerAt: null,
   waveTimer: 0,
   waveCount: 0,
 };
@@ -649,6 +667,7 @@ function createHero(faction: Faction, heroClass: HeroClass, agentId: string | nu
     agentId,
     lastDamagedBy: [],
     lane,
+    focusTargetId: null,
   };
 }
 
@@ -803,11 +822,13 @@ function onKill(killerId: string, victim: Entity) {
   } else if ((victim as Structure).structureType === 'base') {
     // Game over
     state.winner = victim.faction === 'alliance' ? 'horde' : 'alliance';
+    state.winnerAt = Date.now();
     try {
       stmtEndMatch.run(Date.now(), state.winner, currentMatchId);
     } catch (_e) { /* ignore */ }
     // Calculate betting payouts
     calculatePayouts(state.winner);
+    console.log(`[MATCH] ${state.winner.toUpperCase()} wins ${currentMatchId} — auto-restart in ${POSTGAME_DELAY_MS / 1000}s`);
   }
 }
 
@@ -1021,6 +1042,201 @@ function heroAI(hero: HeroEntity, dt: number) {
   checkLevelUp(hero);
 }
 
+// ─── Player Hero Tick (replaces heroAI for player-controlled heroes) ────────
+function playerHeroTick(hero: HeroEntity, dt: number) {
+  if (!hero.alive) return;
+
+  const baseX = hero.faction === 'alliance' ? 150 : MAP_W - 150;
+  const baseY = MAP_H / 2;
+  const distToBase = dist(hero.pos, { x: baseX, y: baseY });
+
+  // Mana regen
+  hero.mana = Math.min(hero.maxMana, hero.mana + 0.3);
+
+  // HP regen (5x faster near own base)
+  const regenMult = distToBase < 200 ? 5 : 1;
+  hero.hp = Math.min(hero.maxHp, hero.hp + 0.1 * regenMult);
+
+  // Passive gold (same as bot)
+  if (state.tick % 40 === 0) hero.gold += 3;
+
+  // Tick ability cooldowns
+  for (const ab of hero.abilities) {
+    if (ab.currentCd > 0) ab.currentCd--;
+  }
+
+  // Focus target: move toward and auto-attack
+  if (hero.focusTargetId) {
+    const target = state.heroes.get(hero.focusTargetId)
+      || state.units.get(hero.focusTargetId)
+      || [...state.structures.values()].find(s => s.id === hero.focusTargetId);
+
+    if (!target || !target.alive) {
+      hero.focusTargetId = null;
+    } else {
+      const d = dist(hero.pos, target.pos);
+      if (d > hero.range) {
+        hero.pos = moveToward(hero.pos, target.pos, hero.speed, dt, hero.lane);
+      } else if (hero.currentAttackCd <= 0) {
+        applyDamage(target, hero.damage, hero.id);
+        hero.currentAttackCd = hero.attackCd;
+        state.projectiles.push({
+          id: nextId('proj'), from: { ...hero.pos }, to: { ...target.pos },
+          progress: 0, speed: 0.1, damage: 0, sourceId: hero.id, targetId: target.id,
+          faction: hero.faction, color: hero.faction === 'alliance' ? '#aaccff' : '#ffaa88',
+        });
+        combatEvents.push({
+          type: 'auto_attack', sourceId: hero.id, targetId: target.id,
+          damage: Math.max(1, Math.floor(hero.damage * (1 - target.armor / (target.armor + 50)))),
+          x: Math.round(target.pos.x), y: Math.round(target.pos.y),
+        });
+      }
+    }
+  }
+
+  if (hero.currentAttackCd > 0) hero.currentAttackCd--;
+  checkLevelUp(hero);
+}
+
+// ─── Cast ability for player hero ───────────────────────────────────────────
+function castPlayerAbility(hero: HeroEntity, ab: Ability, targetId?: string): { success: boolean; damage?: number; healed?: number; targets?: number; error?: string } {
+  const allEntities: Entity[] = [
+    ...[...state.heroes.values()].filter(h => h.alive),
+    ...[...state.units.values()].filter(u => u.alive),
+    ...[...state.structures.values()].filter(s => s.alive),
+  ];
+
+  // Find target — prefer specified targetId, then focusTarget, then nearest enemy
+  let target: Entity | null = null;
+  if (targetId) {
+    target = allEntities.find(e => e.id === targetId) || null;
+  }
+  if (!target && hero.focusTargetId) {
+    target = allEntities.find(e => e.id === hero.focusTargetId && e.alive) || null;
+  }
+  if (!target) {
+    // Nearest enemy in range
+    let bestDist = Infinity;
+    for (const e of allEntities) {
+      if (e.faction === hero.faction || !e.alive) continue;
+      const d = dist(hero.pos, e.pos);
+      if (d < bestDist) { bestDist = d; target = e; }
+    }
+  }
+
+  // Deduct mana and set cooldown
+  hero.mana -= ab.manaCost;
+  ab.currentCd = ab.cooldown;
+
+  if (ab.effect === 'heal') {
+    // Heal self or nearby injured ally
+    const healTarget = hero.hp < hero.maxHp * 0.5 ? hero :
+      [...state.heroes.values()].find(h => h.alive && h.faction === hero.faction && h.hp < h.maxHp * 0.5 && dist(h.pos, hero.pos) < ab.range) || hero;
+    const healAmt = Math.abs(ab.damage) * ab.tier;
+    healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + healAmt);
+    combatEvents.push({
+      type: 'ability_heal', sourceId: hero.id, targetId: healTarget.id,
+      abilityName: ab.name, healed: Math.round(healAmt), effect: 'heal',
+      x: Math.round(healTarget.pos.x), y: Math.round(healTarget.pos.y),
+    });
+    if (ab.aoe > 0) {
+      // Mass heal
+      let healed = 1;
+      for (const e of allEntities) {
+        if (e.faction !== hero.faction || !e.alive || e.id === healTarget.id) continue;
+        if (dist(healTarget.pos, e.pos) < ab.aoe) {
+          e.hp = Math.min(e.maxHp, e.hp + healAmt);
+          healed++;
+          combatEvents.push({
+            type: 'ability_heal', sourceId: hero.id, targetId: e.id,
+            abilityName: ab.name, healed: Math.round(healAmt), effect: 'heal', aoe: true,
+            x: Math.round(e.pos.x), y: Math.round(e.pos.y),
+          });
+        }
+      }
+      return { success: true, healed: Math.round(healAmt), targets: healed };
+    }
+    return { success: true, healed: Math.round(healAmt), targets: 1 };
+  }
+
+  if (ab.effect === 'dash' || ab.effect === 'teleport') {
+    if (target) {
+      hero.pos = moveToward(hero.pos, target.pos, ab.range * 0.8, 1, hero.lane);
+    }
+    combatEvents.push({
+      type: 'ability_hit', sourceId: hero.id, targetId: target?.id || null,
+      abilityName: ab.name, effect: ab.effect,
+      x: Math.round(hero.pos.x), y: Math.round(hero.pos.y),
+    });
+    return { success: true };
+  }
+
+  if (ab.effect === 'armor_buff' || ab.effect === 'invuln' || ab.effect === 'tower_buff' || ab.effect === 'transform' || ab.effect === 'team_buff') {
+    combatEvents.push({
+      type: 'ability_hit', sourceId: hero.id, targetId: hero.id,
+      abilityName: ab.name, effect: ab.effect,
+      x: Math.round(hero.pos.x), y: Math.round(hero.pos.y),
+    });
+    return { success: true };
+  }
+
+  if (!target || target.faction === hero.faction) {
+    // No valid enemy target found — refund
+    hero.mana += ab.manaCost;
+    ab.currentCd = 0;
+    return { success: false, error: 'No enemy target in range' };
+  }
+
+  const d = dist(hero.pos, target.pos);
+  if (d > ab.range + 100) {
+    hero.mana += ab.manaCost;
+    ab.currentCd = 0;
+    return { success: false, error: 'Target out of range' };
+  }
+
+  // Damage ability
+  if (ab.aoe > 0) {
+    let hitCount = 0;
+    let totalDmg = 0;
+    for (const e of allEntities) {
+      if (e.faction === hero.faction || !e.alive) continue;
+      if (dist(target.pos, e.pos) < ab.aoe) {
+        const dmg = ab.damage * ab.tier;
+        applyDamage(e, dmg, hero.id);
+        hitCount++;
+        totalDmg += Math.max(1, Math.floor(dmg * (1 - e.armor / (e.armor + 50))));
+        combatEvents.push({
+          type: 'ability_hit', sourceId: hero.id, targetId: e.id,
+          abilityName: ab.name, damage: Math.max(1, Math.floor(dmg * (1 - e.armor / (e.armor + 50)))),
+          effect: ab.effect, aoe: true,
+          x: Math.round(e.pos.x), y: Math.round(e.pos.y),
+        });
+      }
+    }
+    state.projectiles.push({
+      id: nextId('proj'), from: { ...hero.pos }, to: { ...target.pos },
+      progress: 0, speed: 0.15, damage: 0, sourceId: hero.id, targetId: target.id,
+      faction: hero.faction, color: hero.faction === 'alliance' ? '#4488ff' : '#ff4444',
+    });
+    return { success: true, damage: totalDmg, targets: hitCount };
+  } else {
+    const dmg = ab.damage * ab.tier;
+    applyDamage(target, dmg, hero.id);
+    const actualDmg = Math.max(1, Math.floor(dmg * (1 - target.armor / (target.armor + 50))));
+    state.projectiles.push({
+      id: nextId('proj'), from: { ...hero.pos }, to: { ...target.pos },
+      progress: 0, speed: 0.12, damage: 0, sourceId: hero.id, targetId: target.id,
+      faction: hero.faction, color: hero.faction === 'alliance' ? '#66bbff' : '#ff6644',
+    });
+    combatEvents.push({
+      type: 'ability_hit', sourceId: hero.id, targetId: target.id,
+      abilityName: ab.name, damage: actualDmg, effect: ab.effect,
+      x: Math.round(target.pos.x), y: Math.round(target.pos.y),
+    });
+    return { success: true, damage: actualDmg, targets: 1 };
+  }
+}
+
 // ─── Unit AI ─────────────────────────────────────────────────────────────────
 function unitAI(unit: UnitEntity, dt: number) {
   if (!unit.alive) return;
@@ -1130,9 +1346,17 @@ function handleRespawns() {
 }
 
 // ─── Main Game Loop ──────────────────────────────────────────────────────────
+const POSTGAME_DELAY_MS = 30_000;
+
 function gameTick() {
   if (paused) return;
-  if (state.winner) return;
+  if (state.winner) {
+    if (state.winnerAt && Date.now() - state.winnerAt >= POSTGAME_DELAY_MS) {
+      console.log(`[MATCH] Auto-restarting after ${POSTGAME_DELAY_MS / 1000}s post-game delay`);
+      resetGame();
+    }
+    return;
+  }
 
   state.tick++;
   state.time += TICK_MS;
@@ -1158,7 +1382,12 @@ function gameTick() {
 
   // Update heroes
   for (const hero of state.heroes.values()) {
-    heroAI(hero, dt * (hero.faction === 'horde' ? nightMult : dayMult));
+    const herodt = dt * (hero.faction === 'horde' ? nightMult : dayMult);
+    if (hero.agentId) {
+      playerHeroTick(hero, herodt);
+    } else {
+      heroAI(hero, herodt);
+    }
   }
 
   // Update units
@@ -1288,6 +1517,9 @@ function serializeState() {
     time: state.time,
     phase: state.phase,
     winner: state.winner,
+    winnerAt: state.winnerAt,
+    matchId: currentMatchId,
+    postgameDelayMs: POSTGAME_DELAY_MS,
     waveCount: state.waveCount,
     heroes: [...state.heroes.values()].map(h => ({
       id: h.id, faction: h.faction, heroClass: h.heroClass,
@@ -1303,6 +1535,7 @@ function serializeState() {
       agentId: h.agentId,
       respawnIn: h.alive ? 0 : h.respawnTimer,
       lane: h.lane,
+      focusTargetId: h.focusTargetId,
     })),
     units: [...state.units.values()].map(u => ({
       id: u.id, faction: u.faction, unitType: u.unitType,
@@ -1333,6 +1566,7 @@ function serializeState() {
       p: +p.progress.toFixed(2), color: p.color, faction: p.faction,
     })),
     kills: state.kills.slice(-5),
+    combatEvents: combatEvents.slice(-20),
     fogOfWar,
     bets: {
       alliance: bettingState.bets.alliance,
@@ -1377,6 +1611,8 @@ function broadcast() {
       ws.send(msg);
     }
   }
+  // Clear combat events after broadcast
+  combatEvents = [];
 }
 
 // ─── REST API ────────────────────────────────────────────────────────────────
@@ -1406,15 +1642,27 @@ app.get('/api/game/state', (_req, res) => {
 });
 
 app.post('/api/strategy/deployment', (req, res) => {
-  const { agentId, action, targetX, targetY, abilityId, itemId } = req.body;
+  const { agentId, action, targetX, targetY, abilityId, itemId, targetId } = req.body;
   const hero = [...state.heroes.values()].find(h => h.agentId === agentId);
   if (!hero) return res.status(404).json({ error: 'Agent not registered or hero not found' });
   if (!hero.alive) return res.status(400).json({ error: 'Hero is dead, respawning...' });
 
   if (action === 'move' && targetX != null && targetY != null) {
     hero.target = null;
+    hero.focusTargetId = null; // clear focus when manually moving
     hero.pos = moveToward(hero.pos, { x: targetX, y: targetY }, hero.speed * 5, 1, hero.lane);
     return res.json({ success: true, action: 'move' });
+  }
+
+  if (action === 'attack' && targetId) {
+    // Set focus target — hero will auto-move toward and attack this entity
+    const target = state.heroes.get(targetId)
+      || state.units.get(targetId)
+      || [...state.structures.values()].find(s => s.id === targetId);
+    if (!target || !target.alive) return res.status(400).json({ error: 'Target not found or dead' });
+    if (target.faction === hero.faction) return res.status(400).json({ error: 'Cannot attack friendly target' });
+    hero.focusTargetId = targetId;
+    return res.json({ success: true, action: 'attack', targetId, targetName: (target as any).heroClass || (target as any).unitType || (target as any).structureType || 'enemy' });
   }
 
   if (action === 'ability' && abilityId) {
@@ -1422,7 +1670,11 @@ app.post('/api/strategy/deployment', (req, res) => {
     if (!ab) return res.status(400).json({ error: 'Unknown ability' });
     if (ab.currentCd > 0) return res.status(400).json({ error: 'Ability on cooldown', remainingCd: ab.currentCd });
     if (hero.mana < ab.manaCost) return res.status(400).json({ error: 'Not enough mana' });
-    return res.json({ success: true, ability: ab.name, message: 'Ability will be cast on next available target' });
+    // Actually cast the ability now
+    const result = castPlayerAbility(hero, ab, targetId || undefined);
+    if (!result.success) return res.status(400).json({ error: result.error });
+    const { success: _, ...resultData } = result;
+    return res.json({ success: true, ability: ab.name, ...resultData });
   }
 
   if (action === 'buy' && itemId) {
@@ -1440,7 +1692,12 @@ app.post('/api/strategy/deployment', (req, res) => {
     return res.json({ success: true, item: item.name, goldRemaining: hero.gold });
   }
 
-  res.status(400).json({ error: 'Unknown action. Use: move, ability, buy' });
+  if (action === 'stop') {
+    hero.focusTargetId = null;
+    return res.json({ success: true, action: 'stop' });
+  }
+
+  res.status(400).json({ error: 'Unknown action. Use: move, attack, ability, buy, stop' });
 });
 
 app.get('/api/leaderboard', (_req, res) => {
@@ -1539,6 +1796,7 @@ function resetGame() {
   state.projectiles = [];
   state.kills = [];
   state.winner = null;
+  state.winnerAt = null;
   state.tick = 0;
   state.time = 0;
   state.waveTimer = 0;

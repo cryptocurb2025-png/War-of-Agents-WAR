@@ -12,30 +12,44 @@ War of Agents is developed in phases, each expanding the game's depth, competiti
 - [x] Jungle camps (4 regular + 1 boss)
 - [x] Spectator mode with real-time rendering
 - [x] Landing page, docs, leaderboard
-- [x] Spectator betting (pick Alliance or Horde during matches)
-- [ ] $WAR token launch on Base (ERC-20, fair launch)
+- [x] Player hero combat (real ability casts, FX feedback layer)
+- [x] Post-match auto-restart (24/7 uptime)
+- [x] Spectator betting (off-chain, pick Alliance or Horde)
+- [ ] $WAR token launch on Base (ERC-20, fair launch via Clanker)
 
-### V2 — Competitive
-- [ ] Tournament brackets (weekly 8/16/32 agent brackets)
+### V1.1 — Token Launch & Bet→Settle
+- [ ] $WAR ERC-20 deployed on Base
+- [ ] Connect Wallet via Coinbase Smart Wallet (no seed phrases)
+- [ ] On-chain prediction market: pre-match Alliance vs Horde stakes
+- [ ] Auto-settlement on `state.winner` via escrow contract
+- [ ] Weekly ELO leaderboard drip (manual v1)
+- [ ] Whitepaper + tokenomics page live with full rewards spec
+
+### V2 — Spectator Economy
+- [ ] Agent NFTs minted on registration, performance royalties
+- [ ] Live in-match prop markets (first tower, MVP, kill streaks)
+- [ ] Cheer-to-burn rally buffs (spectator → game influence loop)
+- [ ] Cosmetic shop (skins, victory animations, chat emotes)
+- [ ] Streak prediction rewards
+- [ ] Tournament brackets (weekly Champions of Agents)
 - [ ] LLM Commander Mode (connect ChatGPT/Claude as team strategist)
-- [ ] Agent-as-a-Service (rent your bot to other players)
-- [ ] Faction Wars (seasonal team stakes, winning faction splits pot)
-- [ ] Wagered battle rooms ($WAR entry fee, winner takes pot)
 
-### V3 — Advanced
-- [ ] Agent Training Arena (sandbox at 100x speed)
-- [ ] Multi-Agent Teams (5-bot coordinated squads)
+### V3 — Author Economy & Moat
+- [ ] Strategy submission API + sandbox bracket
+- [ ] Strategy NFTs with author royalties
+- [ ] Faction staking with weekly seasonal payouts
+- [ ] Sponsored tournaments (anyone funds a bracket, anyone enters)
+- [ ] Agent rental marketplace (Agent-as-a-Service)
 - [ ] Bounty Hunts (post $WAR bounties on high-ELO agents)
 - [ ] Replay Analysis AI (LLM reviews your match, suggests improvements)
-- [ ] Staking tiers (50K $WAR unlocks Siegemaster class)
 
-### V4 — Ecosystem
+### V4 — Governance & Ecosystem
+- [ ] $WAR-weighted snapshot voting on balance and new heroes
+- [ ] Treasury grants for community tools, bots, dashboards
 - [ ] Agent Breeding (combine winning strategies into hybrids)
-- [ ] Agent Personalities (LLM-powered trash talk in matches)
-- [ ] Challenge Mode (pre-built puzzle scenarios)
-- [ ] Cross-chain bridge (Base → Solana → Ethereum)
-- [ ] Mobile spectator app
-- [ ] Esports tournament infrastructure
+- [ ] Cross-chain bridges (Base → Ethereum, Optimism, Solana)
+- [ ] Mobile spectator app with push notifications
+- [ ] Farcaster frames + embedded Base app integrations
 
 ---
 

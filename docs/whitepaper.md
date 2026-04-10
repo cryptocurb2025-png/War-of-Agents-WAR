@@ -158,6 +158,22 @@ Game first, token second. We reject pointless inflationary mechanics and unsusta
 
 The supply is fully community-distributed. There is no team wallet, no advisor allocation, no vesting schedule. Trading fees from the initial liquidity fund ongoing development.
 
+### The Spectator Economy
+
+Every play-to-earn game before us has rewarded the same group: people who grind. Grinding always devolves into bot farms, and bot farms always destroy the token. War of Agents is structurally different because **the agents play themselves**. Matches run 24/7 with no humans required. Dota's economy rewards 10 humans per match. Ours rewards anyone who chose to be in the room.
+
+We define five participation tiers, each with its own reward surface:
+
+| Tier | Who | What they earn |
+|---|---|---|
+| **Watch** | Spectators | Free entertainment, optional outcome stakes |
+| **Predict** | Bettors | Parimutuel pool payouts in $WAR |
+| **Pilot** | Players | ELO, leaderboard drip |
+| **Author** | Coders | Strategy NFT royalties, tournament prizes |
+| **Own** | Collectors | A cut of every match their agents/strategies win |
+
+Six reward pillars sit on top of those tiers: prediction markets, agent NFTs, strategy submission, faction stakes, spectator engagement loops, and the tournament layer. The full mechanics specification — including parameters, anti-abuse policy, sinks, and phasing — lives in the [Rewards & Tokenomics](tokenomics.md) document.
+
 ### Token Utility
 
 **Tier 1 — Live Now (Free to Play)**

@@ -257,6 +257,7 @@ interface BettingState {
 // ─── Player Slot & Queue ─────────────────────────────────────────────────────
 const MAX_PLAYERS_PER_FACTION = 5;
 const AVG_MATCH_DURATION_MS = 5 * 60 * 1000;
+const PLAYER_IDLE_TIMEOUT_MS = 45_000; // free a player slot after 45s of no heartbeat
 
 interface QueueEntry {
   agentId: string;
@@ -266,6 +267,13 @@ interface QueueEntry {
   queuedAt: number;
 }
 const joinQueue: QueueEntry[] = [];
+
+// Heartbeat: client-side keepalive lets us free slots when players close their tab
+// without explicitly leaving. Move/attack/ability commands also bump the heartbeat.
+const playerHeartbeats: Map<string, number> = new Map();
+function bumpHeartbeat(agentId: string) {
+  playerHeartbeats.set(agentId, Date.now());
+}
 
 interface AgentRegistration {
   agentId: string;
@@ -783,8 +791,33 @@ function claimHeroSlot(agentId: string, name: string, faction: Faction, heroClas
   state.heroes.delete(bot.id);
   const playerHero = createHero(faction, heroClass, agentId, 'mid', name);
   state.heroes.set(playerHero.id, playerHero);
+  bumpHeartbeat(agentId);
   return playerHero;
 }
+
+// Idle sweep: any player who hasn't pinged us in PLAYER_IDLE_TIMEOUT_MS gets
+// converted back to a bot. Their hero stays in the arena (so the match doesn't
+// shrink) but the slot is freed for queue/new players.
+function sweepIdlePlayers() {
+  const now = Date.now();
+  const cutoff = now - PLAYER_IDLE_TIMEOUT_MS;
+  let freed = 0;
+  for (const hero of state.heroes.values()) {
+    if (hero.agentId === null) continue;
+    const last = playerHeartbeats.get(hero.agentId);
+    if (last && last < cutoff) {
+      console.log(`[IDLE] Freeing slot for ${hero.displayName || hero.agentId} — no heartbeat in ${Math.round((now - last) / 1000)}s`);
+      hero.agentId = null;
+      hero.displayName = null;
+      hero.pendingAbilityId = null;
+      hero.focusTargetId = null;
+      playerHeartbeats.delete(hero.agentId as any);
+      freed++;
+    }
+  }
+  if (freed > 0) drainQueue();
+}
+setInterval(sweepIdlePlayers, 10_000);
 
 function drainQueue() {
   for (let i = 0; i < joinQueue.length; ) {
@@ -1804,6 +1837,7 @@ app.post('/api/agents/leave', (req, res) => {
   const qIdx = joinQueue.findIndex(q => q.agentId === agentId);
   if (qIdx >= 0) {
     joinQueue.splice(qIdx, 1);
+    playerHeartbeats.delete(agentId);
     return res.json({ success: true, removedFrom: 'queue' });
   }
 
@@ -1811,11 +1845,32 @@ app.post('/api/agents/leave', (req, res) => {
   const hero = [...state.heroes.values()].find(h => h.agentId === agentId);
   if (hero) {
     hero.agentId = null;
+    hero.displayName = null;
+    hero.pendingAbilityId = null;
+    hero.focusTargetId = null;
+    playerHeartbeats.delete(agentId);
     drainQueue();
     return res.json({ success: true, removedFrom: 'match' });
   }
 
   return res.status(404).json({ error: 'Not found in match or queue' });
+});
+
+// Heartbeat — keeps a player's slot alive between actions. Client pings every
+// few seconds; the idle sweep frees any slot that hasn't pinged in 45s.
+app.post('/api/heartbeat', (req, res) => {
+  const { agentId } = req.body;
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  bumpHeartbeat(agentId);
+  // Tell the client whether they're still in a hero slot — they may have been
+  // swept and need to re-register.
+  const hero = [...state.heroes.values()].find(h => h.agentId === agentId);
+  res.json({
+    success: true,
+    inMatch: !!hero,
+    heroId: hero?.id || null,
+    alive: hero?.alive ?? null,
+  });
 });
 
 app.get('/api/queue/status', (req, res) => {
@@ -1860,6 +1915,7 @@ app.post('/api/strategy/deployment', (req, res) => {
   const hero = [...state.heroes.values()].find(h => h.agentId === agentId);
   if (!hero) return res.status(404).json({ error: 'Agent not registered or hero not found' });
   if (!hero.alive) return res.status(400).json({ error: 'Hero is dead, respawning...' });
+  bumpHeartbeat(agentId);
 
   if (action === 'move' && targetX != null && targetY != null) {
     hero.target = null;
@@ -2245,7 +2301,11 @@ app.get('/leaderboard', (_req, res) => {
 });
 
 // ─── Join Page ──────────────────────────────────────────────────────────────
+// Legacy /join route — the new join screen is /play.html. Redirect old links.
 app.get('/join', (_req, res) => {
+  res.redirect('/play.html');
+});
+app.get('/__legacy_join_unused', (_req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>

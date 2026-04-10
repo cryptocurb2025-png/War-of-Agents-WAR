@@ -960,6 +960,7 @@
     <span id="pc-title" style="color:#C8960C;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:0.08em">YOUR HERO</span>
     <span id="pc-hero-info"></span>
     <span id="pc-status" style="color:#C8960C;font-size:10px"></span>
+    <button id="pc-leave-btn" onclick="leaveMatch()" style="margin-left:8px;background:transparent;color:#9A8B6E;border:1px solid rgba(154,139,110,0.4);border-radius:3px;padding:3px 10px;font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Leave</button>
   </div>
   <!-- Movement hint -->
   <div id="pc-move-hint" style="position:fixed;bottom:168px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:9px;color:#5A4A2A;letter-spacing:0.08em">
@@ -3738,6 +3739,55 @@ if (playerAgentId) {
       const key = slot.dataset.key?.toLowerCase();
       if (key) document.dispatchEvent(new KeyboardEvent('keydown', {key}));
     });
+  });
+
+  // ─── Heartbeat: keep our slot alive between actions ────────
+  // The server frees any player slot that hasn't pinged in 45s, so we ping
+  // every 5s. Move/attack/ability commands also bump the heartbeat server-side.
+  let _heartbeatHandle = null;
+  function startHeartbeat() {
+    if (_heartbeatHandle) return;
+    const ping = () => {
+      if (!playerAgentId) return;
+      fetch('/api/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: playerAgentId }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+    ping();
+    _heartbeatHandle = setInterval(ping, 5000);
+  }
+  startHeartbeat();
+
+  // ─── Leave Match ────────────────────────────────────────────
+  window.leaveMatch = async function() {
+    if (!playerAgentId) { window.location.href = '/'; return; }
+    if (!confirm('Leave the match? Your slot will open up for the next player in queue.')) return;
+    try {
+      await fetch('/api/agents/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: playerAgentId }),
+        keepalive: true,
+      });
+    } catch (e) {}
+    // Clear local session and head home
+    localStorage.removeItem('woa_agentId');
+    if (_heartbeatHandle) { clearInterval(_heartbeatHandle); _heartbeatHandle = null; }
+    window.location.href = '/';
+  };
+
+  // Best-effort: tell the server we left when the tab closes. The keepalive
+  // flag lets the request finish even after page unload. Backed up by the 45s
+  // server-side idle sweep.
+  window.addEventListener('beforeunload', () => {
+    if (!playerAgentId) return;
+    try {
+      const blob = new Blob([JSON.stringify({ agentId: playerAgentId })], { type: 'application/json' });
+      navigator.sendBeacon('/api/agents/leave', blob);
+    } catch (e) {}
   });
 
   // ─── Ghost-state banner: server lost track of our hero ──────

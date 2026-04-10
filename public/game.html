@@ -3355,17 +3355,17 @@ async function refreshLeaderboard() {
 }
 
 // ─── Music toggle (procedural battle loop via Web Audio) ──────────
-let audioCtx = null;
+// Reuses the existing audioCtx defined earlier for SFX.
 let musicEnabled = localStorage.getItem('woa_music') === 'on';
 let musicNodes = [];
 let musicScheduler = null;
 
 function startMusic() {
-  if (musicEnabled && audioCtx) return;
   try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    initAudio(); // existing helper that creates audioCtx if needed
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   } catch (e) { return; }
+  if (!audioCtx) return;
 
   // Master gain — kept low so it sits under combat SFX
   const master = audioCtx.createGain();
@@ -3472,7 +3472,7 @@ function stopMusic() {
     try { if (n.disconnect) n.disconnect(); } catch (e) {}
   }
   musicNodes = [];
-  if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+  // Don't close audioCtx — it's shared with the SFX system
   const btn = document.getElementById('hud-music-btn');
   const icon = document.getElementById('hud-music-icon');
   const text = document.getElementById('hud-music-text');

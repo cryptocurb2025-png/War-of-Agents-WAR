@@ -18,6 +18,49 @@ Our answer: **a spectator economy**. Pure ERC-20, no NFTs, no JPEGs, no minting.
 
 ---
 
+## Free play vs token holders — the core line
+
+> **Free players play the game. Token holders play *for keeps*.**
+
+That single sentence is the entire answer to *"why buy the token when I can just play the game?"* — the question that has killed every crypto MOBA before us.
+
+We never gate the game itself. Anyone can spectate, jump into casual matches, pilot a hero, and have a great time without ever touching $WAR. The game is free in exactly the way Dota is free.
+
+What $WAR unlocks isn't access to gameplay. It unlocks **the layer that makes gameplay count**: persistent identity, prize-pool eligibility, the right to influence matches, and the right to earn from the meta. Free players are tourists. Token holders are residents.
+
+### The $WAR utility list — what your token literally does
+
+| Capability | Free play | $WAR holder |
+|---|---|---|
+| Spectate live matches | ✅ | ✅ |
+| Pilot a hero in casual matches | ✅ | ✅ |
+| Watch the betting pools, leaderboards, and the King | ✅ | ✅ |
+| **Persistent identity** (wallet-bound profile, ELO that survives sessions) | ❌ guest only | ✅ |
+| **Place predictions and claim prize-pool payouts** | ❌ | ✅ |
+| **Sponsor the King of the Hill** (lock $WAR, earn per-match drip) | ❌ | ✅ |
+| **Post bounties** on in-game conditions | ❌ | ✅ |
+| **Collect bounty payouts** | ❌ | ✅ |
+| **Enter ranked matches** (ELO that counts, leaderboard rank) | ❌ tiny fee | ✅ |
+| **Cheer-to-burn** rally buffs that influence live matches | ❌ | ✅ |
+| **Register an autonomous AI agent** that plays 24/7 and earns | ❌ | ✅ small mint fee |
+| **Tournament entry** (Champions of Agents brackets) | ❌ | ✅ |
+| **Cosmetics**: skins, victory animations, kill effects, chat emotes | ❌ | ✅ burn-funded |
+| **Governance vote** on balance, new heroes, treasury spend | ❌ | ✅ |
+
+This is exactly how poker rooms have worked for a century: anyone can watch, anyone can play freerolls, but real-money tables require a buy-in. Nobody complains because the freerolls bring people in and the real-money tables make the operator a business. We're just doing it with autonomous AI agents instead of cards.
+
+The clean separation matters: **none of this gates fun**. A free player can show up, pilot a hero, win a match, have a great time, and walk away. They just can't accumulate, can't earn, can't influence outcomes, can't write the meta. The day they want any of that, $WAR is the answer.
+
+### Server-side concurrency
+
+The game is built for the launch-day rush. The current arena is 5v5 with a hard cap of 10 player heroes per match. When all 10 slots are filled, additional players are queued in faction-specific queues with live position tracking and an estimated wait time. Queued players spectate the live match while they wait, and slots open up as players leave or as matches reset (every 5–10 minutes via the post-match auto-restart loop).
+
+This means launch day works like this: 30 people show up, 10 immediately get hero slots, 20 are queued and spectating + betting + posting bounties + sponsoring the King. Within ~15 minutes everyone has played at least once, and the spectator economy keeps the queued players fully engaged in the meantime. The game does *not* break with extra people — it absorbs them into the meta.
+
+When traffic outgrows the queue, we move to a multi-instance match server where multiple matches run in parallel and the matchmaker drops new players into the next available match. Until then, queue + spectator economy is enough.
+
+---
+
 ## The three pillars
 
 ### Pillar 1 — King of the Hill (the Story)

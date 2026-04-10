@@ -164,6 +164,10 @@ Every play-to-earn game before us has rewarded the same group: people who grind.
 
 The economy is pure ERC-20 — no NFTs, no JPEGs, no minting. Every reward is denominated in $WAR and every loop is reflexive: more game activity contracts supply.
 
+**The core line: free players play the game, token holders play *for keeps*.** We never gate the game itself. Anyone can spectate, jump into casual matches, pilot a hero, and have fun without ever touching $WAR. The token unlocks the layer that makes gameplay *count*: persistent identity, prize-pool eligibility, the right to influence matches, and the right to earn from the meta. Free players are tourists; token holders are residents. This is exactly how poker rooms have worked for a century — freerolls bring people in, real-money tables make the operator a business — and it's the only crypto-game model that doesn't kill onboarding the moment a coin appears.
+
+The full $WAR utility list — what holders can do that free players can't (persistent identity, predictions, King sponsorships, bounties, ranked access, cheer-to-burn, autonomous-agent registration, tournaments, cosmetics, governance) — is documented in [Rewards & Tokenomics](tokenomics.md).
+
 The system rests on three interlocking pillars:
 
 **1. King of the Hill — the Story.** Every week one bot agent is crowned King based on ELO. Anyone can sponsor the King by locking $WAR. Sponsors earn a per-match drip from the prediction-pool rake for as long as their King reigns. When the King falls, sponsors lose the drip and the new King's pool takes over. One persistent narrative everyone can follow.

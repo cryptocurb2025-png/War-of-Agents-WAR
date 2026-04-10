@@ -244,6 +244,19 @@ interface BettingState {
   betters: Bet[];
 }
 
+// ─── Player Slot & Queue ─────────────────────────────────────────────────────
+const MAX_PLAYERS_PER_FACTION = 5;
+const AVG_MATCH_DURATION_MS = 5 * 60 * 1000;
+
+interface QueueEntry {
+  agentId: string;
+  name: string;
+  faction: Faction;
+  heroClass: HeroClass;
+  queuedAt: number;
+}
+const joinQueue: QueueEntry[] = [];
+
 interface AgentRegistration {
   agentId: string;
   name: string;
@@ -725,6 +738,55 @@ function spawnWave() {
       }
     }
   }
+}
+
+// ─── Player Slot Helpers ─────────────────────────────────────────────────────
+function countPlayerHeroes(faction: Faction): number {
+  let n = 0;
+  for (const h of state.heroes.values()) {
+    if (h.faction === faction && h.agentId !== null) n++;
+  }
+  return n;
+}
+
+function findReplaceableBotHero(faction: Faction): HeroEntity | null {
+  // Prefer alive bots so the player drops in immediately. Fall back to dead bots if needed.
+  let dead: HeroEntity | null = null;
+  for (const h of state.heroes.values()) {
+    if (h.faction === faction && h.agentId === null) {
+      if (h.alive) return h;
+      if (!dead) dead = h;
+    }
+  }
+  return dead;
+}
+
+function claimHeroSlot(agentId: string, _name: string, faction: Faction, heroClass: HeroClass): HeroEntity | null {
+  if (countPlayerHeroes(faction) >= MAX_PLAYERS_PER_FACTION) return null;
+  const bot = findReplaceableBotHero(faction);
+  if (!bot) return null;
+  state.heroes.delete(bot.id);
+  const playerHero = createHero(faction, heroClass, agentId);
+  state.heroes.set(playerHero.id, playerHero);
+  return playerHero;
+}
+
+function drainQueue() {
+  for (let i = 0; i < joinQueue.length; ) {
+    const entry = joinQueue[i];
+    const hero = claimHeroSlot(entry.agentId, entry.name, entry.faction, entry.heroClass);
+    if (hero) {
+      console.log(`[QUEUE] Promoted ${entry.name} (${entry.faction}) from queue position ${i + 1}`);
+      joinQueue.splice(i, 1);
+    } else {
+      i++;
+    }
+  }
+}
+
+function estimateQueueWaitMs(position: number): number {
+  // Each match end + early disconnects rotate ~2 slots per match cycle
+  return Math.ceil(position / 2) * AVG_MATCH_DURATION_MS;
 }
 
 // ─── AI Bot Heroes ───────────────────────────────────────────────────────────
@@ -1521,6 +1583,11 @@ function serializeState() {
     matchId: currentMatchId,
     postgameDelayMs: POSTGAME_DELAY_MS,
     waveCount: state.waveCount,
+    slots: {
+      alliance: { used: countPlayerHeroes('alliance'), max: MAX_PLAYERS_PER_FACTION },
+      horde: { used: countPlayerHeroes('horde'), max: MAX_PLAYERS_PER_FACTION },
+    },
+    queueLength: joinQueue.length,
     heroes: [...state.heroes.values()].map(h => ({
       id: h.id, faction: h.faction, heroClass: h.heroClass,
       x: Math.round(h.pos.x), y: Math.round(h.pos.y),
@@ -1628,13 +1695,110 @@ app.post('/api/agents/register', (req, res) => {
     return res.status(400).json({ error: 'Invalid heroClass' });
   }
 
+  // Already in the active match? Return the existing hero.
+  const existing = [...state.heroes.values()].find(h => h.agentId === agentId);
+  if (existing) {
+    return res.json({
+      success: true, alreadyInMatch: true, heroId: existing.id, faction: existing.faction,
+      message: `${name} is already in the match.`,
+    });
+  }
+
+  // Already queued? Return the existing queue position.
+  const queuedIdx = joinQueue.findIndex(q => q.agentId === agentId);
+  if (queuedIdx >= 0) {
+    return res.json({
+      success: true, queued: true, alreadyQueued: true,
+      position: queuedIdx + 1, queueLength: joinQueue.length,
+      estimatedWaitMs: estimateQueueWaitMs(queuedIdx + 1),
+      message: `${name} is already queued (position ${queuedIdx + 1}).`,
+    });
+  }
+
   stmtInsertAgent.run(agentId, name, faction, heroClass, Date.now());
   stmtUpsertLeaderboard.run(agentId, name, faction, heroClass);
 
-  const hero = createHero(faction as Faction, heroClass as HeroClass, agentId);
-  state.heroes.set(hero.id, hero);
+  // Try to claim a slot immediately by replacing a bot hero of the same faction.
+  const hero = claimHeroSlot(agentId, name, faction as Faction, heroClass as HeroClass);
+  if (hero) {
+    return res.json({
+      success: true, heroId: hero.id, faction: hero.faction,
+      message: `${name} joins the ${faction}!`,
+      slots: {
+        alliance: { used: countPlayerHeroes('alliance'), max: MAX_PLAYERS_PER_FACTION },
+        horde: { used: countPlayerHeroes('horde'), max: MAX_PLAYERS_PER_FACTION },
+      },
+    });
+  }
 
-  res.json({ success: true, heroId: hero.id, message: `${name} joins the ${faction}!` });
+  // Faction full — add to queue.
+  joinQueue.push({
+    agentId, name, faction: faction as Faction, heroClass: heroClass as HeroClass,
+    queuedAt: Date.now(),
+  });
+  const position = joinQueue.length;
+  console.log(`[QUEUE] ${name} queued for ${faction} (position ${position})`);
+  return res.json({
+    success: true, queued: true,
+    position, queueLength: joinQueue.length,
+    estimatedWaitMs: estimateQueueWaitMs(position),
+    message: `${name} is queued for the ${faction} (position ${position}).`,
+  });
+});
+
+app.post('/api/agents/leave', (req, res) => {
+  const { agentId } = req.body;
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+
+  // In queue? Remove.
+  const qIdx = joinQueue.findIndex(q => q.agentId === agentId);
+  if (qIdx >= 0) {
+    joinQueue.splice(qIdx, 1);
+    return res.json({ success: true, removedFrom: 'queue' });
+  }
+
+  // In match? Convert hero back to bot.
+  const hero = [...state.heroes.values()].find(h => h.agentId === agentId);
+  if (hero) {
+    hero.agentId = null;
+    drainQueue();
+    return res.json({ success: true, removedFrom: 'match' });
+  }
+
+  return res.status(404).json({ error: 'Not found in match or queue' });
+});
+
+app.get('/api/queue/status', (req, res) => {
+  const agentId = req.query.agentId as string | undefined;
+
+  const slotsSummary = {
+    alliance: { used: countPlayerHeroes('alliance'), max: MAX_PLAYERS_PER_FACTION },
+    horde: { used: countPlayerHeroes('horde'), max: MAX_PLAYERS_PER_FACTION },
+  };
+
+  if (!agentId) {
+    return res.json({ queueLength: joinQueue.length, slots: slotsSummary });
+  }
+
+  const hero = [...state.heroes.values()].find(h => h.agentId === agentId);
+  if (hero) {
+    return res.json({
+      inMatch: true, heroId: hero.id, faction: hero.faction,
+      alive: hero.alive, respawnIn: hero.alive ? 0 : hero.respawnTimer,
+      slots: slotsSummary, queueLength: joinQueue.length,
+    });
+  }
+
+  const qIdx = joinQueue.findIndex(q => q.agentId === agentId);
+  if (qIdx >= 0) {
+    return res.json({
+      inQueue: true, position: qIdx + 1, queueLength: joinQueue.length,
+      estimatedWaitMs: estimateQueueWaitMs(qIdx + 1),
+      slots: slotsSummary,
+    });
+  }
+
+  return res.json({ inMatch: false, inQueue: false, slots: slotsSummary, queueLength: joinQueue.length });
 });
 
 app.get('/api/game/state', (_req, res) => {
@@ -1816,6 +1980,9 @@ function resetGame() {
   initJungleCamps();
   spawnBotHeroes();
   spawnWave();
+
+  // Drain the queue: queued players get priority slots in the new match.
+  drainQueue();
 }
 
 app.post('/api/admin/reset', (_req, res) => {

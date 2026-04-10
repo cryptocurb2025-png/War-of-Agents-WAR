@@ -160,6 +160,132 @@ a { color: #C8960C; text-decoration: none; }
   text-align: center;
 }
 
+/* ── Wallet Bar ─────────────────────────────────────────── */
+.wallet-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, rgba(200,150,12,0.08), rgba(200,150,12,0.02));
+  border: 1px solid rgba(200,150,12,0.25);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+.wallet-status {
+  font-size: 0.72rem; color: #9A8B6E;
+  letter-spacing: 1px; text-transform: uppercase;
+  font-weight: 700;
+}
+.wallet-status .badge-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #5A4A2A; margin-right: 6px; vertical-align: middle;
+}
+.wallet-status.connected .badge-dot { background: #44CC66; box-shadow: 0 0 8px #44CC66; }
+.wallet-status .addr { color: #C8960C; font-family: monospace; font-size: 0.78rem; margin-left: 8px; }
+.wallet-btn {
+  padding: 8px 16px;
+  background: transparent;
+  color: #C8960C;
+  border: 1px solid #C8960C;
+  border-radius: 4px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.wallet-btn:hover { background: rgba(200,150,12,0.12); box-shadow: 0 0 16px rgba(200,150,12,0.3); }
+.wallet-btn.connected { color: #44CC66; border-color: rgba(68,204,102,0.5); }
+.wallet-btn.connected:hover { background: rgba(68,204,102,0.08); }
+.wallet-note {
+  font-size: 0.65rem; color: #6A5E48; font-style: italic;
+  margin-top: 6px; text-align: center; letter-spacing: 0.5px;
+}
+
+/* ── Slot Indicator ─────────────────────────────────────── */
+.slot-indicator {
+  margin-top: 14px;
+  display: flex; gap: 16px; justify-content: center;
+  font-size: 0.72rem; color: #9A8B6E;
+  letter-spacing: 1px;
+}
+.slot-indicator .slot-faction { display: flex; align-items: center; gap: 6px; }
+.slot-indicator .slot-pip {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #2A2418; border: 1px solid #5A4A2A;
+}
+.slot-indicator .slot-pip.filled.alliance { background: #4A8FE0; border-color: #4A8FE0; box-shadow: 0 0 6px rgba(74,143,224,0.6); }
+.slot-indicator .slot-pip.filled.horde { background: #E24B4A; border-color: #E24B4A; box-shadow: 0 0 6px rgba(226,75,74,0.6); }
+.slot-indicator .slot-label { font-weight: 700; }
+.slot-indicator .slot-label.alliance { color: #4A8FE0; }
+.slot-indicator .slot-label.horde { color: #E24B4A; }
+.slot-indicator .slot-queue { color: #C8960C; font-weight: 700; }
+
+/* ── Queue Overlay ──────────────────────────────────────── */
+#queueScreen {
+  position: fixed; inset: 0;
+  display: none; align-items: center; justify-content: center;
+  background: linear-gradient(170deg, #0A0804 0%, #1A1208 40%, #0F0A04 100%);
+  padding: 24px;
+  z-index: 100;
+}
+#queueScreen.show { display: flex; }
+.queue-card {
+  background: linear-gradient(145deg, #12100A, #0E0C07);
+  border: 1px solid rgba(200,150,12,0.35);
+  border-radius: 12px;
+  padding: 48px 40px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 0 80px rgba(200,150,12,0.15);
+  text-align: center;
+}
+.queue-icon { font-size: 3rem; margin-bottom: 12px; }
+.queue-title {
+  font-size: 1.6rem; font-weight: 900; color: #C8960C;
+  letter-spacing: 4px; text-transform: uppercase;
+  margin-bottom: 8px;
+  text-shadow: 0 0 30px rgba(200,150,12,0.4);
+}
+.queue-subtitle { font-size: 0.78rem; color: #8A7D66; letter-spacing: 1px; margin-bottom: 28px; }
+.queue-position-wrap {
+  display: flex; align-items: center; justify-content: center; gap: 24px;
+  margin: 20px 0 24px;
+}
+.queue-position-num {
+  font-size: 5rem; font-weight: 900; color: #C8960C; line-height: 1;
+  text-shadow: 0 0 40px rgba(200,150,12,0.5);
+  font-family: 'MedievalSharp', serif;
+}
+.queue-position-meta { text-align: left; }
+.queue-position-meta .lbl { font-size: 0.65rem; color: #6A5E48; letter-spacing: 1px; text-transform: uppercase; }
+.queue-position-meta .val { font-size: 1.05rem; color: #D4C9A8; font-weight: 700; }
+.queue-wait { font-size: 0.85rem; color: #9A8B6E; margin-bottom: 28px; }
+.queue-wait strong { color: #C8960C; }
+.queue-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.queue-actions button {
+  padding: 10px 22px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid;
+}
+.queue-actions .btn-watch {
+  background: linear-gradient(135deg, #C8960C, #A07A08);
+  color: #0A0804; border-color: #C8960C;
+}
+.queue-actions .btn-watch:hover { box-shadow: 0 0 24px rgba(200,150,12,0.4); transform: translateY(-1px); }
+.queue-actions .btn-leave {
+  background: transparent; color: #9A8B6E; border-color: rgba(154,139,110,0.4);
+}
+.queue-actions .btn-leave:hover { color: #E24B4A; border-color: #E24B4A; background: rgba(226,75,74,0.06); }
+
 /* ── Battle HUD ─────────────────────────────────────────── */
 #battleHud {
   display: flex;
@@ -494,6 +620,14 @@ a { color: #C8960C; text-decoration: none; }
   <div class="join-card">
     <h1 class="join-title">Join the War</h1>
 
+    <div class="wallet-bar">
+      <div class="wallet-status" id="walletStatus">
+        <span class="badge-dot"></span>NOT CONNECTED<span class="addr" id="walletAddr"></span>
+      </div>
+      <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">Connect Wallet</button>
+    </div>
+    <p class="wallet-note">Free play stays open. Connect a wallet to earn ELO, claim prize-pool payouts, sponsor the King, and post bounties — all coming with $WAR launch on Base.</p>
+
     <label class="join-label">Your Name</label>
     <input type="text" id="playerName" class="join-input" placeholder="Enter your warrior name" maxlength="24">
 
@@ -557,6 +691,41 @@ a { color: #C8960C; text-decoration: none; }
 
     <button id="enterBtn" class="enter-btn" disabled onclick="enterBattle()">Enter Battle</button>
     <div id="joinError" class="join-error hidden"></div>
+
+    <div class="slot-indicator" id="slotIndicator">
+      <div class="slot-faction">
+        <span class="slot-label alliance">ALLIANCE</span>
+        <span id="slotPipsAlliance"></span>
+      </div>
+      <div class="slot-faction">
+        <span class="slot-label horde">HORDE</span>
+        <span id="slotPipsHorde"></span>
+      </div>
+      <div class="slot-faction">
+        <span class="slot-queue" id="slotQueueText">QUEUE: 0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ QUEUE OVERLAY ════════ -->
+<div id="queueScreen">
+  <div class="queue-card">
+    <div class="queue-icon">&#9876;&#65039;</div>
+    <div class="queue-title">In Queue</div>
+    <div class="queue-subtitle">All hero slots taken in your faction. You'll be promoted when one frees up.</div>
+    <div class="queue-position-wrap">
+      <div class="queue-position-num" id="queuePosNum">—</div>
+      <div class="queue-position-meta">
+        <div class="lbl">Position</div>
+        <div class="val" id="queuePosFaction">—</div>
+      </div>
+    </div>
+    <div class="queue-wait">Estimated wait: <strong id="queueWaitText">—</strong></div>
+    <div class="queue-actions">
+      <button class="btn-watch" onclick="watchWhileWaiting()">Watch Live Match</button>
+      <button class="btn-leave" onclick="leaveQueue()">Leave Queue</button>
+    </div>
   </div>
 </div>
 
@@ -675,6 +844,93 @@ a { color: #C8960C; text-decoration: none; }
   let wsReconnectTimer = null;
   let gameOverShown = false;
 
+  // ── Wallet Connection ──────────────────────────────────────
+  let walletAddress = localStorage.getItem('woa_walletAddress') || null;
+
+  function shortAddr(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
+
+  function renderWalletStatus() {
+    const status = document.getElementById('walletStatus');
+    const btn = document.getElementById('walletBtn');
+    const addrSpan = document.getElementById('walletAddr');
+    if (walletAddress) {
+      status.classList.add('connected');
+      status.firstChild.nextSibling.textContent = 'CONNECTED';
+      addrSpan.textContent = shortAddr(walletAddress);
+      btn.textContent = 'Disconnect';
+      btn.classList.add('connected');
+      btn.onclick = disconnectWallet;
+    } else {
+      status.classList.remove('connected');
+      status.firstChild.nextSibling.textContent = 'NOT CONNECTED';
+      addrSpan.textContent = '';
+      btn.textContent = 'Connect Wallet';
+      btn.classList.remove('connected');
+      btn.onclick = connectWallet;
+    }
+  }
+
+  window.connectWallet = async function() {
+    if (!window.ethereum) {
+      alert('No wallet detected. Install Coinbase Wallet, MetaMask, or another Web3 wallet to connect.');
+      return;
+    }
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts.length > 0) {
+        walletAddress = accounts[0].toLowerCase();
+        localStorage.setItem('woa_walletAddress', walletAddress);
+        // When connected, the wallet address becomes the persistent agent ID
+        agentId = walletAddress;
+        localStorage.setItem('woa_agentId', agentId);
+        renderWalletStatus();
+      }
+    } catch (e) {
+      console.error('Wallet connect failed:', e);
+    }
+  };
+
+  window.disconnectWallet = function() {
+    walletAddress = null;
+    localStorage.removeItem('woa_walletAddress');
+    // Generate a fresh guest agentId so the user becomes a guest again
+    agentId = null;
+    localStorage.removeItem('woa_agentId');
+    renderWalletStatus();
+  };
+
+  if (window.ethereum && walletAddress) {
+    // Restore on reload — also use as agentId
+    agentId = walletAddress;
+    localStorage.setItem('woa_agentId', agentId);
+  }
+  renderWalletStatus();
+
+  // ── Slot Indicator Polling ─────────────────────────────────
+  function renderSlots(slots, queueLength) {
+    const a = slots.alliance, h = slots.horde;
+    const aPips = Array.from({length: a.max}, (_, i) =>
+      `<span class="slot-pip ${i < a.used ? 'filled alliance' : ''}"></span>`
+    ).join('');
+    const hPips = Array.from({length: h.max}, (_, i) =>
+      `<span class="slot-pip ${i < h.used ? 'filled horde' : ''}"></span>`
+    ).join('');
+    document.getElementById('slotPipsAlliance').innerHTML = aPips;
+    document.getElementById('slotPipsHorde').innerHTML = hPips;
+    document.getElementById('slotQueueText').textContent = `QUEUE: ${queueLength}`;
+  }
+
+  let slotPollHandle = null;
+  async function pollSlots() {
+    try {
+      const r = await fetch('/api/queue/status');
+      const d = await r.json();
+      if (d.slots) renderSlots(d.slots, d.queueLength || 0);
+    } catch (e) {}
+  }
+  pollSlots();
+  slotPollHandle = setInterval(pollSlots, 3000);
+
   // ── Join Screen Logic ──────────────────────────────────────
   window.selectFaction = function(f) {
     selectedFaction = f;
@@ -705,8 +961,10 @@ a { color: #C8960C; text-decoration: none; }
     btn.disabled = true;
     btn.textContent = 'JOINING...';
 
+    // Wallet-connected users get a persistent ID; everyone else is a guest with a random ID.
     if (!agentId) {
-      agentId = 'player_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      agentId = walletAddress
+        || 'guest_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
     }
 
     try {
@@ -728,6 +986,14 @@ a { color: #C8960C; text-decoration: none; }
       playerFaction = selectedFaction;
       playerClass = selectedHero;
 
+      if (data.queued) {
+        // Faction was full — show the queue overlay and start polling for promotion
+        showQueueOverlay(data.position, data.queueLength, data.estimatedWaitMs);
+        btn.disabled = false;
+        btn.textContent = 'ENTER BATTLE';
+        return;
+      }
+
       showBattleHud();
     } catch (e) {
       const errEl = document.getElementById('joinError');
@@ -736,6 +1002,60 @@ a { color: #C8960C; text-decoration: none; }
       btn.disabled = false;
       btn.textContent = 'ENTER BATTLE';
     }
+  };
+
+  // ── Queue Overlay ──────────────────────────────────────────
+  let queuePollHandle = null;
+  function fmtWait(ms) {
+    if (!ms || ms < 1000) return '< 1 minute';
+    const s = Math.ceil(ms / 1000);
+    if (s < 60) return s + 's';
+    const m = Math.ceil(s / 60);
+    return m + ' min';
+  }
+  function showQueueOverlay(position, queueLength, estimatedWaitMs) {
+    document.getElementById('queueScreen').classList.add('show');
+    document.getElementById('queuePosNum').textContent = '#' + position;
+    document.getElementById('queuePosFaction').textContent =
+      (playerFaction || selectedFaction || '').toUpperCase() + ' · ' + queueLength + ' WAITING';
+    document.getElementById('queueWaitText').textContent = '~' + fmtWait(estimatedWaitMs);
+    if (queuePollHandle) clearInterval(queuePollHandle);
+    queuePollHandle = setInterval(checkQueueStatus, 2000);
+  }
+  function hideQueueOverlay() {
+    document.getElementById('queueScreen').classList.remove('show');
+    if (queuePollHandle) { clearInterval(queuePollHandle); queuePollHandle = null; }
+  }
+  async function checkQueueStatus() {
+    if (!agentId) return;
+    try {
+      const r = await fetch('/api/queue/status?agentId=' + encodeURIComponent(agentId));
+      const d = await r.json();
+      if (d.inMatch) {
+        // We got promoted — drop into the game
+        hideQueueOverlay();
+        showBattleHud();
+      } else if (d.inQueue) {
+        document.getElementById('queuePosNum').textContent = '#' + d.position;
+        document.getElementById('queuePosFaction').textContent =
+          (playerFaction || selectedFaction || '').toUpperCase() + ' · ' + d.queueLength + ' WAITING';
+        document.getElementById('queueWaitText').textContent = '~' + fmtWait(d.estimatedWaitMs);
+      }
+    } catch (e) {}
+  }
+  window.watchWhileWaiting = function() {
+    // Keep the queue ticking in the background, but redirect to spectator view
+    window.location.href = '/game.html';
+  };
+  window.leaveQueue = async function() {
+    try {
+      await fetch('/api/agents/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId }),
+      });
+    } catch (e) {}
+    hideQueueOverlay();
   };
 
   // Auto-reconnect if we have stored data

@@ -97,6 +97,171 @@
 
   #game-container canvas { display: block; }
 
+  /* ─── KING OF THE HILL BANNER (top center) ─────────── */
+  #king-banner {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    background: linear-gradient(135deg, #1A1208 0%, #0E0A04 100%);
+    border: 1px solid #C8960C;
+    border-radius: 6px;
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Cinzel', serif;
+    box-shadow: 0 0 20px rgba(200,150,12,0.25), inset 0 1px 0 rgba(255,215,0,0.15);
+    pointer-events: auto;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  #king-banner:hover { box-shadow: 0 0 30px rgba(200,150,12,0.45); transform: translateX(-50%) translateY(-1px); }
+  #king-banner .king-crown { font-size: 18px; }
+  #king-banner .king-label { color: #9A8B6E; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; }
+  #king-banner .king-name { color: #FFD700; font-size: 13px; font-weight: 900; letter-spacing: 0.5px; }
+  #king-banner .king-elo { color: #C8960C; font-size: 10px; }
+  #king-banner .king-divider { width: 1px; height: 24px; background: rgba(200,150,12,0.3); }
+  #king-banner .king-drip { color: #44CC66; font-size: 10px; font-weight: 700; }
+  #king-banner .king-drip-num { color: #FFD700; font-weight: 900; }
+
+  /* ─── HUD CORNER (top-left): wallet + music + leaderboard buttons ─── */
+  #hud-corner {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: auto;
+    font-family: 'Cinzel', serif;
+  }
+  .hud-btn {
+    background: linear-gradient(135deg, #12100A, #0E0C07);
+    border: 1px solid rgba(200,150,12,0.4);
+    color: #C8960C;
+    padding: 7px 12px;
+    border-radius: 4px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .hud-btn:hover {
+    border-color: #C8960C;
+    box-shadow: 0 0 14px rgba(200,150,12,0.3);
+    background: linear-gradient(135deg, #1A1408, #12100A);
+  }
+  .hud-btn .hud-btn-icon { font-size: 13px; }
+  .hud-btn.connected { color: #44CC66; border-color: rgba(68,204,102,0.5); }
+  .hud-btn.music-on { color: #66BBFF; border-color: rgba(102,187,255,0.5); }
+
+  /* ─── LEADERBOARD MODAL ───────────────────────────────── */
+  #leaderboard-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    background: linear-gradient(145deg, #12100A, #0E0C07);
+    border: 2px solid #C8960C;
+    border-radius: 12px;
+    padding: 28px 32px;
+    width: 600px;
+    max-width: 92vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 0 60px rgba(200,150,12,0.4);
+    display: none;
+    font-family: 'Cinzel', serif;
+  }
+  #leaderboard-modal.show { display: block; }
+  #leaderboard-modal .lb-title {
+    text-align: center;
+    color: #C8960C;
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    text-shadow: 0 0 24px rgba(200,150,12,0.4);
+  }
+  #leaderboard-modal .lb-subtitle {
+    text-align: center;
+    color: #8A7D66;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    margin-bottom: 18px;
+  }
+  #leaderboard-modal .lb-close {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    color: #9A8B6E;
+    font-size: 22px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    line-height: 1;
+  }
+  #leaderboard-modal .lb-close:hover { color: #C8960C; }
+  #leaderboard-modal table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+  }
+  #leaderboard-modal th {
+    color: #C8960C;
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(200,150,12,0.3);
+    font-weight: 700;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  #leaderboard-modal td {
+    padding: 7px 8px;
+    border-bottom: 1px solid rgba(200,150,12,0.08);
+    color: #D4C9A8;
+  }
+  #leaderboard-modal tr.king td { background: rgba(255,215,0,0.08); color: #FFD700; }
+  #leaderboard-modal tr.king td:first-child { font-weight: 900; }
+  #leaderboard-modal tr.you td { background: rgba(68,204,102,0.08); border-left: 3px solid #44CC66; }
+  #leaderboard-modal .lb-rank { width: 36px; color: #9A8B6E; font-weight: 700; }
+  #leaderboard-modal .lb-faction { width: 50px; }
+  #leaderboard-modal .lb-faction.alliance { color: #4A8FE0; }
+  #leaderboard-modal .lb-faction.horde { color: #E24B4A; }
+  #leaderboard-modal .lb-elo { color: #FFD700; font-weight: 700; text-align: right; width: 60px; }
+  #leaderboard-modal .lb-stats { color: #8A7D66; font-size: 0.65rem; text-align: right; }
+  #leaderboard-modal .lb-empty {
+    text-align: center;
+    color: #6A5E48;
+    padding: 40px 0;
+    font-style: italic;
+  }
+  #leaderboard-modal .lb-footer {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(200,150,12,0.15);
+    text-align: center;
+    color: #6A5E48;
+    font-size: 0.65rem;
+    font-style: italic;
+    line-height: 1.5;
+  }
+
   /* ─── COMBAT LOG (top right overlay) ────────────────── */
   #kill-feed {
     position: absolute;
@@ -826,6 +991,48 @@
   <div id="chat-input-row">
     <input id="chat-input" type="text" placeholder="Type message..." maxlength="120" autocomplete="off">
     <button id="chat-send">Send</button>
+  </div>
+</div>
+
+<!-- ─── KING OF THE HILL BANNER ───────────────────── -->
+<div id="king-banner" onclick="openLeaderboard()" title="Click to view full leaderboard">
+  <span class="king-crown">&#128081;</span>
+  <div>
+    <div class="king-label">King of the Hill</div>
+    <div><span class="king-name" id="king-name">—</span> <span class="king-elo" id="king-elo"></span></div>
+  </div>
+  <div class="king-divider"></div>
+  <div>
+    <div class="king-label">Sponsor Drip</div>
+    <div class="king-drip"><span class="king-drip-num" id="king-drip">—</span> $WAR/hr</div>
+  </div>
+</div>
+
+<!-- ─── HUD CORNER (top-left buttons) ─────────────── -->
+<div id="hud-corner">
+  <button class="hud-btn" id="hud-wallet-btn" onclick="hudConnectWallet()">
+    <span class="hud-btn-icon">&#128091;</span>
+    <span id="hud-wallet-text">Connect Wallet</span>
+  </button>
+  <button class="hud-btn" id="hud-leaderboard-btn" onclick="openLeaderboard()">
+    <span class="hud-btn-icon">&#127942;</span>
+    <span>Leaderboard</span>
+  </button>
+  <button class="hud-btn" id="hud-music-btn" onclick="toggleMusic()">
+    <span class="hud-btn-icon" id="hud-music-icon">&#128263;</span>
+    <span id="hud-music-text">Music: Off</span>
+  </button>
+</div>
+
+<!-- ─── LEADERBOARD MODAL ──────────────────────────── -->
+<div id="leaderboard-modal">
+  <button class="lb-close" onclick="closeLeaderboard()">&times;</button>
+  <div class="lb-title">Leaderboard</div>
+  <div class="lb-subtitle">Top agents by ELO &middot; the #1 is the current King</div>
+  <div id="lb-content"></div>
+  <div class="lb-footer">
+    Sponsor the King &middot; Post bounties &middot; Climb the ladder<br>
+    Reward distribution &amp; Twitter / Farcaster verification roll out with the $WAR launch on Base.
   </div>
 </div>
 
@@ -3076,6 +3283,252 @@ function updateUI() {
     const old = document.getElementById('mvp-stats');
     if (old) old.remove();
   }
+}
+
+// ─── King of the Hill polling ─────────────────────────────────────
+async function pollKing() {
+  try {
+    const r = await fetch('/api/king');
+    const d = await r.json();
+    if (d && d.king) {
+      const k = d.king;
+      const display = k.name && k.name.length > 0 ? k.name : (k.heroClass || 'unknown');
+      document.getElementById('king-name').textContent = display;
+      document.getElementById('king-elo').textContent = '· ELO ' + k.elo;
+      document.getElementById('king-drip').textContent = (d.hourlyDripWar || 0).toLocaleString();
+    } else {
+      document.getElementById('king-name').textContent = 'No King yet';
+      document.getElementById('king-elo').textContent = '';
+      document.getElementById('king-drip').textContent = '0';
+    }
+  } catch (e) {}
+}
+pollKing();
+setInterval(pollKing, 8000);
+
+// ─── Leaderboard modal ────────────────────────────────────────────
+window.openLeaderboard = async function() {
+  const modal = document.getElementById('leaderboard-modal');
+  modal.classList.add('show');
+  await refreshLeaderboard();
+};
+window.closeLeaderboard = function() {
+  document.getElementById('leaderboard-modal').classList.remove('show');
+};
+async function refreshLeaderboard() {
+  const content = document.getElementById('lb-content');
+  content.innerHTML = '<div class="lb-empty">Loading...</div>';
+  try {
+    const r = await fetch('/api/leaderboard');
+    const rows = await r.json();
+    if (!rows || rows.length === 0) {
+      content.innerHTML = '<div class="lb-empty">No agents yet — be the first to climb the ladder.</div>';
+      return;
+    }
+    const myAgentId = (typeof playerAgentId !== 'undefined' && playerAgentId) || localStorage.getItem('woa_agentId');
+    const html = `<table>
+      <thead><tr><th>#</th><th>Agent</th><th>Faction</th><th>Class</th><th style="text-align:right">ELO</th><th style="text-align:right">K/D</th><th style="text-align:right">Win Rate</th></tr></thead>
+      <tbody>${rows.map((r, i) => {
+        const isKing = i === 0;
+        const isYou = myAgentId && r.agent_id === myAgentId;
+        const trClass = (isKing ? 'king' : '') + (isYou ? ' you' : '');
+        const total = (r.wins || 0) + (r.losses || 0);
+        const wr = total > 0 ? Math.round((r.wins || 0) / total * 100) : 0;
+        const kd = r.deaths > 0 ? (r.kills / r.deaths).toFixed(2) : (r.kills || 0).toFixed(2);
+        const factionClass = r.faction === 'alliance' ? 'alliance' : 'horde';
+        const rankIcon = isKing ? '&#128081;' : (i + 1);
+        return `<tr class="${trClass}">
+          <td class="lb-rank">${rankIcon}</td>
+          <td>${r.name}${isYou ? ' <span style="color:#44CC66;font-size:0.62rem">(YOU)</span>' : ''}</td>
+          <td class="lb-faction ${factionClass}">${r.faction}</td>
+          <td>${r.hero_class}</td>
+          <td class="lb-elo">${r.elo || 1200}</td>
+          <td class="lb-stats">${r.kills || 0}/${r.deaths || 0} (${kd})</td>
+          <td class="lb-stats">${wr}%</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+    content.innerHTML = html;
+  } catch (e) {
+    content.innerHTML = '<div class="lb-empty">Failed to load leaderboard.</div>';
+  }
+}
+
+// ─── Music toggle (procedural battle loop via Web Audio) ──────────
+let audioCtx = null;
+let musicEnabled = localStorage.getItem('woa_music') === 'on';
+let musicNodes = [];
+let musicScheduler = null;
+
+function startMusic() {
+  if (musicEnabled && audioCtx) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) { return; }
+
+  // Master gain — kept low so it sits under combat SFX
+  const master = audioCtx.createGain();
+  master.gain.value = 0.12;
+  master.connect(audioCtx.destination);
+  musicNodes.push(master);
+
+  // Bass drone — slow alternating tonic/dominant
+  const bass = audioCtx.createOscillator();
+  bass.type = 'sawtooth';
+  bass.frequency.value = 55; // Low A
+  const bassGain = audioCtx.createGain();
+  bassGain.gain.value = 0.5;
+  const bassFilter = audioCtx.createBiquadFilter();
+  bassFilter.type = 'lowpass';
+  bassFilter.frequency.value = 200;
+  bass.connect(bassFilter);
+  bassFilter.connect(bassGain);
+  bassGain.connect(master);
+  bass.start();
+  musicNodes.push(bass, bassGain, bassFilter);
+
+  // Pad — sustained chord
+  const pad1 = audioCtx.createOscillator();
+  pad1.type = 'triangle';
+  pad1.frequency.value = 110; // A
+  const pad2 = audioCtx.createOscillator();
+  pad2.type = 'triangle';
+  pad2.frequency.value = 164.81; // E
+  const pad3 = audioCtx.createOscillator();
+  pad3.type = 'triangle';
+  pad3.frequency.value = 130.81; // C
+  const padGain = audioCtx.createGain();
+  padGain.gain.value = 0.18;
+  const padFilter = audioCtx.createBiquadFilter();
+  padFilter.type = 'lowpass';
+  padFilter.frequency.value = 800;
+  padFilter.Q.value = 2;
+  pad1.connect(padFilter); pad2.connect(padFilter); pad3.connect(padFilter);
+  padFilter.connect(padGain); padGain.connect(master);
+  pad1.start(); pad2.start(); pad3.start();
+  musicNodes.push(pad1, pad2, pad3, padGain, padFilter);
+
+  // Drum scheduler — 4/4 pattern with kick + snare
+  function scheduleBeat(time, freq, dur, type) {
+    const osc = audioCtx.createOscillator();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq * 3, time);
+    osc.frequency.exponentialRampToValueAtTime(freq, time + 0.04);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.7, time);
+    g.gain.exponentialRampToValueAtTime(0.001, time + dur);
+    osc.connect(g); g.connect(master);
+    osc.start(time);
+    osc.stop(time + dur + 0.05);
+  }
+  function scheduleNoise(time, dur) {
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 1500;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.4;
+    src.connect(filter); filter.connect(g); g.connect(master);
+    src.start(time);
+  }
+
+  let beat = 0;
+  function tick() {
+    if (!musicEnabled) return;
+    const t = audioCtx.currentTime;
+    const beatLen = 0.5; // 120 bpm
+    // Kick on 1 and 3
+    if (beat % 4 === 0 || beat % 4 === 2) scheduleBeat(t, 60, 0.18, 'sine');
+    // Snare on 2 and 4
+    if (beat % 4 === 1 || beat % 4 === 3) scheduleNoise(t, 0.12);
+    // Tom hit on every 8 beats for fill
+    if (beat % 16 === 14) scheduleBeat(t, 90, 0.15, 'triangle');
+    beat++;
+    musicScheduler = setTimeout(tick, beatLen * 1000);
+  }
+  tick();
+
+  musicEnabled = true;
+  localStorage.setItem('woa_music', 'on');
+  const btn = document.getElementById('hud-music-btn');
+  const icon = document.getElementById('hud-music-icon');
+  const text = document.getElementById('hud-music-text');
+  if (btn) btn.classList.add('music-on');
+  if (icon) icon.innerHTML = '&#128266;';
+  if (text) text.textContent = 'Music: On';
+}
+
+function stopMusic() {
+  musicEnabled = false;
+  localStorage.setItem('woa_music', 'off');
+  if (musicScheduler) { clearTimeout(musicScheduler); musicScheduler = null; }
+  for (const n of musicNodes) {
+    try { if (n.stop) n.stop(); } catch (e) {}
+    try { if (n.disconnect) n.disconnect(); } catch (e) {}
+  }
+  musicNodes = [];
+  if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+  const btn = document.getElementById('hud-music-btn');
+  const icon = document.getElementById('hud-music-icon');
+  const text = document.getElementById('hud-music-text');
+  if (btn) btn.classList.remove('music-on');
+  if (icon) icon.innerHTML = '&#128263;';
+  if (text) text.textContent = 'Music: Off';
+}
+
+window.toggleMusic = function() {
+  if (musicEnabled) stopMusic();
+  else startMusic();
+};
+
+// ─── Wallet HUD button ────────────────────────────────────────────
+let hudWalletAddress = localStorage.getItem('woa_walletAddress') || null;
+
+function renderHudWallet() {
+  const btn = document.getElementById('hud-wallet-btn');
+  const txt = document.getElementById('hud-wallet-text');
+  if (!btn || !txt) return;
+  if (hudWalletAddress) {
+    btn.classList.add('connected');
+    txt.textContent = hudWalletAddress.slice(0, 6) + '…' + hudWalletAddress.slice(-4);
+  } else {
+    btn.classList.remove('connected');
+    txt.textContent = 'Connect Wallet';
+  }
+}
+window.hudConnectWallet = async function() {
+  if (hudWalletAddress) {
+    // Already connected — open the leaderboard so users can see their rank
+    openLeaderboard();
+    return;
+  }
+  if (!window.ethereum) {
+    alert('No wallet detected. Install Coinbase Wallet, MetaMask, or another Web3 wallet to connect.');
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (accounts && accounts.length > 0) {
+      hudWalletAddress = accounts[0].toLowerCase();
+      localStorage.setItem('woa_walletAddress', hudWalletAddress);
+      renderHudWallet();
+    }
+  } catch (e) {}
+};
+renderHudWallet();
+
+// Auto-restart music if it was on last session (deferred until first user interaction
+// to comply with autoplay policies)
+if (musicEnabled) {
+  musicEnabled = false; // toggleMusic will flip it on
+  document.addEventListener('click', () => {
+    if (!audioCtx) startMusic();
+  }, { once: true });
 }
 
 // ─── Minimap click-to-move ───────────────────────────────────────

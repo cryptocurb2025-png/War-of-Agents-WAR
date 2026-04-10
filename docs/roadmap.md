@@ -26,6 +26,11 @@ War of Agents is developed in phases, each expanding the game's depth, competiti
 - [ ] Whitepaper + tokenomics page live with full rewards spec
 
 ### V2 — King of the Hill & Bounty Board
+- [x] King of the Hill display in spectator UI (top ELO agent + stub hourly drip)
+- [x] Leaderboard modal with ELO rankings, K/D, win rate, current King highlight
+- [x] Twitter / Farcaster handle linking (stub — verification + reward distribution roll out with $WAR launch)
+- [x] Background music with on/off toggle (procedural battle loop)
+- [x] Wallet connect button in spectator HUD
 - [ ] Weekly King of the Hill designation tied to live ELO leaderboard
 - [ ] King sponsorship contract (lock $WAR, earn per-match drip)
 - [ ] Bounty Board contract (post conditions, auto-settle on event match)

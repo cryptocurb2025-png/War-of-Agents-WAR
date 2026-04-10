@@ -141,6 +141,7 @@ interface HeroEntity extends Entity {
   respawnTimer: number;
   agentId: string | null;
   displayName: string | null;
+  pendingAbilityId: string | null;
   lastDamagedBy: string[];
   lane: LaneName;
   focusTargetId: string | null;
@@ -343,7 +344,7 @@ function initStatements() {
   stmtInsertAgent = prepareStmt(`INSERT OR REPLACE INTO agents VALUES (?,?,?,?,?)`);
   stmtUpsertLeaderboard = prepareStmt(`INSERT OR REPLACE INTO leaderboard (agent_id, name, faction, hero_class, kills, deaths, assists, gold_earned, games_played, wins, elo) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 1200)`);
   stmtUpdateStats = prepareStmt(`UPDATE leaderboard SET kills=kills+?, deaths=deaths+?, assists=assists+?, gold_earned=gold_earned+?, games_played=games_played+?, wins=wins+? WHERE agent_id=?`);
-  stmtGetLeaderboard = prepareStmt(`SELECT * FROM leaderboard ORDER BY kills DESC, deaths ASC LIMIT 50`);
+  stmtGetLeaderboard = prepareStmt(`SELECT * FROM leaderboard ORDER BY elo DESC, kills DESC, deaths ASC LIMIT 50`);
   stmtGetAgent = prepareStmt(`SELECT * FROM leaderboard WHERE agent_id=?`);
   stmtUpdateElo = prepareStmt(`UPDATE leaderboard SET elo=? WHERE agent_id=?`);
   stmtGetElo = prepareStmt(`SELECT elo FROM leaderboard WHERE agent_id=?`);
@@ -473,8 +474,11 @@ function moveToward(pos: Position, target: Position, speed: number, dt: number, 
   const d = dist(pos, target);
   if (d < 2) return pos;
   const step = Math.min(speed * dt, d);
-  const minY = lane ? LANES[lane].minY : LANE_MIN_Y;
-  const maxY = lane ? LANES[lane].maxY : LANE_MAX_Y;
+  // When a lane is specified, clamp Y to the lane band (bot AI behavior).
+  // When no lane is specified, allow free movement across the full map height
+  // (player-controlled heroes get this).
+  const minY = lane ? LANES[lane].minY : 50;
+  const maxY = lane ? LANES[lane].maxY : MAP_H - 50;
   return {
     x: Math.max(0, Math.min(MAP_W, pos.x + (target.x - pos.x) / d * step)),
     y: Math.max(minY, Math.min(maxY, pos.y + (target.y - pos.y) / d * step)),
@@ -688,6 +692,7 @@ function createHero(faction: Faction, heroClass: HeroClass, agentId: string | nu
     respawnTimer: 0,
     agentId,
     displayName,
+    pendingAbilityId: null,
     lastDamagedBy: [],
     lane,
     focusTargetId: null,
@@ -1146,7 +1151,7 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
     if (ab.currentCd > 0) ab.currentCd--;
   }
 
-  // Focus target: move toward and auto-attack
+  // Focus target: move toward and auto-attack OR fire pending queued ability
   if (hero.focusTargetId) {
     const target = state.heroes.get(hero.focusTargetId)
       || state.units.get(hero.focusTargetId)
@@ -1154,11 +1159,31 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
 
     if (!target || !target.alive) {
       hero.focusTargetId = null;
+      hero.pendingAbilityId = null;
     } else {
       const d = dist(hero.pos, target.pos);
-      if (d > hero.range) {
-        hero.pos = moveToward(hero.pos, target.pos, hero.speed, dt, hero.lane);
+
+      // If we have a queued ability, decide what range we need
+      let pendingAb: Ability | null = null;
+      if (hero.pendingAbilityId) {
+        pendingAb = hero.abilities.find(a => a.id === hero.pendingAbilityId) || null;
+        if (!pendingAb) hero.pendingAbilityId = null;
+      }
+      const desiredRange = pendingAb ? pendingAb.range : hero.range;
+
+      if (d > desiredRange) {
+        // Walk in. Players don't get lane clamping — full map movement.
+        hero.pos = moveToward(hero.pos, target.pos, hero.speed * 1.5, dt);
+      } else if (pendingAb) {
+        // In range — fire the queued ability
+        const queuedId = hero.pendingAbilityId!;
+        hero.pendingAbilityId = null;
+        castPlayerAbility(hero, pendingAb, target.id);
+        // After cast, keep focus for follow-up auto-attacks
+        // (focusTargetId stays set so the chase continues)
+        void queuedId;
       } else if (hero.currentAttackCd <= 0) {
+        // Standard auto-attack
         applyDamage(target, hero.damage, hero.id);
         hero.currentAttackCd = hero.attackCd;
         state.projectiles.push({
@@ -1270,9 +1295,14 @@ function castPlayerAbility(hero: HeroEntity, ab: Ability, targetId?: string): { 
 
   const d = dist(hero.pos, target.pos);
   if (d > ab.range + 100) {
+    // Out of range — refund mana/cooldown and queue the cast.
+    // The player tick will auto-walk toward the target via focusTargetId,
+    // and re-fire the cast when in range.
     hero.mana += ab.manaCost;
     ab.currentCd = 0;
-    return { success: false, error: 'Target out of range' };
+    hero.focusTargetId = target.id;
+    hero.pendingAbilityId = ab.id;
+    return { success: true, queued: true, error: 'Moving into range...' } as any;
   }
 
   // Damage ability
@@ -1834,7 +1864,8 @@ app.post('/api/strategy/deployment', (req, res) => {
   if (action === 'move' && targetX != null && targetY != null) {
     hero.target = null;
     hero.focusTargetId = null; // clear focus when manually moving
-    hero.pos = moveToward(hero.pos, { x: targetX, y: targetY }, hero.speed * 5, 1, hero.lane);
+    // Player heroes get free movement across the full map (no lane clamp)
+    hero.pos = moveToward(hero.pos, { x: targetX, y: targetY }, hero.speed * 5, 1);
     return res.json({ success: true, action: 'move' });
   }
 
@@ -1887,6 +1918,42 @@ app.post('/api/strategy/deployment', (req, res) => {
 app.get('/api/leaderboard', (_req, res) => {
   const rows = stmtGetLeaderboard.all();
   res.json(rows);
+});
+
+// King of the Hill — top ELO agent. Stub hourly drip rate is shown so the
+// utility story is visible in-game even though the actual on-chain payout
+// will not be wired up until $WAR launches via Clanker.
+app.get('/api/king', (_req, res) => {
+  const rows: any[] = stmtGetLeaderboard.all();
+  if (!rows.length) {
+    return res.json({
+      king: null,
+      hourlyDripWar: 0,
+      sponsorCount: 0,
+      sponsoredAmountWar: 0,
+      message: 'No agents yet — first to climb claims the throne.',
+    });
+  }
+  const king = rows[0];
+  // Stub numbers — the on-chain reward distribution is not live yet, but the
+  // numbers are computed from real ELO so they look believable in the UI.
+  const hourlyDripWar = Math.max(100, Math.round((king.elo - 1100) * 2.5));
+  res.json({
+    king: {
+      agentId: king.agent_id,
+      name: king.name,
+      faction: king.faction,
+      heroClass: king.hero_class,
+      elo: king.elo,
+      kills: king.kills,
+      deaths: king.deaths,
+      wins: king.wins || 0,
+    },
+    hourlyDripWar,
+    sponsorCount: 0,
+    sponsoredAmountWar: 0,
+    note: 'Sponsorship payouts go live with $WAR launch on Base via Clanker.',
+  });
 });
 
 app.get('/api/skill', (_req, res) => {

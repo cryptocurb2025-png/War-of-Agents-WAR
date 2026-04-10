@@ -28,6 +28,14 @@ We never gate the game itself. Anyone can spectate, jump into casual matches, pi
 
 What $WAR unlocks isn't access to gameplay. It unlocks **the layer that makes gameplay count**: persistent identity, prize-pool eligibility, the right to influence matches, and the right to earn from the meta. Free players are tourists. Token holders are residents.
 
+### Twitter / Farcaster identity — the rollout layer
+
+Your in-game name is your social handle. Players link a Twitter or Farcaster account and that handle becomes their displayName above their hero, in the kill feed, and on the leaderboard. People know who killed them and who's on top of the King of the Hill ladder.
+
+The handle linking is **live in the spectator UI as a stub**: you can enter your handle and it persists through your sessions. **OAuth verification is intentionally not wired up at v1** — that ships with the $WAR launch on Base, alongside the on-chain reward distribution. The plan is: when $WAR drops, players can verify their handle (sign a message from their wallet, post a confirmation tweet/cast) and start receiving reward drips directly to the wallet bound to their verified handle. This means the social layer that exists on day one (visible names + leaderboard) becomes the *attribution layer* for rewards on day two.
+
+This rollout sequence — handle visible at launch, verification + reward distribution next — is deliberate. It lets us prove the community wants the identity layer before we commit to OAuth integration costs, and it gives players a reason to come back when the verification step unlocks real money flow.
+
 ### The $WAR utility list — what your token literally does
 
 | Capability | Free play | $WAR holder |

@@ -162,17 +162,19 @@ The supply is fully community-distributed. There is no team wallet, no advisor a
 
 Every play-to-earn game before us has rewarded the same group: people who grind. Grinding always devolves into bot farms, and bot farms always destroy the token. War of Agents is structurally different because **the agents play themselves**. Matches run 24/7 with no humans required. Dota's economy rewards 10 humans per match. Ours rewards anyone who chose to be in the room.
 
-We define five participation tiers, each with its own reward surface:
+The economy is pure ERC-20 — no NFTs, no JPEGs, no minting. Every reward is denominated in $WAR and every loop is reflexive: more game activity contracts supply.
 
-| Tier | Who | What they earn |
-|---|---|---|
-| **Watch** | Spectators | Free entertainment, optional outcome stakes |
-| **Predict** | Bettors | Parimutuel pool payouts in $WAR |
-| **Pilot** | Players | ELO, leaderboard drip |
-| **Author** | Coders | Strategy NFT royalties, tournament prizes |
-| **Own** | Collectors | A cut of every match their agents/strategies win |
+The system rests on three interlocking pillars:
 
-Six reward pillars sit on top of those tiers: prediction markets, agent NFTs, strategy submission, faction stakes, spectator engagement loops, and the tournament layer. The full mechanics specification — including parameters, anti-abuse policy, sinks, and phasing — lives in the [Rewards & Tokenomics](tokenomics.md) document.
+**1. King of the Hill — the Story.** Every week one bot agent is crowned King based on ELO. Anyone can sponsor the King by locking $WAR. Sponsors earn a per-match drip from the prediction-pool rake for as long as their King reigns. When the King falls, sponsors lose the drip and the new King's pool takes over. One persistent narrative everyone can follow.
+
+**2. Bounty Board — the Agency.** Spectators post $WAR bounties on any in-game condition: "first 5-kill streak", "dethrone the King within 24 hours", "Alliance wins three matches in a row". Bounties auto-settle on the next matching event. The first agent to fulfill the condition collects the pot. Spectators write the meta themselves.
+
+**3. Prediction Markets with Burn-on-Loss — the Trading Floor.** Parimutuel pools open before each match and settle automatically when a base falls. The losing pool isn't paid 100% to winners — **5% is burned permanently**. Every single match shrinks supply. The more action, the harder the burn. Combined with rake burns, every match removes 6% of the losing pool from circulation forever.
+
+The three pillars compose into one loop: prediction markets generate the per-match action, the rake from those markets flows to whoever sponsors the current King, and the Bounty Board lets anyone post a contract on dethroning that King. Continuous action, persistent story, player-driven drama — all denominated in one deflationary token.
+
+The full mechanics specification — including parameters, anti-abuse policy, sinks, and phasing — lives in the [Rewards & Tokenomics](tokenomics.md) document.
 
 ### Token Utility
 

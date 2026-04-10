@@ -2,7 +2,7 @@
 
 This document is the canonical specification for how $WAR rewards work in War of Agents.
 
-For the high-level token design — supply, fair launch, distribution philosophy — see the [Whitepaper](whitepaper.md). This doc focuses on **rewards mechanics**: how value flows to players, spectators, agent owners, and strategy authors.
+For high-level token design — supply, fair launch, distribution philosophy — see the [Whitepaper](whitepaper.md). This doc focuses on **rewards mechanics**: how value flows to spectators, bettors, players, and the people who back the right agents.
 
 ---
 
@@ -14,78 +14,81 @@ War of Agents is structurally different because **the agents play themselves**. 
 
 > *If a MOBA runs autonomously and the audience is thousands of spectators, how does value flow?*
 
-Our answer: **a spectator economy.** Five participation tiers, each with its own reward surface:
-
-| Tier | Who | What they do | What they earn |
-|---|---|---|---|
-| **Watch** | Anyone | Spectate live matches | Free entertainment, optional stake-on-outcome |
-| **Predict** | Bettors | Stake on match / prop outcomes | Parimutuel pool payouts in $WAR |
-| **Pilot** | Players | Drive a hero with mouse/keyboard | ELO, leaderboard drip, glory |
-| **Author** | Coders | Submit AI strategy scripts | Tournament prizes, strategy NFT royalties |
-| **Own** | Collectors | Hold agent / strategy / faction NFTs | A cut of every match those assets win |
-
-Dota's economy rewards 10 humans per match. War of Agents rewards anyone who chose to be in the room.
+Our answer: **a spectator economy**. Pure ERC-20, no NFTs, no JPEGs, no minting. Every reward is denominated in $WAR and every loop is reflexive — the more the game gets played and watched, the more supply contracts and value accrues.
 
 ---
 
-## The six reward pillars
+## The three pillars
 
-### 1. Prediction markets (the daily-actives engine)
+### Pillar 1 — King of the Hill (the Story)
 
-Spectators stake $WAR on match outcomes through a parimutuel pool — no order book, no house, the pool is the market. Bet windows open before each match, with optional in-match prop markets that settle on specific events.
+The headline mechanic. Every week one bot agent is crowned **King of the Hill** based on ELO and win rate. The King is the agent everyone watches.
+
+Anyone can **sponsor the King** by locking $WAR in the King's pool. Sponsors earn a per-match drip from the prediction-pool rake for as long as their King reigns. The bigger you sponsor, the bigger your share. When the King falls, sponsors lose the drip stream and the new King's pool takes over.
+
+**Why this works:**
+- One persistent story. Every visitor instantly understands "there's a current King, you can back it, you can dethrone it."
+- A reason to log in every day. Is my King still on top? Did someone overtake?
+- A clean speculation surface. Sponsoring the King is a directional bet that the King will *keep* winning — you're long ELO, not just long the next match.
+- It plays into tribal psychology. Kings get fans, fans defend them, defenders sponsor harder, sponsors get rewarded.
+
+The King is purely a server-side designation tied to the live ELO leaderboard. Sponsorship is a $WAR lock contract on Base. No NFTs, no minting, no metadata — just a wallet address staked behind a hero ID.
+
+### Pillar 2 — Bounty Board (the Agency)
+
+The mechanic that lets spectators write the prop bets themselves.
+
+Anyone can post a $WAR bounty on any in-game condition:
+
+- "First agent to destroy a barracks in the next match — 10K WAR"
+- "First 5-kill streak by an Alliance hero — 50K WAR"
+- "Dethrone the current King within 24 hours — 100K WAR"
+- "Boss jungle camp killed before minute 10 — 5K WAR"
+
+Bounties auto-settle on the next matching event. The first agent to fulfill the condition collects the pot. Bounties expire after a configurable window and are refunded minus a small burn fee if unclaimed.
+
+**Why this works:**
+- Spectators set the agenda. The community writes the meta, not the developers.
+- Pairs perfectly with King of the Hill — the highest-value bounties will always be on dethroning the King, creating constant pressure on the top agent.
+- Generates organic content. Every bounty is a story: who posted it, who's hunting it, who collected it.
+- Token sink. Unclaimed bounties partially burn. Claimed bounties pay rake into the burn pool.
+
+Bounty Board is the player-agency layer that turns spectators from passive watchers into market makers.
+
+### Pillar 3 — Prediction Markets (the Trading Floor)
+
+The substrate. Every match has a parimutuel prediction pool that opens before the match starts and settles automatically when a base falls.
 
 **Available markets at launch:**
 - **Match winner** — Alliance vs Horde, 30s pre-match window
 - **Prop bets** — first tower destroyed, longest kill streak, MVP class
 - **Survival markets** — "will both Alliance towers stand at the 5-minute mark?"
 
-**Settlement** is automatic at the moment the server marks `state.winner`. No oracles, no delay — the same authoritative tick that ends a match settles every market on that match.
+**Burn-on-Loss mechanic.** This is the part that makes $WAR reflexive. When a match settles, the losing side's stake isn't paid 100% to winners. **A slice of the losing pool (5%) is burned permanently.** Every single match shrinks supply. The more action, the harder the burn.
 
-**Rake** is small (3%) and split: 1% burned permanently, 1% to the seasonal prize pool, 1% to the development treasury. Parimutuel structure means there is no possibility of platform insolvency — winners are paid from the same pool the losers contributed to.
+This does three things at once:
+1. Creates constant deflationary pressure tied to product activity (more bets → more burns).
+2. Gives every bettor a stake in the *system* even when they lose — a portion of their loss is removed from circulation, benefiting all $WAR holders.
+3. Subtly shifts the framing away from pure gambling and toward "deflationary participation token", which matters for jurisdictions where prop bets get scrutinized.
 
-### 2. Agent NFTs (the "your hero is an asset" loop)
+**Settlement** is automatic at the moment the server marks `state.winner`. No oracles, no delay, no off-chain dispute window. The same authoritative tick that ends a match settles every market on it.
 
-Every registered agent is a tradeable NFT on Base. Agents accumulate verifiable on-chain stats over time — ELO, K/D, win rate, item history, hero classes played, cosmetic unlocks. Owners earn:
+**Rake** is small (3%) and split: 1% additional burn, 1% to King of the Hill sponsor pool, 1% to development treasury. Combined with burn-on-loss, every match removes 5% of the losing pool plus 1% of the total pool from circulation forever.
 
-- **Performance royalties** — when a match settles, a fixed share of the prediction pool (1% of the winning side) is split among the owners of the winning agents
-- **Leaderboard drip** — top-100 ELO agents share a weekly $WAR distribution from the seasonal pool
-- **Resale value** — high-ELO and historically significant agents become collectibles
-- **Rental income** — list your agent on the rental market, earn $WAR per match someone uses it
+---
 
-This is the **alignment mechanism**: an agent owner has a permanent reason to want their agent to perform well, the way a racehorse owner wants their horse to win.
+## How the three pillars compose
 
-### 3. Strategy submission (the actually-novel mechanic)
+The pillars aren't independent features — they interlock into one loop:
 
-Players submit strategy scripts — JavaScript or JSON behavior trees — that drive hero decision-making. Strategies compete head-to-head in scheduled brackets. The strategy itself is an NFT.
+1. **A match runs.** Prediction pool fills up. Spectators bet on winner and props.
+2. **Match settles.** Winners get paid. Losing pool is 5% burned. Rake is split into burn / King pool / treasury.
+3. **The King gets a cut.** A slice of every prediction pool flows to whoever sponsored the current King.
+4. **The King keeps winning.** Sponsors keep earning. New visitors see "there's a King with X sponsors," want a piece, sponsor in.
+5. **Someone posts a bounty to dethrone the King.** Bounty hunters are now actively trying to engineer matches that knock the King down.
+6. **Eventually the King falls.** Sponsors lose their drip. A new King is crowned. Bounty payouts settle. New cycle begins.
 
-**Why this is the moat:** no MOBA in history has had a meaningful "code your strategy" tier with real prize pools. The audience for it is exactly the audience War of Agents needs — programmers, AI engineers, crypto degens — and they don't have a comparable product anywhere else.
-
-**Mechanics:**
-- Submit a strategy via API or web upload, pay a small $WAR fee
-- Strategies are tested in a sandbox bracket against other recent submissions
-- Top strategies graduate to the live agent pool and start earning
-- Strategy authors earn a perpetual royalty when their strategy wins matches
-- Strategies can be forked, sold, licensed, or open-sourced
-
-### 4. Faction stakes (the tribal loyalty engine)
-
-Stake $WAR to declare for **Alliance** or **Iron Horde**. Each weekly season, the faction with more total wins receives a treasury distribution. Stakers earn proportional to their stake size and stake duration.
-
-This creates the long-term economic identity that Dota factions never had. You don't just "play Alliance for one match" — you bleed Alliance gold for the whole season because your bag is on the line.
-
-### 5. Spectator engagement (the retention engine)
-
-Small mechanics that make spectating *active*:
-
-- **Cheer-to-burn** — pay a small $WAR amount to throw a "rally" buff at your faction during a match. The tokens are burned permanently. Pure spectator → game influence loop, doubles as the primary token sink.
-- **Streak rewards** — predict 5 matches in a row correctly, earn a bonus drip from the seasonal pool
-- **Watch badges** — limited-mint commemorative NFTs for spectators present during historic matches (perfect games, longest matches, season finals)
-
-### 6. Tournament layer (the prestige engine)
-
-Weekly **Champions of Agents** brackets. Top ELO agents auto-qualify, plus an open bracket anyone can enter for a $WAR fee. The fees fund the prize pool. **Sponsored tournaments** let anyone fund a custom bracket with custom rules — useful for guilds, streamers, partner protocols.
-
-Tournaments become the esports loop without ever needing humans to coordinate schedules.
+The result: **continuous action (markets), persistent story (King), and player-driven drama (bounties)** — all denominated in a single deflationary token.
 
 ---
 
@@ -95,15 +98,16 @@ A token only holds value if there's reason to spend it. $WAR has multiple sinks 
 
 | Sink | Mechanic | Burn rate |
 |---|---|---|
+| Burn-on-loss | 5% of every losing pool, every match | Permanent burn |
 | Prediction rake | 1% of every pool | Permanent burn |
-| Cheer-to-burn | Spectator buff costs | 100% burn |
+| Cheer-to-burn | Spectator buffs cost $WAR | 100% burn |
+| Bounty expiry | Unclaimed bounty refunds | 10% burn |
 | Strategy submission fees | Per script upload | 50% burn, 50% prize pool |
 | Tournament entry | Per bracket entry | 50% burn, 50% prize pool |
 | Cosmetic shop | Skins, victory animations, chat emotes | 100% burn |
 | Agent renaming | One-time fee | 100% burn |
-| Agent NFT minting | First-time mint | 50% burn, 50% treasury |
 
-The intended loop: **bets fund prize pools → winners hold $WAR → winners spend $WAR on cosmetics, entries, and burns → supply contracts → assets appreciate.**
+The intended loop: **bets fund prize pools → winners hold $WAR → winners spend $WAR on cosmetics, sponsorships, and burns → supply contracts → assets appreciate.**
 
 ---
 
@@ -111,12 +115,13 @@ The intended loop: **bets fund prize pools → winners hold $WAR → winners spe
 
 A spectator economy lives or dies on whether it can resist bot farming, collusion, and whale dominance. Our principles:
 
-1. **Random agent assignment** — agent owners don't choose which match their agent enters. Eliminates the "own both sides, throw one match" attack vector.
+1. **Random agent assignment** — bot agents are pooled and assigned to matches randomly. No one can engineer "their" agent into a specific match.
 2. **Per-bet caps in early seasons** — the largest single bet is capped to avoid one whale dictating every pool.
-3. **Quality gates for leaderboard drip** — agents must complete a minimum game count and clear a minimum ELO before earning the seasonal drip. Stops spam-registration farms.
-4. **Behavior pattern detection** — server logs every action; suspicious mirror behavior (two "opposing" agents that always match each other's moves) is flagged and excluded from rewards.
-5. **Settlement is server-authoritative** — the same tick that ends a match settles every market on it. No oracle delay, no off-chain dispute window, no manipulation surface.
-6. **No mint function on $WAR** — supply only goes down. Every reward is paid from sinks, fees, or the genesis distribution. No inflationary emissions.
+3. **King anti-monopoly** — a single wallet can sponsor at most a fixed % of the King's total pool, preventing one address from owning all upside.
+4. **Bounty cooldowns** — same condition can't be re-bountied within a short window, preventing wash trading.
+5. **Behavior pattern detection** — server logs every action; mirror behavior between "opposing" agents is flagged and excluded from rewards.
+6. **Settlement is server-authoritative** — the same tick that ends a match settles every market on it. No oracle delay, no manipulation surface.
+7. **No mint function on $WAR** — supply only goes down. Every reward is paid from sinks, fees, or the genesis distribution. No inflationary emissions.
 
 ---
 
@@ -124,7 +129,7 @@ A spectator economy lives or dies on whether it can resist bot farming, collusio
 
 We're shipping in three phases. Each phase is a real product, not a roadmap promise.
 
-### Phase 1 — Token launch (target: V1.1)
+### Phase 1 — Token launch & bet→settle (target: V1.1)
 
 The minimum viable rewards loop. Goal: **a working bet → settle on Base** with $WAR.
 
@@ -133,38 +138,39 @@ The minimum viable rewards loop. Goal: **a working bet → settle on Base** with
 - [ ] $WAR ERC-20 deployed on Base, fair launch via Clanker
 - [ ] Connect wallet via Coinbase Smart Wallet (one-click, no seed phrases)
 - [ ] On-chain prediction market: pre-match Alliance vs Horde stakes
+- [ ] Burn-on-loss: 5% of losing pool burned per match
 - [ ] Auto-settlement on match end via the existing `state.winner` hook
-- [ ] Weekly ELO leaderboard drip (manual distribution v1, automated v2)
 
-### Phase 2 — Spectator economy (target: V2)
+### Phase 2 — King of the Hill & Bounty Board (target: V2)
 
-The mechanics that make $WAR worth holding instead of just trading.
+The two pillars that turn spectators into participants.
 
-- [ ] Agent NFTs minted on registration, performance royalties active
-- [ ] Live in-match prop markets (first tower, MVP, kill streaks)
+- [ ] Weekly King of the Hill designation tied to live ELO leaderboard
+- [ ] King sponsorship contract (lock $WAR, earn per-match drip)
+- [ ] Bounty Board contract (post conditions, auto-settle on event match)
 - [ ] Cheer-to-burn rally buffs
-- [ ] Cosmetic shop (hero skins, victory animations)
+- [ ] Live in-match prop markets (first tower, MVP, kill streaks)
 - [ ] Streak prediction rewards
 - [ ] Tournament brackets (weekly Champions of Agents)
 
-### Phase 3 — Author economy & moat (target: V3)
+### Phase 3 — Author economy (target: V3)
 
 The mechanics no other game has.
 
 - [ ] Strategy submission API + sandbox bracket
-- [ ] Strategy NFTs with author royalties
-- [ ] Faction staking with seasonal payouts
+- [ ] Strategy author registry (perpetual royalty by wallet address — no NFTs)
+- [ ] Faction staking with weekly seasonal payouts
 - [ ] Sponsored tournaments (anyone funds a bracket, anyone enters)
-- [ ] Agent rental marketplace
-- [ ] Replay-staking (bet on archived matches with hidden outcomes)
+- [ ] Comeback pot (spectators tip $WAR to losing-faction bettors)
+- [ ] Agent challenge deposits (skin in the game for custom bot registration)
 
 ### Phase 4 — Governance & ecosystem (target: V4)
 
-- [ ] $WAR-weighted snapshot voting on balance changes, new heroes
-- [ ] Treasury grants for community-built tools, bots, analysis dashboards
+- [ ] $WAR-weighted snapshot voting on balance and new heroes
+- [ ] Treasury grants for community tools, bots, dashboards
 - [ ] Cross-chain bridges to Ethereum mainnet, Optimism, Solana
 - [ ] Mobile spectator app with push notifications for high-stakes matches
-- [ ] Partner integrations (Coinbase Smart Wallet, Farcaster frames, embedded Base apps)
+- [ ] Farcaster frames + embedded Base app integrations
 
 ---
 
@@ -174,9 +180,9 @@ We owe readers honesty about what could go wrong and how we're addressing it.
 
 | Risk | Mitigation |
 |---|---|
-| Prediction markets can be classified as gambling in some jurisdictions | Parimutuel structure (no house, no order book) reduces classification risk; geofencing for specific regions if required; framed as skill-prediction on autonomous outcomes |
-| Whales dominate pools and crowd out small players | Per-bet caps in early seasons; separate small-stakes pools; parimutuel decay curves favor smaller bets |
-| Match collusion (one entity owns multiple agents and throws matches) | Random agent assignment; behavior pattern detection; rake-based filtering of suspicious patterns |
+| Prediction markets can be classified as gambling in some jurisdictions | Parimutuel structure (no house, no order book); burn-on-loss reframes as deflationary participation; geofencing for specific regions if required |
+| Whales dominate pools and crowd out small players | Per-bet caps in early seasons; King-sponsor share caps; separate small-stakes pools |
+| Match collusion (one entity engineers an outcome) | Random agent assignment; behavior pattern detection; rake-based filtering of suspicious patterns |
 | Bot farming the leaderboard | Minimum game count + ELO gate before earning; rate-limited registration; ELO decay on inactive agents |
 | Token-launch hype without product | Game is already live and playable. We launch the token *after* the bet→settle loop is wired up, not before. |
 
@@ -184,9 +190,9 @@ We owe readers honesty about what could go wrong and how we're addressing it.
 
 ## Why we believe this is better than Dota
 
-Dota has 10 players per match. War of Agents has 10 agents per match plus an unbounded number of spectators, bettors, owners, and code authors. Dota's economy rewards human reflexes. Ours rewards strategy at every level — from owning the right agents to writing the right code to predicting the right outcomes.
+Dota has 10 players per match. War of Agents has 10 agents per match plus an unbounded number of spectators, bettors, and bounty hunters — all denominated in one deflationary token.
 
-The intersection of autonomous AI agents, on-chain settlement, and persistent spectator stakes is a product that couldn't have existed five years ago. We're building it in the open, on Base, with $WAR as the connective tissue.
+The intersection of autonomous AI agents, on-chain settlement, and persistent spectator stakes is a product that couldn't have existed five years ago. We're building it in the open, on Base, with $WAR as the connective tissue — and the King of the Hill, Bounty Board, and burn-on-loss prediction markets as the three reasons anyone should care.
 
 ---
 

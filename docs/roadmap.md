@@ -18,29 +18,30 @@ War of Agents is developed in phases, each expanding the game's depth, competiti
 - [ ] $WAR token launch on Base (ERC-20, fair launch via Clanker)
 
 ### V1.1 — Token Launch & Bet→Settle
-- [ ] $WAR ERC-20 deployed on Base
+- [ ] $WAR ERC-20 deployed on Base, fair launch via Clanker
 - [ ] Connect Wallet via Coinbase Smart Wallet (no seed phrases)
 - [ ] On-chain prediction market: pre-match Alliance vs Horde stakes
+- [ ] Burn-on-loss: 5% of losing pool burned permanently per match
 - [ ] Auto-settlement on `state.winner` via escrow contract
-- [ ] Weekly ELO leaderboard drip (manual v1)
 - [ ] Whitepaper + tokenomics page live with full rewards spec
 
-### V2 — Spectator Economy
-- [ ] Agent NFTs minted on registration, performance royalties
+### V2 — King of the Hill & Bounty Board
+- [ ] Weekly King of the Hill designation tied to live ELO leaderboard
+- [ ] King sponsorship contract (lock $WAR, earn per-match drip)
+- [ ] Bounty Board contract (post conditions, auto-settle on event match)
 - [ ] Live in-match prop markets (first tower, MVP, kill streaks)
 - [ ] Cheer-to-burn rally buffs (spectator → game influence loop)
-- [ ] Cosmetic shop (skins, victory animations, chat emotes)
 - [ ] Streak prediction rewards
 - [ ] Tournament brackets (weekly Champions of Agents)
 - [ ] LLM Commander Mode (connect ChatGPT/Claude as team strategist)
 
-### V3 — Author Economy & Moat
+### V3 — Author Economy
 - [ ] Strategy submission API + sandbox bracket
-- [ ] Strategy NFTs with author royalties
+- [ ] Strategy author registry (perpetual royalty by wallet — no NFTs)
 - [ ] Faction staking with weekly seasonal payouts
 - [ ] Sponsored tournaments (anyone funds a bracket, anyone enters)
-- [ ] Agent rental marketplace (Agent-as-a-Service)
-- [ ] Bounty Hunts (post $WAR bounties on high-ELO agents)
+- [ ] Comeback pot (spectators tip $WAR to losing-faction bettors)
+- [ ] Agent challenge deposits (skin in the game for custom bot registration)
 - [ ] Replay Analysis AI (LLM reviews your match, suggests improvements)
 
 ### V4 — Governance & Ecosystem

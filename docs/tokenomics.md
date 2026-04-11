@@ -196,7 +196,8 @@ This list updates with every commit. If anything in this doc, the whitepaper, or
 - **Background music** (procedural Web Audio battle loop with on/off toggle).
 - **Tutorial overlay** for first-time visitors covering the five core mechanics.
 - **Ranged-bot kite AI.** Bots with range >= 200 step away from melee threats while continuing to fire.
-- **Stress-tested for 30+ concurrent players.** `scripts/stress-test.js` registers 30 players, fires moves and casts for 60 seconds, verifies the queue cycles cleanly.
+- **Stress-tested for 30+ concurrent players.** `scripts/stress-test.js` registers 30 players, fires moves and casts for 60 seconds, verifies the queue cycles cleanly. Production (Railway) tested at 30 concurrent players with 97% move success rate and clean queue cycling.
+- **Cinematic UI layer.** Death screen with respawn countdown, event announcements for first blood / tower destroyed / rampage / level up, screen shake on combat events, floating damage numbers on auto-attacks and abilities, hero portrait panel with big HP/MP/XP bars, stone-and-gold Warcraft styling throughout.
 
 ### Stubbed (UI live, on-chain settlement symbolic)
 - **Wallet $WAR balance display.** Connected wallet shows "0 $WAR" — the contract read activates with Clanker drop.

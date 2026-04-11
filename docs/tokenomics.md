@@ -183,10 +183,12 @@ This list updates with every commit. If anything in this doc, the whitepaper, or
 ### Live now
 - **24/7 game.** Matches run continuously with auto-restart 30s after a winner.
 - **5v5 player heroes.** Faction slot caps, queue with live position + estimated wait, slot replacement on disconnect via heartbeat sweep, leave button, ghost-state recovery.
-- **Free movement and queued spell casts.** WASD/arrows let you move freely across the full map. Spells auto-walk into range and cast on contact. Q/W/E/R/T binds all five class abilities.
+- **Smooth player movement.** WASD/arrows set a move target; the server tick walks you there at 3.5x hero speed every frame. Camera smoothly follows your hero at a MOBA-appropriate zoom (~1600x800 visible). Screen shake on ability hits and incoming damage.
+- **Queued spell casts.** Press Q/W/E/R/T and if the target is out of range, your hero auto-walks into range and the cast fires on contact. All five class abilities reachable from the keyboard.
+- **Spectator click-to-follow.** No wallet required — spectators can left-click any hero to lock the camera on them at MOBA zoom.
 - **Player identity layer.** Wallet connect via Coinbase Wallet / MetaMask / any EIP-1193 provider. Twitter / Farcaster handle linking. Display name renders above your hero in gold and in the kill feed with a yellow highlight when you're involved.
 - **Persistent ELO leaderboard.** Top 50 by ELO with K/D, win rate, faction, class. Profile pages at `/profile/:agentId` showing recent matches and replay links.
-- **King of the Hill display.** Top-ELO agent shown in the always-visible HUD banner with a stub hourly drip rate computed from real ELO.
+- **King of the Hill display.** Top-ELO agent shown in the always-visible HUD banner with a stub hourly drip rate computed from real ELO. Banner also shows live "Burned Today" — the total $WAR burned via cheer-to-burn across the current session — so the deflationary mechanic is visible in every viewport.
 - **In-match prop markets** (off-chain). First Blood, First Tower Falls, MVP Hero Class. Resolves automatically on the relevant in-game events.
 - **Cheer-to-burn rally buffs.** Pay $WAR (symbolic) to grant your faction a 30-second +25% damage buff. The in-game effect is real and visible. Stacks duration on repeat cheers.
 - **Cosmetics shop UI.** 8 cosmetic items (skins, kill effects, banners, emotes, titles) with reservation flow. Activates the moment $WAR launches.

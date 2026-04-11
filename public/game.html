@@ -4106,17 +4106,48 @@ if (playerAgentId) {
       return;
     }
 
-    // SPACE = attack current target or push toward enemy base
+    // SPACE = attack nearest enemy (prefer hero, then unit, then structure)
     if (key === ' ') {
       e.preventDefault();
+      const myHero = getMyHero();
+      if (!myHero) return;
+
       if (currentTargetId) {
         sendCmd({ action: 'attack', targetId: currentTargetId }).then(d => {
           document.getElementById('pc-status').textContent = d.success ? 'ATTACKING' : (d.error || 'No target');
         });
+        return;
+      }
+
+      // Find nearest enemy — prefer heroes > units > structures
+      let nearest = null, nearestDist = Infinity, nearestKind = null;
+      const check = (list, kind) => {
+        for (const e of list) {
+          if (!e.alive || e.faction === myHero.faction) continue;
+          const dx = e.x - myHero.x, dy = e.y - myHero.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < nearestDist) { nearestDist = d; nearest = e; nearestKind = kind; }
+        }
+      };
+      if (gameState) {
+        check(gameState.heroes, 'hero');
+        if (!nearest || nearestDist > 800) check(gameState.units, 'unit');
+        if (!nearest) check(gameState.structures, 'struct');
+      }
+
+      if (nearest) {
+        currentTargetId = nearest.id;
+        sendCmd({ action: 'attack', targetId: nearest.id }).then(d => {
+          if (d.success) {
+            document.getElementById('pc-status').textContent = 'ATTACKING ' + (d.targetName || nearestKind).toUpperCase();
+            initAudio(); playTone(800, 0.06, 0.08, 'sine');
+          }
+        });
       } else {
+        // No enemies visible — push the lane toward enemy base
         const faction = localStorage.getItem('woa_faction') || 'alliance';
         const tx = faction === 'alliance' ? 4600 : 200;
-        sendCmd({action:'move', targetX:tx, targetY:1200}).then(d => {
+        sendCmd({action:'move', targetX:tx, targetY: myHero.y || 1200}).then(d => {
           document.getElementById('pc-status').textContent = 'PUSHING LANE';
         });
       }

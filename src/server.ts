@@ -483,8 +483,14 @@ function dist(a: Position, b: Position): number {
 }
 
 function moveToward(pos: Position, target: Position, speed: number, dt: number, lane?: LaneName): Position {
+  // Guard against NaN inputs — if either position is bad, reset to a safe spot
+  // in the caller's lane. Prevents ghost heroes with stuck NaN coordinates.
+  if (!isFinite(pos.x) || !isFinite(pos.y) || !isFinite(target.x) || !isFinite(target.y)) {
+    const laneInfo = lane ? LANES[lane] : LANES.mid;
+    return { x: MAP_W / 2, y: (laneInfo.minY + laneInfo.maxY) / 2 };
+  }
   const d = dist(pos, target);
-  if (d < 2) return pos;
+  if (!isFinite(d) || d < 2) return pos;
   const step = Math.min(speed * dt, d);
   // When a lane is specified, clamp Y to the lane band (bot AI behavior).
   // When no lane is specified, allow free movement across the full map height
@@ -1191,8 +1197,9 @@ function heroAI(hero: HeroEntity, dt: number) {
 
   if (d > hero.range) {
     hero.pos = moveToward(hero.pos, target.pos, hero.speed, dt, hero.lane);
-  } else if (meleeThreatNearby && closestEnemyHero) {
-    // Kite — step away from the melee threat while still attacking the focus target
+  } else if (meleeThreatNearby && closestEnemyHero && closestEnemyHero.d > 1) {
+    // Kite — step away from the melee threat while still attacking the focus target.
+    // Guard against zero distance (would produce NaN positions that persist forever).
     const away = {
       x: hero.pos.x + (hero.pos.x - closestEnemyHero.h.pos.x) / closestEnemyHero.d * 100,
       y: hero.pos.y + (hero.pos.y - closestEnemyHero.h.pos.y) / closestEnemyHero.d * 100,
@@ -1600,6 +1607,17 @@ function gameTick() {
       resetGame();
     }
     return;
+  }
+
+  // NaN sweeper: any hero with a bad position gets teleported back to a safe
+  // spot in their lane. Prevents ghost/invisible heroes from persisting.
+  for (const hero of state.heroes.values()) {
+    if (!isFinite(hero.pos.x) || !isFinite(hero.pos.y)) {
+      const laneInfo = LANES[hero.lane] || LANES.mid;
+      const baseX = hero.faction === 'alliance' ? 250 : MAP_W - 250;
+      hero.pos = { x: baseX, y: (laneInfo.minY + laneInfo.maxY) / 2 };
+      console.log(`[NAN-SWEEP] Reset ${hero.id} (${hero.heroClass}/${hero.faction}) to ${baseX},${hero.pos.y}`);
+    }
   }
 
   state.tick++;

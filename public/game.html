@@ -4131,17 +4131,36 @@ if (musicEnabled) {
   const mc = document.getElementById('minimap-canvas');
   if (!mc) return;
   function minimapClick(e) {
-    const pid = (new URLSearchParams(window.location.search)).get('player') || localStorage.getItem('woa_agentId');
-    if (!pid) return;
     const rect = mc.getBoundingClientRect();
     const mx = (e.clientX - rect.left) / rect.width;
     const my = (e.clientY - rect.top) / rect.height;
-    const tx = Math.max(100, Math.min(4700, Math.round(mx * 4800)));
-    const ty = Math.max(100, Math.min(2300, Math.round(my * 2400)));
-    fetch('/api/strategy/deployment', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({agentId: pid, action: 'move', targetX: tx, targetY: ty})
-    }).catch(() => {});
+    const worldX = Math.round(mx * 4800);
+    const worldY = Math.round(my * 2400);
+
+    const pid = (new URLSearchParams(window.location.search)).get('player') || localStorage.getItem('woa_agentId');
+
+    // Player mode: click to move
+    if (pid) {
+      const tx = Math.max(100, Math.min(4700, worldX));
+      const ty = Math.max(100, Math.min(2300, worldY));
+      fetch('/api/strategy/deployment', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({agentId: pid, action: 'move', targetX: tx, targetY: ty})
+      }).catch(() => {});
+    } else if (gameState && gameState.heroes) {
+      // Spectator mode: click a hero on the minimap to lock the main camera to them
+      let nearestHero = null, nearestDist = 350;
+      for (const h of gameState.heroes) {
+        if (!h.alive) continue;
+        const dx = h.x - worldX, dy = h.y - worldY;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < nearestDist) { nearestDist = d; nearestHero = h; }
+      }
+      if (nearestHero) {
+        spectatorFollowId = nearestHero.id;
+      }
+    }
+
     // Flash the click position
     const ctx = mc.getContext('2d');
     ctx.fillStyle = '#F0C040';

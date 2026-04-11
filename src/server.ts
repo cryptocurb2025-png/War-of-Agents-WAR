@@ -339,6 +339,8 @@ let stmtInsertAgent: any;
 let stmtUpsertLeaderboard: any;
 let stmtUpdateStats: any;
 let stmtGetLeaderboard: any;
+let stmtGetAgentRow: any;
+let stmtRecentMatchesForAgent: any;
 let stmtGetAgent: any;
 let stmtUpdateElo: any;
 let stmtGetElo: any;
@@ -353,6 +355,8 @@ function initStatements() {
   stmtUpsertLeaderboard = prepareStmt(`INSERT OR REPLACE INTO leaderboard (agent_id, name, faction, hero_class, kills, deaths, assists, gold_earned, games_played, wins, elo) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 1200)`);
   stmtUpdateStats = prepareStmt(`UPDATE leaderboard SET kills=kills+?, deaths=deaths+?, assists=assists+?, gold_earned=gold_earned+?, games_played=games_played+?, wins=wins+? WHERE agent_id=?`);
   stmtGetLeaderboard = prepareStmt(`SELECT * FROM leaderboard ORDER BY elo DESC, kills DESC, deaths ASC LIMIT 50`);
+  stmtGetAgentRow = prepareStmt(`SELECT * FROM leaderboard WHERE agent_id=?`);
+  stmtRecentMatchesForAgent = prepareStmt(`SELECT m.id, m.started_at, m.ended_at, m.winner, m.status FROM matches m ORDER BY m.started_at DESC LIMIT 20`);
   stmtGetAgent = prepareStmt(`SELECT * FROM leaderboard WHERE agent_id=?`);
   stmtUpdateElo = prepareStmt(`UPDATE leaderboard SET elo=? WHERE agent_id=?`);
   stmtGetElo = prepareStmt(`SELECT elo FROM leaderboard WHERE agent_id=?`);
@@ -503,9 +507,48 @@ const bettingState: BettingState = {
   betters: [],
 };
 
+// ─── In-match prop markets (off-chain stub layer) ──────────────────────────
+// Each match has additional markets that resolve on specific in-game events.
+// These pools live in memory and "settle" symbolically — the on-chain payout
+// goes live with $WAR launch. The pools render in the spectator UI so the
+// value prop is visible.
+interface PropMarket {
+  id: string;
+  label: string;
+  options: string[];
+  pools: Record<string, number>; // option -> total $WAR staked
+  resolved: boolean;
+  winner: string | null;
+}
+let propMarkets: PropMarket[] = [];
+function resetPropMarkets() {
+  propMarkets = [
+    { id: 'first_blood', label: 'First Blood', options: ['alliance', 'horde'], pools: { alliance: 0, horde: 0 }, resolved: false, winner: null },
+    { id: 'first_tower', label: 'First Tower Falls', options: ['alliance', 'horde'], pools: { alliance: 0, horde: 0 }, resolved: false, winner: null },
+    { id: 'mvp_class', label: 'MVP Hero Class', options: ['knight', 'ranger', 'mage', 'priest', 'siegemaster'], pools: { knight: 0, ranger: 0, mage: 0, priest: 0, siegemaster: 0 }, resolved: false, winner: null },
+  ];
+}
+resetPropMarkets();
+
+// Cheer-to-burn buff state. Each cheer grants a 30-second damage+speed buff
+// to the receiving faction's heroes. The "burn" is symbolic until $WAR launches.
+interface CheerBuff {
+  faction: Faction;
+  expiresAt: number;
+  totalBurned: number; // running total of $WAR burned via cheers (stub number)
+}
+const cheerBuffs: { alliance: CheerBuff | null; horde: CheerBuff | null } = {
+  alliance: null,
+  horde: null,
+};
+let totalWarBurned = 0;
+
 function resetBets() {
   bettingState.bets = { alliance: 0, horde: 0 };
   bettingState.betters = [];
+  resetPropMarkets();
+  cheerBuffs.alliance = null;
+  cheerBuffs.horde = null;
 }
 
 function calculateOdds(): { alliance: string; horde: string; display: string } {
@@ -865,8 +908,15 @@ function findTarget(entity: Entity, allEntities: Entity[]): Entity | null {
 }
 
 function applyDamage(target: Entity, rawDmg: number, sourceId: string) {
+  // Cheer buff: +25% damage if the source's faction has an active rally
+  const sourceHero = state.heroes.get(sourceId);
+  let dmgMult = 1;
+  if (sourceHero) {
+    const buff = cheerBuffs[sourceHero.faction];
+    if (buff && buff.expiresAt > Date.now()) dmgMult = 1.25;
+  }
   const reduction = target.armor / (target.armor + 50);
-  const dmg = Math.max(1, Math.floor(rawDmg * (1 - reduction)));
+  const dmg = Math.max(1, Math.floor(rawDmg * dmgMult * (1 - reduction)));
   target.hp -= dmg;
 
   if (target.type === 'hero') {
@@ -930,6 +980,13 @@ function onKill(killerId: string, victim: Entity) {
       if (kHero.agentId && vHero.agentId) {
         updateEloOnKill(kHero.agentId, vHero.agentId);
       }
+
+      // Resolve First Blood prop market
+      const firstBlood = propMarkets.find(p => p.id === 'first_blood' && !p.resolved);
+      if (firstBlood) {
+        firstBlood.resolved = true;
+        firstBlood.winner = kHero.faction;
+      }
     }
     vHero.lastDamagedBy = [];
   } else if (victim.type === 'unit') {
@@ -938,7 +995,25 @@ function onKill(killerId: string, victim: Entity) {
       kHero.gold += 30;
       kHero.xp += 20;
     }
+  } else if ((victim as Structure).structureType === 'tower_t1' || (victim as Structure).structureType === 'tower_t2') {
+    // Resolve First Tower Falls prop market — the *attacker's* faction wins
+    const firstTower = propMarkets.find(p => p.id === 'first_tower' && !p.resolved);
+    if (firstTower) {
+      firstTower.resolved = true;
+      firstTower.winner = victim.faction === 'alliance' ? 'horde' : 'alliance';
+    }
   } else if ((victim as Structure).structureType === 'base') {
+    // Resolve MVP Class prop market — the most kills hero class on the winning side
+    const winningFaction: Faction = victim.faction === 'alliance' ? 'horde' : 'alliance';
+    const winners = [...state.heroes.values()].filter(h => h.faction === winningFaction);
+    if (winners.length > 0) {
+      const mvp = winners.sort((a, b) => b.kills - a.kills)[0];
+      const mvpMarket = propMarkets.find(p => p.id === 'mvp_class' && !p.resolved);
+      if (mvpMarket) {
+        mvpMarket.resolved = true;
+        mvpMarket.winner = mvp.heroClass;
+      }
+    }
     // Game over
     state.winner = victim.faction === 'alliance' ? 'horde' : 'alliance';
     state.winnerAt = Date.now();
@@ -2001,6 +2076,78 @@ app.get('/api/leaderboard', (_req, res) => {
   res.json(rows);
 });
 
+// In-match prop markets — list, bet, current state
+app.get('/api/props', (_req, res) => {
+  res.json({
+    markets: propMarkets.map(p => ({
+      id: p.id,
+      label: p.label,
+      options: p.options,
+      pools: p.pools,
+      total: Object.values(p.pools).reduce((a, b) => a + b, 0),
+      resolved: p.resolved,
+      winner: p.winner,
+    })),
+  });
+});
+
+app.post('/api/props/bet', (req, res) => {
+  const { marketId, option, amount } = req.body;
+  if (!marketId || !option || !amount) return res.status(400).json({ error: 'marketId, option, amount required' });
+  const market = propMarkets.find(p => p.id === marketId);
+  if (!market) return res.status(404).json({ error: 'Unknown market' });
+  if (market.resolved) return res.status(400).json({ error: 'Market already resolved' });
+  if (!market.options.includes(option)) return res.status(400).json({ error: 'Invalid option for this market' });
+  const amt = Math.max(1, Math.floor(Number(amount)));
+  if (isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid amount' });
+  market.pools[option] = (market.pools[option] || 0) + amt;
+  res.json({ success: true, marketId, option, amount: amt, newTotal: market.pools[option] });
+});
+
+// Cheer-to-burn — pay $WAR to grant your faction a 30-second damage buff.
+// The "burn" is symbolic until $WAR launches; the in-game buff is real.
+app.post('/api/cheer', (req, res) => {
+  const { faction, amount } = req.body;
+  if (!faction || !amount) return res.status(400).json({ error: 'faction and amount required' });
+  if (!['alliance', 'horde'].includes(faction)) return res.status(400).json({ error: 'Faction must be alliance or horde' });
+  const amt = Math.max(1, Math.floor(Number(amount)));
+  if (isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+  const f = faction as Faction;
+  const existing = cheerBuffs[f];
+  const baseDuration = 30_000; // 30s per cheer
+  const expiresAt = Math.max(Date.now() + baseDuration, (existing?.expiresAt || 0) + baseDuration);
+  const totalBurned = (existing?.totalBurned || 0) + amt;
+  cheerBuffs[f] = { faction: f, expiresAt, totalBurned };
+  totalWarBurned += amt;
+
+  res.json({
+    success: true,
+    faction: f,
+    amount: amt,
+    expiresAt,
+    secondsRemaining: Math.ceil((expiresAt - Date.now()) / 1000),
+    totalFactionBurned: totalBurned,
+    totalWarBurned,
+    note: 'Burn is symbolic until $WAR launches via Clanker. The in-game damage buff is real.',
+  });
+});
+
+app.get('/api/cheer/status', (_req, res) => {
+  const now = Date.now();
+  res.json({
+    alliance: cheerBuffs.alliance && cheerBuffs.alliance.expiresAt > now ? {
+      secondsRemaining: Math.ceil((cheerBuffs.alliance.expiresAt - now) / 1000),
+      totalBurned: cheerBuffs.alliance.totalBurned,
+    } : null,
+    horde: cheerBuffs.horde && cheerBuffs.horde.expiresAt > now ? {
+      secondsRemaining: Math.ceil((cheerBuffs.horde.expiresAt - now) / 1000),
+      totalBurned: cheerBuffs.horde.totalBurned,
+    } : null,
+    totalWarBurned,
+  });
+});
+
 // King of the Hill — top ELO agent. Stub hourly drip rate is shown so the
 // utility story is visible in-game even though the actual on-chain payout
 // will not be wired up until $WAR launches via Clanker.
@@ -2179,6 +2326,238 @@ function resetGame() {
 app.post('/api/admin/reset', (_req, res) => {
   resetGame();
   res.json({ success: true, message: 'Game reset', match_id: currentMatchId });
+});
+
+// Wipe persisted data — leaderboard, match history, replays. For clean-slate
+// launch day. Does not affect the running match.
+app.post('/api/admin/wipe-db', (req, res) => {
+  const { confirm } = req.body;
+  if (confirm !== 'YES_WIPE_EVERYTHING') {
+    return res.status(400).json({ error: 'Pass {"confirm":"YES_WIPE_EVERYTHING"} to confirm' });
+  }
+  try {
+    db.run('DELETE FROM leaderboard');
+    db.run('DELETE FROM matches');
+    db.run('DELETE FROM replay_snapshots');
+    db.run('DELETE FROM agents');
+    res.json({ success: true, message: 'Database wiped — leaderboard, matches, replays, agents all cleared' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Profile HTML page — server rendered, links from leaderboard
+app.get('/profile/:agentId', (req, res) => {
+  const agentId = req.params.agentId;
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile · War of Agents</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=MedievalSharp&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cinzel', serif; background: linear-gradient(170deg, #0A0804 0%, #1A1208 50%, #0F0A04 100%); color: #D4C9A8; min-height: 100vh; padding: 32px 24px; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  .back { color: #C8960C; text-decoration: none; font-size: 0.78rem; letter-spacing: 1.5px; text-transform: uppercase; }
+  .back:hover { text-shadow: 0 0 10px rgba(200,150,12,0.5); }
+  .card { background: linear-gradient(145deg, #12100A, #0E0C07); border: 1px solid rgba(200,150,12,0.3); border-radius: 12px; padding: 36px; margin-top: 20px; box-shadow: 0 0 60px rgba(200,150,12,0.1); }
+  .name { color: #FFD700; font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; font-family: 'MedievalSharp', serif; text-shadow: 0 0 30px rgba(255,215,0,0.4); }
+  .meta { color: #8A7D66; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 28px; }
+  .meta .alliance { color: #4A8FE0; }
+  .meta .horde { color: #E24B4A; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .stat { background: #0A0804; border: 1px solid rgba(200,150,12,0.15); border-radius: 6px; padding: 14px; text-align: center; }
+  .stat .label { color: #8A7D66; font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .stat .value { color: #FFD700; font-size: 1.6rem; font-weight: 900; }
+  .stat.wr .value { color: #66CC66; }
+  .stat.kd .value { color: #C8960C; }
+  .section-title { color: #C8960C; font-size: 0.78rem; letter-spacing: 2px; text-transform: uppercase; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(200,150,12,0.2); }
+  .matches { display: flex; flex-direction: column; gap: 6px; }
+  .match { background: #0A0804; border: 1px solid rgba(200,150,12,0.1); border-radius: 4px; padding: 10px 14px; display: flex; justify-content: space-between; font-size: 0.78rem; }
+  .match .id { color: #8A7D66; font-family: monospace; font-size: 0.7rem; }
+  .match a { color: #C8960C; text-decoration: none; font-weight: 700; }
+  .match a:hover { text-decoration: underline; }
+  .empty { color: #6A5E48; text-align: center; padding: 30px; font-style: italic; }
+  .reward-note { margin-top: 24px; padding: 14px; background: linear-gradient(135deg, rgba(200,150,12,0.06), rgba(200,150,12,0.02)); border: 1px solid rgba(200,150,12,0.2); border-radius: 6px; color: #8A7D66; font-size: 0.75rem; line-height: 1.6; text-align: center; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/" class="back">&larr; War of Agents</a>
+  <div id="content">
+    <div class="card"><div class="empty">Loading profile...</div></div>
+  </div>
+</div>
+<script>
+const agentId = ${JSON.stringify(agentId)};
+fetch('/api/profile/' + encodeURIComponent(agentId)).then(r => r.json()).then(d => {
+  if (d.error) {
+    document.getElementById('content').innerHTML = '<div class="card"><div class="empty">' + d.error + '</div></div>';
+    return;
+  }
+  const p = d.profile;
+  const total = (p.wins || 0) + (p.losses || 0);
+  const wr = total > 0 ? Math.round((p.wins || 0) / total * 100) : 0;
+  const kd = p.deaths > 0 ? (p.kills / p.deaths).toFixed(2) : (p.kills || 0).toFixed(2);
+  const factionClass = p.faction;
+  const liveTag = d.liveInMatch ? ' <span style="color:#66CC66;font-size:0.7rem">&middot; LIVE NOW</span>' : '';
+  let html = '<div class="card">'
+    + '<div class="name">' + (p.name || 'Unknown') + liveTag + '</div>'
+    + '<div class="meta"><span class="' + factionClass + '">' + p.faction.toUpperCase() + '</span> &middot; ' + p.hero_class + ' &middot; ELO ' + (p.elo || 1200) + '</div>'
+    + '<div class="stats">'
+    + '<div class="stat"><div class="label">Kills</div><div class="value">' + (p.kills || 0) + '</div></div>'
+    + '<div class="stat"><div class="label">Deaths</div><div class="value">' + (p.deaths || 0) + '</div></div>'
+    + '<div class="stat kd"><div class="label">K/D</div><div class="value">' + kd + '</div></div>'
+    + '<div class="stat wr"><div class="label">Win Rate</div><div class="value">' + wr + '%</div></div>'
+    + '</div>'
+    + '<div class="section-title">Recent Matches</div>'
+    + '<div class="matches">'
+    + (d.recentMatches.length === 0 ? '<div class="empty">No matches yet.</div>' :
+       d.recentMatches.map(function(m) {
+         var win = m.winner ? '<span style="color:' + (m.winner === 'alliance' ? '#4A8FE0' : '#E24B4A') + '">' + m.winner.toUpperCase() + ' won</span>' : 'in progress';
+         return '<div class="match"><div><span class="id">' + m.id + '</span> &middot; ' + win + '</div><a href="/replay/' + m.id + '">Replay &rarr;</a></div>';
+       }).join(''))
+    + '</div>'
+    + '<div class="reward-note">Reward distribution and verified-handle attribution roll out with the $WAR launch on Base via Clanker.</div>'
+    + '</div>';
+  document.getElementById('content').innerHTML = html;
+});
+</script>
+</body>
+</html>`);
+});
+
+// Replay HTML page — fetches snapshots and plays them back via a basic canvas
+app.get('/replay/:matchId', (req, res) => {
+  const matchId = req.params.matchId;
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Replay ${matchId} · War of Agents</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cinzel', serif; background: #0A0804; color: #D4C9A8; padding: 24px; min-height: 100vh; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .back { color: #C8960C; text-decoration: none; font-size: 0.78rem; letter-spacing: 1.5px; text-transform: uppercase; }
+  h1 { color: #C8960C; font-size: 1.4rem; letter-spacing: 2px; margin: 16px 0 6px; }
+  .id { color: #8A7D66; font-family: monospace; font-size: 0.78rem; margin-bottom: 18px; }
+  canvas { width: 100%; max-width: 1080px; height: 540px; background: #050804; border: 1px solid rgba(200,150,12,0.3); border-radius: 6px; display: block; }
+  .controls { margin-top: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  button { background: linear-gradient(135deg, #C8960C, #A07A08); color: #0A0804; border: none; padding: 8px 18px; font-family: 'Cinzel', serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; border-radius: 4px; cursor: pointer; }
+  button:hover { box-shadow: 0 0 16px rgba(200,150,12,0.4); }
+  .info { color: #8A7D66; font-size: 0.78rem; }
+  .empty { text-align: center; padding: 60px; color: #6A5E48; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/" class="back">&larr; War of Agents</a>
+  <h1>Match Replay</h1>
+  <div class="id">${matchId}</div>
+  <canvas id="cv" width="1080" height="540"></canvas>
+  <div class="controls">
+    <button id="play">Play / Pause</button>
+    <input id="scrub" type="range" min="0" max="0" value="0" style="flex:1;min-width:200px">
+    <span class="info" id="info">Loading...</span>
+  </div>
+</div>
+<script>
+const matchId = ${JSON.stringify(matchId)};
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let snapshots = [];
+let idx = 0;
+let playing = false;
+const MAP_W = 4800, MAP_H = 2400;
+
+function draw(snap) {
+  ctx.fillStyle = '#050804'; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!snap || !snap.heroes) return;
+  const sx = cv.width / MAP_W, sy = cv.height / MAP_H;
+  // structures
+  for (const s of (snap.structures || [])) {
+    if (!s.alive) continue;
+    ctx.fillStyle = s.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+    ctx.fillRect(s.x * sx - 4, s.y * sy - 4, 8, 8);
+  }
+  // units
+  for (const u of (snap.units || [])) {
+    if (!u.alive) continue;
+    ctx.fillStyle = u.faction === 'alliance' ? '#88AAFF' : '#FF8888';
+    ctx.fillRect(u.x * sx - 1, u.y * sy - 1, 2, 2);
+  }
+  // heroes
+  for (const h of (snap.heroes || [])) {
+    if (!h.alive) continue;
+    ctx.fillStyle = h.faction === 'alliance' ? '#aaccff' : '#ffaa88';
+    ctx.beginPath();
+    ctx.arc(h.x * sx, h.y * sy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    if (h.agentId) {
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+}
+
+function showFrame(i) {
+  if (i < 0 || i >= snapshots.length) return;
+  idx = i;
+  const snap = JSON.parse(snapshots[i].state_json);
+  draw(snap);
+  document.getElementById('info').textContent = 'Tick ' + snap.tick + ' / ' + (snap.heroes ? snap.heroes.length : 0) + ' heroes';
+  document.getElementById('scrub').value = i;
+}
+
+document.getElementById('play').onclick = () => { playing = !playing; };
+document.getElementById('scrub').oninput = e => { showFrame(Number(e.target.value)); playing = false; };
+
+setInterval(() => {
+  if (!playing || snapshots.length === 0) return;
+  if (idx < snapshots.length - 1) showFrame(idx + 1);
+  else playing = false;
+}, 200);
+
+fetch('/api/matches/' + encodeURIComponent(matchId) + '/replay').then(r => r.json()).then(d => {
+  if (!d || d.length === 0) {
+    ctx.fillStyle = '#6A5E48'; ctx.font = '14px Cinzel'; ctx.textAlign = 'center';
+    ctx.fillText('No replay snapshots found for this match.', cv.width / 2, cv.height / 2);
+    document.getElementById('info').textContent = 'No data';
+    return;
+  }
+  snapshots = d;
+  document.getElementById('scrub').max = snapshots.length - 1;
+  showFrame(0);
+  document.getElementById('info').textContent = snapshots.length + ' snapshots — press Play';
+});
+</script>
+</body>
+</html>`);
+});
+
+// Per-agent profile — used by /profile/:agentId page
+app.get('/api/profile/:agentId', (req, res) => {
+  const agentId = req.params.agentId;
+  const row: any = stmtGetAgentRow.get(agentId);
+  if (!row) return res.status(404).json({ error: 'Agent not found' });
+
+  // Recent matches this agent participated in
+  const recentMatches: any[] = stmtRecentMatchesForAgent.all(agentId);
+
+  // Live state — are they currently in a match?
+  const liveHero = [...state.heroes.values()].find(h => h.agentId === agentId);
+
+  res.json({
+    profile: row,
+    liveInMatch: !!liveHero,
+    liveHeroId: liveHero?.id || null,
+    recentMatches,
+  });
 });
 
 app.post('/api/admin/pause', (_req, res) => {

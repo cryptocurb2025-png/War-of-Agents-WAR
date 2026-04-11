@@ -126,6 +126,32 @@
   #king-banner .king-drip { color: #44CC66; font-size: 10px; font-weight: 700; }
   #king-banner .king-drip-num { color: #FFD700; font-weight: 900; }
 
+  /* ─── COSMETICS / SHOP MODAL ──────────────────────────── */
+  #shop-modal {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 200;
+    background: linear-gradient(145deg, #12100A, #0E0C07);
+    border: 2px solid #C8960C; border-radius: 12px;
+    padding: 28px 32px; width: 580px; max-width: 92vw; max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 0 60px rgba(200,150,12,0.4);
+    display: none; font-family: 'Cinzel', serif;
+  }
+  #shop-modal.show { display: block; }
+  #shop-modal .lb-close { position: absolute; top: 14px; right: 18px; color: #9A8B6E; font-size: 22px; cursor: pointer; background: none; border: none; font-family: inherit; line-height: 1; }
+  #shop-modal .shop-title { text-align: center; color: #C8960C; font-size: 1.4rem; font-weight: 900; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 0 24px rgba(200,150,12,0.4); }
+  #shop-modal .shop-sub { text-align: center; color: #8A7D66; font-size: 0.7rem; letter-spacing: 1px; margin-bottom: 18px; }
+  #shop-modal .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { #shop-modal .shop-grid { grid-template-columns: 1fr; } }
+  .shop-item { background: #0A0804; border: 1px solid rgba(200,150,12,0.2); border-radius: 6px; padding: 14px; transition: all 0.2s; }
+  .shop-item:hover { border-color: #C8960C; box-shadow: 0 0 14px rgba(200,150,12,0.2); }
+  .shop-item .item-icon { font-size: 1.6rem; margin-bottom: 6px; }
+  .shop-item .item-name { color: #FFD700; font-size: 0.85rem; font-weight: 700; margin-bottom: 2px; }
+  .shop-item .item-desc { color: #8A7D66; font-size: 0.7rem; margin-bottom: 10px; line-height: 1.4; }
+  .shop-item .item-price { color: #66CC66; font-size: 0.75rem; font-weight: 700; }
+  .shop-item .item-buy { background: transparent; color: #C8960C; border: 1px solid rgba(200,150,12,0.4); border-radius: 3px; padding: 4px 12px; font-family: 'Cinzel',serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; margin-top: 6px; transition: all 0.2s; }
+  .shop-item .item-buy:hover { border-color: #C8960C; background: rgba(200,150,12,0.1); }
+  #shop-modal .shop-footer { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(200,150,12,0.15); text-align: center; color: #6A5E48; font-size: 0.65rem; font-style: italic; line-height: 1.5; }
+
   /* ─── HUD CORNER (top-left): wallet + music + leaderboard buttons ─── */
   #hud-corner {
     position: absolute;
@@ -1024,10 +1050,33 @@
     <span class="hud-btn-icon">&#127942;</span>
     <span>Leaderboard</span>
   </button>
+  <button class="hud-btn" id="hud-shop-btn" onclick="openShop()">
+    <span class="hud-btn-icon">&#128722;</span>
+    <span>Shop</span>
+  </button>
+  <button class="hud-btn" id="hud-cheer-a-btn" onclick="cheer('alliance')" style="border-color:rgba(74,143,224,0.5);color:#4A8FE0">
+    <span class="hud-btn-icon">&#128293;</span>
+    <span>Rally Alliance (10 $WAR)</span>
+  </button>
+  <button class="hud-btn" id="hud-cheer-h-btn" onclick="cheer('horde')" style="border-color:rgba(226,75,74,0.5);color:#E24B4A">
+    <span class="hud-btn-icon">&#128293;</span>
+    <span>Rally Horde (10 $WAR)</span>
+  </button>
   <button class="hud-btn" id="hud-music-btn" onclick="toggleMusic()">
     <span class="hud-btn-icon" id="hud-music-icon">&#128263;</span>
     <span id="hud-music-text">Music: Off</span>
   </button>
+</div>
+
+<!-- ─── SHOP MODAL ─────────────────────────────────────── -->
+<div id="shop-modal">
+  <button class="lb-close" onclick="closeShop()">&times;</button>
+  <div class="shop-title">Cosmetics Shop</div>
+  <div class="shop-sub">All purchases burn $WAR forever &middot; coming with launch</div>
+  <div class="shop-grid" id="shop-grid"></div>
+  <div class="shop-footer">
+    These cosmetics activate the moment $WAR launches via Clanker. Connect a wallet to be eligible for the founding-spectator drop on day one.
+  </div>
 </div>
 
 <!-- ─── LEADERBOARD MODAL ──────────────────────────── -->
@@ -3291,6 +3340,57 @@ function updateUI() {
   }
 }
 
+// ─── Shop modal (cosmetics, all stub until $WAR launches) ────────
+const SHOP_COSMETICS = [
+  { id: 'skin_alliance_gold', icon: '🛡️', name: 'Alliance Gilded Armor', desc: 'Gold-trimmed knight skin. Visible to all spectators.', price: 5000 },
+  { id: 'skin_horde_blood', icon: '💀', name: 'Horde Blood Reaver', desc: 'Crimson death-rune skin for Iron Horde heroes.', price: 5000 },
+  { id: 'fx_kill_lightning', icon: '⚡', name: 'Lightning Kill Effect', desc: 'Your kills crack with thunder and a screen flash.', price: 2500 },
+  { id: 'fx_kill_inferno', icon: '🔥', name: 'Inferno Kill Effect', desc: 'Burn your victims to ash on every kill.', price: 2500 },
+  { id: 'banner_dragon', icon: '🐉', name: 'Dragon Banner', desc: 'Profile banner — visible on the leaderboard.', price: 1500 },
+  { id: 'emote_taunt', icon: '😂', name: 'Taunt Emote Pack', desc: '8 chat emotes spectators can spam in your matches.', price: 1000 },
+  { id: 'title_kingslayer', icon: '👑', name: 'Title: Kingslayer', desc: 'Unlocks after dethroning the King 5 times.', price: 10000 },
+  { id: 'title_legendary', icon: '⭐', name: 'Title: Legendary', desc: 'Permanent gold name flair on the leaderboard.', price: 25000 },
+];
+window.openShop = function() {
+  const grid = document.getElementById('shop-grid');
+  grid.innerHTML = SHOP_COSMETICS.map(it => `
+    <div class="shop-item">
+      <div class="item-icon">${it.icon}</div>
+      <div class="item-name">${it.name}</div>
+      <div class="item-desc">${it.desc}</div>
+      <div class="item-price">${it.price.toLocaleString()} $WAR (burn)</div>
+      <button class="item-buy" onclick="buyCosmetic('${it.id}')">Reserve</button>
+    </div>
+  `).join('');
+  document.getElementById('shop-modal').classList.add('show');
+};
+window.closeShop = function() {
+  document.getElementById('shop-modal').classList.remove('show');
+};
+window.buyCosmetic = function(id) {
+  alert('Reserved! This cosmetic will be available the moment $WAR launches via Clanker. Connect a wallet to be eligible for the founding-spectator drop.');
+};
+
+// ─── Cheer-to-burn rally ──────────────────────────────────────────
+window.cheer = async function(faction) {
+  try {
+    const r = await fetch('/api/cheer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ faction, amount: 10 }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      const btn = document.getElementById(faction === 'alliance' ? 'hud-cheer-a-btn' : 'hud-cheer-h-btn');
+      const span = btn.querySelector('span:last-child');
+      span.textContent = (faction === 'alliance' ? 'Alliance' : 'Horde') + ' rallied! (' + d.secondsRemaining + 's)';
+      setTimeout(() => {
+        span.textContent = 'Rally ' + (faction === 'alliance' ? 'Alliance' : 'Horde') + ' (10 $WAR)';
+      }, 3000);
+    }
+  } catch (e) {}
+};
+
 // ─── King of the Hill polling ─────────────────────────────────────
 async function pollKing() {
   try {
@@ -3501,10 +3601,14 @@ function renderHudWallet() {
   if (!btn || !txt) return;
   if (hudWalletAddress) {
     btn.classList.add('connected');
-    txt.textContent = hudWalletAddress.slice(0, 6) + '…' + hudWalletAddress.slice(-4);
+    // Stub balance display — real $WAR contract read goes live with Clanker drop.
+    txt.innerHTML = hudWalletAddress.slice(0, 6) + '…' + hudWalletAddress.slice(-4)
+      + ' <span style="color:#FFD700;font-weight:900">0 $WAR</span>';
+    btn.title = 'Balance reads from $WAR contract once it launches via Clanker. You\'re eligible for the founding-spectator drop.';
   } else {
     btn.classList.remove('connected');
     txt.textContent = 'Connect Wallet';
+    btn.title = 'Connect a wallet to claim ELO, sponsor the King, post bounties, and earn from prediction markets.';
   }
 }
 window.hudConnectWallet = async function() {

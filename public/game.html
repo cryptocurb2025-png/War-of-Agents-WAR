@@ -145,6 +145,87 @@
   #king-banner .king-drip { color: #66CC66; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
   #king-banner .king-drip-num { color: #FFD700; font-weight: 900; font-size: 12px; text-shadow: 0 0 8px rgba(255,215,0,0.5); }
 
+  /* ─── DEATH OVERLAY ────────────────────────────────────── */
+  #death-overlay {
+    position: fixed; inset: 0; z-index: 150;
+    background: radial-gradient(ellipse at center, rgba(60,0,0,0.55) 0%, rgba(0,0,0,0.85) 70%);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column;
+    font-family: 'MedievalSharp', 'Cinzel', serif;
+    pointer-events: none;
+    animation: deathPulse 1.6s ease-in-out infinite;
+  }
+  #death-overlay.show { display: flex; }
+  @keyframes deathPulse {
+    0%, 100% { background: radial-gradient(ellipse at center, rgba(60,0,0,0.55) 0%, rgba(0,0,0,0.85) 70%); }
+    50% { background: radial-gradient(ellipse at center, rgba(80,0,0,0.65) 0%, rgba(0,0,0,0.9) 70%); }
+  }
+  #death-overlay .death-title {
+    font-size: clamp(3rem, 8vw, 5.6rem);
+    font-weight: 900;
+    color: #C8263A;
+    text-shadow:
+      0 0 30px rgba(226,75,74,0.8),
+      0 0 60px rgba(226,75,74,0.4),
+      0 4px 8px #000;
+    letter-spacing: 8px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  #death-overlay .death-sub {
+    font-size: 0.9rem;
+    color: #9A8B6E;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+  #death-overlay .death-countdown {
+    font-size: clamp(4rem, 12vw, 9rem);
+    font-weight: 900;
+    color: #FFD700;
+    text-shadow: 0 0 40px rgba(255,215,0,0.6), 0 4px 8px #000;
+    line-height: 1;
+  }
+  #death-overlay .death-countdown-label {
+    font-size: 0.78rem;
+    color: #8A7D66;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* ─── EVENT ANNOUNCEMENT BANNER ────────────────────────── */
+  #event-announce {
+    position: fixed;
+    top: 25%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    z-index: 140;
+    font-family: 'MedievalSharp', serif;
+    font-size: clamp(1.4rem, 3.5vw, 2.4rem);
+    font-weight: 900;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-shadow: 0 0 24px currentColor, 0 4px 8px #000;
+    letter-spacing: 4px;
+    padding: 14px 40px;
+    background: linear-gradient(180deg, rgba(20,14,4,0.85), rgba(10,8,4,0.95));
+    border: 2px solid;
+    border-image: linear-gradient(180deg, #F0C040, #8B6914) 1;
+    border-radius: 4px;
+    box-shadow: 0 0 50px rgba(200,150,12,0.4), 0 4px 12px rgba(0,0,0,0.8);
+  }
+  #event-announce.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  #event-announce.blood { color: #FF4040; border-image: linear-gradient(180deg, #FF4040, #8B0000) 1; }
+  #event-announce.tower { color: #F0C040; border-image: linear-gradient(180deg, #F0C040, #8B6914) 1; }
+  #event-announce.rampage { color: #FF8800; border-image: linear-gradient(180deg, #FF8800, #8B4800) 1; }
+  #event-announce.king { color: #FFD700; border-image: linear-gradient(180deg, #FFD700, #C8960C) 1; }
+
   /* ─── HOW-TO-PLAY TUTORIAL OVERLAY ───────────────────── */
   #tutorial-overlay {
     position: fixed; inset: 0; z-index: 300;
@@ -1215,6 +1296,17 @@
   </button>
 </div>
 
+<!-- ─── DEATH OVERLAY ─────────────────────────────────── -->
+<div id="death-overlay">
+  <div class="death-title">You Have Fallen</div>
+  <div class="death-sub">The Iron Horde claims another soul</div>
+  <div class="death-countdown" id="death-countdown">—</div>
+  <div class="death-countdown-label">Respawning</div>
+</div>
+
+<!-- ─── EVENT ANNOUNCEMENT ────────────────────────────── -->
+<div id="event-announce"></div>
+
 <!-- ─── HOW-TO-PLAY TUTORIAL OVERLAY ─────────────────── -->
 <div id="tutorial-overlay">
   <div class="tut-card" id="tut-card">
@@ -1590,6 +1682,49 @@ ws.onmessage = (e) => {
         }
         if (prevMap[h.id] && h.level > prevMap[h.id].level) {
           levelUpEffects.push({ x: h.x, y: h.y, age: 0 });
+          // Player level up — big announcement + shake
+          if (playerAgentId && h.agentId === playerAgentId) {
+            announceEvent('LEVEL ' + h.level, 'king');
+            triggerShake(8);
+          }
+        }
+      }
+      // First blood announcement (via new event-announce system)
+      if (!_firstBloodAnnounced && gameState.kills.length > 0) {
+        _firstBloodAnnounced = true;
+        const k = gameState.kills[0];
+        announceEvent('⚔ FIRST BLOOD ⚔', 'blood');
+        triggerShake(10);
+      }
+      if (gameState.kills.length === 0) _firstBloodAnnounced = false;
+      // Kill rampage announcements via combat events
+      for (const k of gameState.kills.slice(_announcedKills.size)) {
+        const kid = k.tick + ':' + k.killerId + ':' + k.victimId;
+        if (_announcedKills.has(kid)) continue;
+        _announcedKills.add(kid);
+        if (k.isRampage) {
+          const name = k.killerName || k.killerClass;
+          announceEvent(name.toUpperCase() + ' IS RAMPAGING', 'rampage');
+        }
+      }
+      if (_announcedKills.size > 200) _announcedKills = new Set([...Array.from(_announcedKills).slice(-100)]);
+      // Tower/barracks/base destruction announcement
+      const prevStructures = {};
+      for (const s of prev.structures) prevStructures[s.id] = s;
+      for (const s of gameState.structures) {
+        if (prevStructures[s.id] && prevStructures[s.id].alive && !s.alive && !_announcedTowers.has(s.id)) {
+          _announcedTowers.add(s.id);
+          const fac = s.faction === 'alliance' ? 'ALLIANCE' : 'HORDE';
+          if (s.structureType === 'base') {
+            announceEvent(fac + ' BASE DESTROYED', 'tower');
+            triggerShake(20);
+          } else if (s.structureType === 'barracks') {
+            announceEvent(fac + ' BARRACKS FALLEN', 'tower');
+            triggerShake(12);
+          } else {
+            announceEvent(fac + ' TOWER FALLS', 'tower');
+            triggerShake(8);
+          }
         }
       }
     }
@@ -1953,6 +2088,36 @@ let _shakeIntensity = 0;
 function triggerShake(amount) {
   _shakeIntensity = Math.max(_shakeIntensity, amount);
 }
+
+// Event announcements — big screen text for first blood, towers, rampages
+let _announceQueue = [];
+let _announceActive = false;
+function announceEvent(text, kind) {
+  _announceQueue.push({ text, kind });
+  if (!_announceActive) drainAnnouncements();
+}
+function drainAnnouncements() {
+  const ann = _announceQueue.shift();
+  if (!ann) { _announceActive = false; return; }
+  _announceActive = true;
+  const el = document.getElementById('event-announce');
+  if (!el) { _announceActive = false; return; }
+  el.textContent = ann.text;
+  el.className = ''; // reset classes
+  if (ann.kind) el.classList.add(ann.kind);
+  // Force reflow so the transition kicks in
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(drainAnnouncements, 350);
+  }, 2200);
+}
+
+// First-blood + tower + rampage detection
+let _firstBloodAnnounced = false;
+let _announcedKills = new Set();
+let _announcedTowers = new Set();
 
 // Spectator camera follow — click a hero to lock camera on them
 let spectatorFollowId = null;
@@ -4344,11 +4509,27 @@ function updatePlayerControls() {
   _ghostStateSince = 0;
   hideGhostBanner();
 
+  // Death overlay — show full-screen when dead, hide when alive
+  const deathOverlay = document.getElementById('death-overlay');
+  const deathCountdown = document.getElementById('death-countdown');
+  if (!hero.alive) {
+    if (deathOverlay && !deathOverlay.classList.contains('show')) {
+      deathOverlay.classList.add('show');
+      initAudio(); sfxDeath();
+    }
+    const secs = hero.respawnIn ? Math.ceil(hero.respawnIn / 20) : '?';
+    if (deathCountdown) deathCountdown.textContent = secs;
+  } else if (deathOverlay && deathOverlay.classList.contains('show')) {
+    deathOverlay.classList.remove('show');
+  }
+
   const info = document.getElementById('pc-hero-info');
   const hpPct = Math.round(hero.hp / hero.maxHp * 100);
   if (hero.alive) {
     const nameSpan = hero.displayName ? `<span style="color:#FFD700;font-weight:700">${hero.displayName}</span> · ` : '';
-    info.innerHTML = `${nameSpan}HP: <span style="color:${hpPct>50?'#66AA66':hpPct>25?'#CCAA44':'#CC4444'}">${hero.hp}/${hero.maxHp}</span> | MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> | Gold: <span style="color:#F0C040">${hero.gold}</span> | Lv${hero.level}`;
+    const xpPct = hero.xpToNext ? Math.min(100, Math.round(hero.xp / hero.xpToNext * 100)) : 0;
+    const xpBar = `<span style="display:inline-block;width:60px;height:6px;background:#0A0804;border:1px solid #5A4A2A;border-radius:2px;vertical-align:middle;margin-left:4px;position:relative"><span style="display:block;width:${xpPct}%;height:100%;background:linear-gradient(90deg,#C8960C,#FFD700);box-shadow:0 0 4px rgba(255,215,0,0.5)"></span></span>`;
+    info.innerHTML = `${nameSpan}HP: <span style="color:${hpPct>50?'#66AA66':hpPct>25?'#CCAA44':'#CC4444'}">${hero.hp}/${hero.maxHp}</span> · MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> · Gold: <span style="color:#F0C040">${hero.gold}</span> · Lv${hero.level}${xpBar}`;
   } else {
     const respawnSec = hero.respawnIn ? Math.ceil(hero.respawnIn / 20) : '?';
     info.innerHTML = `<span style="color:#CC4444;font-weight:700">DEAD — respawning in ${respawnSec}s</span>`;

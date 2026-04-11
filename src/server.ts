@@ -1813,6 +1813,7 @@ function serializeState() {
       hp: Math.round(h.hp), maxHp: h.maxHp,
       mana: Math.round(h.mana), maxMana: h.maxMana,
       level: h.level, gold: h.gold,
+      xp: h.xp, xpToNext: h.xpToNext,
       kills: h.kills, deaths: h.deaths, assists: h.assists,
       killStreak: h.killStreak, alive: h.alive,
       damage: h.damage, armor: h.armor,

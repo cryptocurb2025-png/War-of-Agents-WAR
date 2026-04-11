@@ -142,6 +142,7 @@ interface HeroEntity extends Entity {
   agentId: string | null;
   displayName: string | null;
   pendingAbilityId: string | null;
+  moveTarget: Position | null;
   lastDamagedBy: string[];
   lane: LaneName;
   focusTargetId: string | null;
@@ -750,6 +751,7 @@ function createHero(faction: Faction, heroClass: HeroClass, agentId: string | nu
     agentId,
     displayName,
     pendingAbilityId: null,
+    moveTarget: null,
     lastDamagedBy: [],
     lane,
     focusTargetId: null,
@@ -1289,6 +1291,19 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
   // Tick ability cooldowns
   for (const ab of hero.abilities) {
     if (ab.currentCd > 0) ab.currentCd--;
+  }
+
+  // Freeform movement: walk toward the stored moveTarget at ~3.5x normal
+  // tick speed so it feels responsive under WASD. The client sends a
+  // destination via /api/strategy/deployment move; the tick loop walks there
+  // smoothly at 20Hz so movement flows instead of stuttering across the map.
+  if (hero.moveTarget && !hero.focusTargetId) {
+    const d = dist(hero.pos, hero.moveTarget);
+    if (d < 8) {
+      hero.moveTarget = null; // arrived
+    } else {
+      hero.pos = moveToward(hero.pos, hero.moveTarget, hero.speed * 3.5, dt);
+    }
   }
 
   // Focus target: move toward and auto-attack OR fire pending queued ability
@@ -2038,8 +2053,9 @@ app.post('/api/strategy/deployment', (req, res) => {
   if (action === 'move' && targetX != null && targetY != null) {
     hero.target = null;
     hero.focusTargetId = null; // clear focus when manually moving
-    // Player heroes get free movement across the full map (no lane clamp)
-    hero.pos = moveToward(hero.pos, { x: targetX, y: targetY }, hero.speed * 5, 1);
+    hero.pendingAbilityId = null;
+    // Store destination — the tick loop walks there smoothly at 20Hz
+    hero.moveTarget = { x: targetX, y: targetY };
     return res.json({ success: true, action: 'move' });
   }
 

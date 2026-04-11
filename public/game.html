@@ -3909,15 +3909,22 @@ if (playerAgentId) {
   }
 
   // Continuous movement while holding WASD
+  // Grace counter so a momentary getMyHero() miss (state gap during WS
+  // reconnect) doesn't flash "NOT IN MATCH" immediately.
+  let _noHeroStreak = 0;
   function startMoveLoop() {
     if (moveInterval) return;
     moveInterval = setInterval(() => {
       const hero = getMyHero();
       if (!hero) {
-        const s = document.getElementById('pc-status');
-        if (s) s.textContent = 'NOT IN MATCH — click Leave and rejoin';
+        _noHeroStreak++;
+        if (_noHeroStreak > 20) { // ~2 seconds of misses
+          const s = document.getElementById('pc-status');
+          if (s) s.textContent = 'NOT IN MATCH — click Leave and rejoin';
+        }
         return;
       }
+      _noHeroStreak = 0;
       if (!hero.alive) {
         const s = document.getElementById('pc-status');
         if (s) s.textContent = 'DEAD — waiting to respawn';
@@ -3933,16 +3940,17 @@ if (playerAgentId) {
       const mag = Math.sqrt(dx * dx + dy * dy);
       dx /= mag; dy /= mag;
       // Serialized heroes have FLAT x/y (not pos.x). The step is how far
-      // we push the destination ahead of the hero so the server-side
-      // moveToward keeps advancing us until the key is released.
-      const step = (hero.speed || 100) * 4;
+      // we push the destination ahead of the hero; the server tick loop
+      // walks smoothly toward it at 20Hz so movement flows instead of
+      // teleporting in 100ms chunks.
+      const step = (hero.speed || 100) * 3;
       const tx = Math.max(50, Math.min(4750, hero.x + dx * step));
       const ty = Math.max(50, Math.min(2350, hero.y + dy * step));
       sendCmd({action:'move', targetX:tx, targetY:ty}).then(d => {
         const s = document.getElementById('pc-status');
         if (s && d && d.success) s.textContent = 'MOVING';
       });
-    }, 100);
+    }, 150);
   }
 
   function stopMoveLoop() {

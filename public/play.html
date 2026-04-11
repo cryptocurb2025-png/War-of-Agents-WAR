@@ -621,16 +621,12 @@ a { color: #C8960C; text-decoration: none; }
     <h1 class="join-title">Join the War</h1>
 
     <div class="wallet-bar">
-      <div class="wallet-status" id="walletStatus">
-        <span class="badge-dot"></span>NOT CONNECTED<span class="addr" id="walletAddr"></span>
-      </div>
+      <div class="wallet-status" id="walletStatus"><span class="badge-dot"></span><span id="walletStatusText">NOT CONNECTED</span><span class="addr" id="walletAddr"></span></div>
       <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">Connect Wallet</button>
     </div>
 
     <div class="wallet-bar" style="margin-top:-12px;background:linear-gradient(135deg,rgba(29,161,242,0.06),rgba(29,161,242,0.02));border-color:rgba(29,161,242,0.25)">
-      <div class="wallet-status" id="socialStatus">
-        <span class="badge-dot"></span>NO HANDLE LINKED<span class="addr" id="socialHandle"></span>
-      </div>
+      <div class="wallet-status" id="socialStatus"><span class="badge-dot"></span><span id="socialStatusText">NO HANDLE LINKED</span><span class="addr" id="socialHandle"></span></div>
       <button class="wallet-btn" id="socialBtn" style="color:#1DA1F2;border-color:#1DA1F2" onclick="linkSocial()">Link Twitter / Farcaster</button>
     </div>
     <p class="wallet-note">Connect a wallet to earn ELO, claim prize-pool payouts, sponsor the King, and post bounties. Link your Twitter or Farcaster handle so other players know who you are — verification &amp; rewards distribution roll out with $WAR launch.</p>
@@ -860,16 +856,17 @@ a { color: #C8960C; text-decoration: none; }
     const status = document.getElementById('walletStatus');
     const btn = document.getElementById('walletBtn');
     const addrSpan = document.getElementById('walletAddr');
+    const txt = document.getElementById('walletStatusText');
     if (walletAddress) {
       status.classList.add('connected');
-      status.firstChild.nextSibling.textContent = 'CONNECTED';
+      txt.textContent = 'CONNECTED';
       addrSpan.textContent = shortAddr(walletAddress);
       btn.textContent = 'Disconnect';
       btn.classList.add('connected');
       btn.onclick = disconnectWallet;
     } else {
       status.classList.remove('connected');
-      status.firstChild.nextSibling.textContent = 'NOT CONNECTED';
+      txt.textContent = 'NOT CONNECTED';
       addrSpan.textContent = '';
       btn.textContent = 'Connect Wallet';
       btn.classList.remove('connected');
@@ -920,9 +917,10 @@ a { color: #C8960C; text-decoration: none; }
     const status = document.getElementById('socialStatus');
     const btn = document.getElementById('socialBtn');
     const handleSpan = document.getElementById('socialHandle');
+    const txt = document.getElementById('socialStatusText');
     if (socialHandle) {
       status.classList.add('connected');
-      status.firstChild.nextSibling.textContent = 'LINKED';
+      txt.textContent = 'LINKED';
       handleSpan.textContent = '@' + socialHandle;
       handleSpan.style.color = '#1DA1F2';
       btn.textContent = 'Unlink';
@@ -930,7 +928,7 @@ a { color: #C8960C; text-decoration: none; }
       btn.onclick = unlinkSocial;
     } else {
       status.classList.remove('connected');
-      status.firstChild.nextSibling.textContent = 'NO HANDLE LINKED';
+      txt.textContent = 'NO HANDLE LINKED';
       handleSpan.textContent = '';
       btn.textContent = 'Link Twitter / Farcaster';
       btn.onclick = linkSocial;

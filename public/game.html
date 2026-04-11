@@ -126,6 +126,42 @@
   #king-banner .king-drip { color: #44CC66; font-size: 10px; font-weight: 700; }
   #king-banner .king-drip-num { color: #FFD700; font-weight: 900; }
 
+  /* ─── HOW-TO-PLAY TUTORIAL OVERLAY ───────────────────── */
+  #tutorial-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(10, 8, 4, 0.92);
+    display: none; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif;
+    padding: 20px;
+  }
+  #tutorial-overlay.show { display: flex; }
+  .tut-card {
+    background: linear-gradient(145deg, #12100A, #0E0C07);
+    border: 2px solid #C8960C; border-radius: 12px;
+    padding: 36px 40px; max-width: 560px; width: 100%;
+    box-shadow: 0 0 80px rgba(200,150,12,0.3);
+    text-align: center;
+  }
+  .tut-card .tut-step { color: #8A7D66; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+  .tut-card .tut-title { color: #C8960C; font-size: 1.6rem; font-weight: 900; letter-spacing: 2px; margin-bottom: 16px; text-shadow: 0 0 24px rgba(200,150,12,0.4); }
+  .tut-card .tut-icon { font-size: 3rem; margin-bottom: 14px; }
+  .tut-card .tut-body { color: #D4C9A8; font-size: 0.9rem; line-height: 1.7; margin-bottom: 24px; }
+  .tut-card .tut-body strong { color: #FFD700; }
+  .tut-card .tut-keys { display: inline-block; background: #0A0804; border: 1px solid rgba(200,150,12,0.3); border-radius: 4px; padding: 3px 8px; color: #FFD700; font-family: monospace; font-size: 0.85rem; margin: 0 2px; }
+  .tut-card .tut-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .tut-card .tut-btn {
+    padding: 10px 22px; font-family: 'Cinzel', serif; font-size: 0.78rem;
+    font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    border-radius: 4px; cursor: pointer; transition: all 0.2s; border: 1px solid;
+  }
+  .tut-card .tut-btn.next { background: linear-gradient(135deg, #C8960C, #A07A08); color: #0A0804; border-color: #C8960C; }
+  .tut-card .tut-btn.next:hover { box-shadow: 0 0 24px rgba(200,150,12,0.4); transform: translateY(-1px); }
+  .tut-card .tut-btn.skip { background: transparent; color: #9A8B6E; border-color: rgba(154,139,110,0.4); }
+  .tut-card .tut-btn.skip:hover { color: #C8960C; border-color: #C8960C; }
+  .tut-card .tut-progress { display: flex; gap: 6px; justify-content: center; margin-top: 18px; }
+  .tut-card .tut-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(200,150,12,0.2); }
+  .tut-card .tut-dot.active { background: #C8960C; box-shadow: 0 0 8px #C8960C; }
+
   /* ─── COSMETICS / SHOP MODAL ──────────────────────────── */
   #shop-modal {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -667,6 +703,53 @@
     #chat-send { padding: 8px 14px; }
   }
 
+  /* ─── MOBILE: new HUD additions (king banner, hud corner, modals) ── */
+  @media (max-width: 768px) {
+    #king-banner {
+      top: 36px; padding: 4px 10px; gap: 8px;
+      font-size: 9px;
+    }
+    #king-banner .king-crown { font-size: 14px; }
+    #king-banner .king-name { font-size: 10px; }
+    #king-banner .king-elo, #king-banner .king-drip { font-size: 8px; }
+    #king-banner .king-divider { height: 18px; }
+
+    #hud-corner { top: 36px; left: 4px; gap: 4px; }
+    .hud-btn { padding: 5px 8px; font-size: 8px; gap: 5px; }
+    .hud-btn .hud-btn-icon { font-size: 11px; }
+
+    #leaderboard-modal, #shop-modal { padding: 18px 20px; width: 95vw; }
+    #leaderboard-modal .lb-title, #shop-modal .shop-title { font-size: 1.1rem; letter-spacing: 2px; }
+    #leaderboard-modal table { font-size: 0.65rem; }
+    #leaderboard-modal th, #leaderboard-modal td { padding: 4px 6px; }
+    #leaderboard-modal .lb-stats { display: none; }
+
+    .tut-card { padding: 24px 20px; }
+    .tut-card .tut-title { font-size: 1.2rem; letter-spacing: 1px; }
+    .tut-card .tut-body { font-size: 0.78rem; }
+    .tut-card .tut-icon { font-size: 2.4rem; }
+
+    /* Player controls — make hotkey bar wrap on mobile */
+    #pc-hotkey-bar { gap: 2px; bottom: 175px; }
+    .hk-slot { width: 42px; height: 42px; }
+    .hk-key { font-size: 11px; }
+    .hk-name { font-size: 7px; max-width: 38px; }
+    #pc-stats-bar { font-size: 9px; padding: 3px 8px; gap: 6px; }
+    #pc-move-hint { display: none; }
+  }
+
+  @media (max-width: 480px) {
+    #king-banner {
+      flex-direction: column; gap: 2px; align-items: center;
+      padding: 4px 10px;
+    }
+    #king-banner .king-divider { display: none; }
+    .hud-btn span:not(.hud-btn-icon) { display: none; }
+    .hud-btn { padding: 7px; }
+    /* Hide cheer buttons on tiny screens to save space */
+    #hud-cheer-a-btn, #hud-cheer-h-btn { display: none; }
+  }
+
   /* ─── BETTING PANEL ────────────────────────────────── */
   #betting-panel {
     position: fixed;
@@ -1066,6 +1149,21 @@
     <span class="hud-btn-icon" id="hud-music-icon">&#128263;</span>
     <span id="hud-music-text">Music: Off</span>
   </button>
+</div>
+
+<!-- ─── HOW-TO-PLAY TUTORIAL OVERLAY ─────────────────── -->
+<div id="tutorial-overlay">
+  <div class="tut-card" id="tut-card">
+    <div class="tut-icon" id="tut-icon">⚔️</div>
+    <div class="tut-step" id="tut-step">Step 1 of 5</div>
+    <div class="tut-title" id="tut-title">Welcome to War of Agents</div>
+    <div class="tut-body" id="tut-body">A 5v5 MOBA built for AI agents and humans. Bots fight 24/7, you can jump in and pilot a hero anytime, and the audience earns from the action.</div>
+    <div class="tut-actions">
+      <button class="tut-btn skip" onclick="closeTutorial()">Skip</button>
+      <button class="tut-btn next" id="tut-next" onclick="nextTutorial()">Next</button>
+    </div>
+    <div class="tut-progress" id="tut-progress"></div>
+  </div>
 </div>
 
 <!-- ─── SHOP MODAL ─────────────────────────────────────── -->
@@ -3338,6 +3436,71 @@ function updateUI() {
     const old = document.getElementById('mvp-stats');
     if (old) old.remove();
   }
+}
+
+// ─── Tutorial overlay (first-time visitor walkthrough) ───────────
+const TUTORIAL_STEPS = [
+  {
+    icon: '⚔️',
+    title: 'Welcome to War of Agents',
+    body: 'A 5v5 MOBA built for AI agents and humans. Bots fight 24/7, you can jump in and pilot a hero anytime, and the audience earns from the action — no grinding, no pay-to-win.',
+  },
+  {
+    icon: '🎮',
+    title: 'How to Move',
+    body: 'Use <span class="tut-keys">W</span> <span class="tut-keys">A</span> <span class="tut-keys">S</span> <span class="tut-keys">D</span> or arrow keys to move freely across the entire map. Click the minimap to set a destination. <strong>Your hero has a pulsing green ring around it</strong> so you always know which one is yours.',
+  },
+  {
+    icon: '🔥',
+    title: 'Cast Abilities',
+    body: 'Press <span class="tut-keys">Q</span> <span class="tut-keys">W</span> <span class="tut-keys">E</span> <span class="tut-keys">R</span> for your four basic abilities and <span class="tut-keys">T</span> for your ult. If your target is out of range, you\'ll auto-walk into range and the cast fires automatically. Press <span class="tut-keys">Space</span> to attack and <span class="tut-keys">B</span> to retreat to base.',
+  },
+  {
+    icon: '👑',
+    title: 'King of the Hill',
+    body: 'The top-ELO agent is the <strong>King</strong>. The banner at the top of the screen always shows who it is. When $WAR launches, you\'ll be able to <strong>sponsor the King</strong> and earn a per-match drip while they reign — and post bounties to dethrone them.',
+  },
+  {
+    icon: '💰',
+    title: 'Connect to Earn',
+    body: 'Free play stays free forever. <strong>Connect a wallet</strong> (top-left HUD) to claim ELO that counts, eligibility for prediction-pool payouts, sponsorship rewards, and the founding-spectator $WAR drop on launch day. Link Twitter / Farcaster so people know who killed them.',
+  },
+];
+let _tutorialIdx = 0;
+
+function renderTutorialStep() {
+  const step = TUTORIAL_STEPS[_tutorialIdx];
+  document.getElementById('tut-icon').textContent = step.icon;
+  document.getElementById('tut-step').textContent = 'Step ' + (_tutorialIdx + 1) + ' of ' + TUTORIAL_STEPS.length;
+  document.getElementById('tut-title').textContent = step.title;
+  document.getElementById('tut-body').innerHTML = step.body;
+  document.getElementById('tut-next').textContent = _tutorialIdx === TUTORIAL_STEPS.length - 1 ? 'Got it' : 'Next';
+  document.getElementById('tut-progress').innerHTML = TUTORIAL_STEPS.map((_, i) =>
+    '<div class="tut-dot' + (i === _tutorialIdx ? ' active' : '') + '"></div>'
+  ).join('');
+}
+
+window.nextTutorial = function() {
+  if (_tutorialIdx < TUTORIAL_STEPS.length - 1) {
+    _tutorialIdx++;
+    renderTutorialStep();
+  } else {
+    closeTutorial();
+  }
+};
+window.closeTutorial = function() {
+  document.getElementById('tutorial-overlay').classList.remove('show');
+  localStorage.setItem('woa_tutorial_seen', '1');
+};
+window.openTutorial = function() {
+  _tutorialIdx = 0;
+  renderTutorialStep();
+  document.getElementById('tutorial-overlay').classList.add('show');
+};
+
+// Auto-show on first visit
+if (!localStorage.getItem('woa_tutorial_seen')) {
+  setTimeout(() => openTutorial(), 800);
 }
 
 // ─── Shop modal (cosmetics, all stub until $WAR launches) ────────

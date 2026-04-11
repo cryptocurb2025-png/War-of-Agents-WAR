@@ -176,6 +176,46 @@ A spectator economy lives or dies on whether it can resist bot farming, collusio
 
 ---
 
+## What is actually live right now (truth source)
+
+This list updates with every commit. If anything in this doc, the whitepaper, or the landing pages contradicts it, **this section wins**. We separate "live" (a real player can use it today) from "stub" (the UI is wired and the loop is in place but the on-chain settlement is symbolic until $WAR launches via Clanker) from "designed" (described in docs, no code yet).
+
+### Live now
+- **24/7 game.** Matches run continuously with auto-restart 30s after a winner.
+- **5v5 player heroes.** Faction slot caps, queue with live position + estimated wait, slot replacement on disconnect via heartbeat sweep, leave button, ghost-state recovery.
+- **Free movement and queued spell casts.** WASD/arrows let you move freely across the full map. Spells auto-walk into range and cast on contact. Q/W/E/R/T binds all five class abilities.
+- **Player identity layer.** Wallet connect via Coinbase Wallet / MetaMask / any EIP-1193 provider. Twitter / Farcaster handle linking. Display name renders above your hero in gold and in the kill feed with a yellow highlight when you're involved.
+- **Persistent ELO leaderboard.** Top 50 by ELO with K/D, win rate, faction, class. Profile pages at `/profile/:agentId` showing recent matches and replay links.
+- **King of the Hill display.** Top-ELO agent shown in the always-visible HUD banner with a stub hourly drip rate computed from real ELO.
+- **In-match prop markets** (off-chain). First Blood, First Tower Falls, MVP Hero Class. Resolves automatically on the relevant in-game events.
+- **Cheer-to-burn rally buffs.** Pay $WAR (symbolic) to grant your faction a 30-second +25% damage buff. The in-game effect is real and visible. Stacks duration on repeat cheers.
+- **Cosmetics shop UI.** 8 cosmetic items (skins, kill effects, banners, emotes, titles) with reservation flow. Activates the moment $WAR launches.
+- **Replay viewer.** `/replay/:matchId` plays back recorded snapshots with scrub bar and play/pause. Player heroes get a gold ring outline.
+- **Background music** (procedural Web Audio battle loop with on/off toggle).
+- **Tutorial overlay** for first-time visitors covering the five core mechanics.
+- **Ranged-bot kite AI.** Bots with range >= 200 step away from melee threats while continuing to fire.
+- **Stress-tested for 30+ concurrent players.** `scripts/stress-test.js` registers 30 players, fires moves and casts for 60 seconds, verifies the queue cycles cleanly.
+
+### Stubbed (UI live, on-chain settlement symbolic)
+- **Wallet $WAR balance display.** Connected wallet shows "0 $WAR" — the contract read activates with Clanker drop.
+- **Prediction-market payouts.** Bet pools accept input but settle symbolically — winners aren't paid out yet.
+- **King of the Hill sponsorship.** Drip rate is computed and displayed but no one can actually lock $WAR yet.
+- **Cheer-to-burn token destruction.** The "burn" amount is tracked server-side but no actual $WAR is destroyed (it doesn't exist yet).
+- **Cosmetics purchases.** Shop modal accepts "reserve" clicks; cosmetics activate at token launch.
+- **Twitter / Farcaster verification.** Handle linking is a text input — no OAuth, no on-chain binding to wallet.
+
+### Designed only (in docs, no code yet)
+- **On-chain prediction market escrow contract.** Pillar #3 substrate. Required for real bet→settle.
+- **King of the Hill sponsor contract.** Required for real sponsorship payouts.
+- **Bounty Board.** Pillar #2. Server has the structure but no UI or contract.
+- **Strategy NFT submission registry.** Pillar from Phase 3 docs.
+- **Faction staking.** Phase 3.
+- **Tournament brackets.** Phase 2.
+- **Multi-instance match server.** Single arena handles up to 30 players via the queue. Past 30 we need parallel matches.
+- **Twitter / Farcaster OAuth + reward attribution.** Designed as the V2 rollout.
+
+---
+
 ## What is live vs planned
 
 We're shipping in three phases. Each phase is a real product, not a roadmap promise.

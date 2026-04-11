@@ -1861,6 +1861,34 @@ function pUpdate() {
   if (!graphics) return;
   graphics.clear();
 
+  // ─── Camera: follow the player hero if we have one ─────────────
+  // Spectator view stays wide; player view zooms in and locks to the hero.
+  if (cam && gameState && playerAgentId) {
+    const myH = gameState.heroes.find(h => h.agentId === playerAgentId);
+    if (myH && myH.alive) {
+      // Zoom in enough to see ~1600x800 around the hero (MOBA-ish feel)
+      const targetZoom = Math.min(phaserScene.scale.width / 1600, phaserScene.scale.height / 800);
+      const currentZoom = cam.zoom;
+      const lerpZoom = currentZoom + (targetZoom - currentZoom) * 0.05;
+      cam.setZoom(lerpZoom);
+      // Smooth follow
+      const targetX = myH.x;
+      const targetY = myH.y;
+      const currentX = cam.scrollX + cam.width / cam.zoom / 2;
+      const currentY = cam.scrollY + cam.height / cam.zoom / 2;
+      const newX = currentX + (targetX - currentX) * 0.15;
+      const newY = currentY + (targetY - currentY) * 0.15;
+      cam.centerOn(newX, newY);
+    }
+  } else if (cam && gameState && !playerAgentId) {
+    // Spectator: keep the wide view
+    const wideZoom = phaserScene.scale.width / MAP_W;
+    if (Math.abs(cam.zoom - wideZoom) > 0.001) {
+      cam.setZoom(wideZoom);
+      cam.centerOn(MAP_W / 2, MAP_H / 2);
+    }
+  }
+
   const halfW = MAP_W / 2;
 
   // Draw base terrain even before WebSocket connects
@@ -3884,19 +3912,36 @@ if (playerAgentId) {
   function startMoveLoop() {
     if (moveInterval) return;
     moveInterval = setInterval(() => {
-      const faction = localStorage.getItem('woa_faction') || 'alliance';
       const hero = getMyHero();
-      if (!hero || !hero.alive) return;
+      if (!hero) {
+        const s = document.getElementById('pc-status');
+        if (s) s.textContent = 'NOT IN MATCH — click Leave and rejoin';
+        return;
+      }
+      if (!hero.alive) {
+        const s = document.getElementById('pc-status');
+        if (s) s.textContent = 'DEAD — waiting to respawn';
+        return;
+      }
       let dx = 0, dy = 0;
       if (keysDown['a'] || keysDown['arrowleft']) dx = -1;
       if (keysDown['d'] || keysDown['arrowright']) dx = 1;
       if (keysDown['w'] || keysDown['arrowup']) dy = -1;
       if (keysDown['s'] || keysDown['arrowdown']) dy = 1;
       if (dx === 0 && dy === 0) return;
-      const step = (hero.speed || 40) * 3;
-      const tx = Math.max(100, Math.min(4700, hero.pos.x + dx * step));
-      const ty = Math.max(100, Math.min(2300, hero.pos.y + dy * step));
-      sendCmd({action:'move', targetX:tx, targetY:ty});
+      // Normalize diagonal movement
+      const mag = Math.sqrt(dx * dx + dy * dy);
+      dx /= mag; dy /= mag;
+      // Serialized heroes have FLAT x/y (not pos.x). The step is how far
+      // we push the destination ahead of the hero so the server-side
+      // moveToward keeps advancing us until the key is released.
+      const step = (hero.speed || 100) * 4;
+      const tx = Math.max(50, Math.min(4750, hero.x + dx * step));
+      const ty = Math.max(50, Math.min(2350, hero.y + dy * step));
+      sendCmd({action:'move', targetX:tx, targetY:ty}).then(d => {
+        const s = document.getElementById('pc-status');
+        if (s && d && d.success) s.textContent = 'MOVING';
+      });
     }, 100);
   }
 

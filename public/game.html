@@ -1748,6 +1748,21 @@ function addChatMsg(name, text) {
 let abilityEffects = []; // visual FX from combat events
 
 function spawnAbilityEffect(evt) {
+  // Auto-attack slash/arrow effect — small but satisfying
+  if (evt.type === 'auto_attack') {
+    if (phaserScene && evt.damage) {
+      // Floating damage number (smaller than ability numbers)
+      const txt = phaserScene.add.text(evt.x + (Math.random()-0.5)*16, evt.y - 30, '-' + evt.damage, {
+        fontSize: '14px', fontFamily: 'Cinzel', color: '#FFDD44', fontStyle: 'bold',
+        stroke: '#000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(92);
+      phaserScene.tweens.add({ targets: txt, y: evt.y - 70, alpha: 0, duration: 700, onComplete: () => txt.destroy() });
+    }
+    // Strike particle burst
+    abilityEffects.push({ type: 'strike', x: evt.x, y: evt.y, age: 0, maxAge: 10 });
+    return;
+  }
+
   if (evt.type === 'ability_heal') {
     // Green heal numbers + healing glow
     if (phaserScene) {
@@ -2900,7 +2915,20 @@ function pUpdate() {
     fx.age++;
     const prog = fx.age / fx.maxAge, alpha = 1 - prog;
 
-    if (fx.type === 'heal_glow') {
+    if (fx.type === 'strike') {
+      // Small white-gold impact burst for auto-attacks
+      graphics.fillStyle(0xFFFFFF, alpha * 0.9);
+      graphics.fillCircle(fx.x, fx.y, 4 + prog * 4);
+      graphics.fillStyle(0xFFDD44, alpha * 0.55);
+      graphics.fillCircle(fx.x, fx.y, 8 + prog * 8);
+      // A few quick sparks outward
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2 + fx.age * 0.4;
+        const r = prog * 18;
+        graphics.fillStyle(0xFFDD44, alpha * 0.6);
+        graphics.fillCircle(fx.x + Math.cos(angle) * r, fx.y + Math.sin(angle) * r, 1.8 * alpha);
+      }
+    } else if (fx.type === 'heal_glow') {
       // Green healing circle expanding outward
       graphics.fillStyle(0x44FF44, alpha * 0.15);
       graphics.fillCircle(fx.x, fx.y, 20 + prog * 40);

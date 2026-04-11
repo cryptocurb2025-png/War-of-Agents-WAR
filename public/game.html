@@ -145,6 +145,122 @@
   #king-banner .king-drip { color: #66CC66; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
   #king-banner .king-drip-num { color: #FFD700; font-weight: 900; font-size: 12px; text-shadow: 0 0 8px rgba(255,215,0,0.5); }
 
+  /* ─── HERO PORTRAIT PANEL (left side, always visible) ──── */
+  #hero-portrait {
+    position: fixed;
+    bottom: 200px;
+    left: 16px;
+    z-index: 45;
+    width: 280px;
+    background: linear-gradient(180deg, #1E160A 0%, #0A0804 100%);
+    border: 2px solid;
+    border-image: linear-gradient(180deg, #8B6914, #5A4A2A, #2A1A08) 1;
+    border-radius: 4px;
+    padding: 12px 14px;
+    font-family: 'Cinzel', serif;
+    display: none;
+    box-shadow:
+      inset 0 1px 0 rgba(240,192,64,0.2),
+      inset 0 -1px 0 rgba(0,0,0,0.6),
+      0 4px 12px rgba(0,0,0,0.8);
+  }
+  #hero-portrait.show { display: block; }
+  .hp-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .hp-avatar {
+    width: 44px; height: 44px;
+    border: 2px solid #C8960C;
+    border-radius: 4px;
+    background: radial-gradient(circle, #3A2A0A, #0A0804);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 0 12px rgba(200,150,12,0.3), inset 0 0 8px rgba(0,0,0,0.6);
+  }
+  .hp-info { flex: 1; min-width: 0; }
+  .hp-name {
+    color: #FFD700;
+    font-size: 14px;
+    font-weight: 900;
+    font-family: 'MedievalSharp', serif;
+    text-shadow: 0 0 6px rgba(255,215,0,0.4), 0 1px 1px #000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hp-class {
+    color: #8A7D66;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .hp-bar-wrap {
+    position: relative;
+    height: 16px;
+    background: #0A0804;
+    border: 1px solid #5A4A2A;
+    border-radius: 2px;
+    margin-bottom: 5px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
+    overflow: hidden;
+  }
+  .hp-bar-fill {
+    position: absolute; top: 0; left: 0; bottom: 0;
+    transition: width 0.2s ease-out;
+    box-shadow: 0 0 6px currentColor;
+  }
+  .hp-bar-fill.hp { background: linear-gradient(180deg, #66DD66, #2A9A2A); color: rgba(68, 221, 68, 0.5); }
+  .hp-bar-fill.hp.low { background: linear-gradient(180deg, #DD6666, #9A2A2A); color: rgba(221, 68, 68, 0.5); }
+  .hp-bar-fill.hp.mid { background: linear-gradient(180deg, #DDCC66, #9A8A2A); color: rgba(221, 204, 68, 0.5); }
+  .hp-bar-fill.mp { background: linear-gradient(180deg, #66AADD, #2A5A9A); color: rgba(68, 170, 221, 0.5); }
+  .hp-bar-fill.xp { background: linear-gradient(180deg, #F0C040, #8B6914); color: rgba(240, 192, 64, 0.5); }
+  .hp-bar-text {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    color: #FFF;
+    text-shadow: 0 1px 1px #000, 0 0 3px #000;
+    letter-spacing: 0.5px;
+    z-index: 2;
+  }
+  .hp-gold-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(200,150,12,0.2);
+  }
+  .hp-gold-row .hp-stat {
+    display: flex; flex-direction: column; align-items: center;
+    flex: 1;
+  }
+  .hp-gold-row .hp-stat .lbl {
+    font-size: 8px;
+    color: #8A7D66;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .hp-gold-row .hp-stat .val {
+    font-size: 14px;
+    font-weight: 900;
+    text-shadow: 0 1px 1px #000;
+  }
+  .hp-gold-row .hp-stat.gold .val { color: #FFD700; }
+  .hp-gold-row .hp-stat.kda .val { color: #66CC66; }
+  .hp-gold-row .hp-stat.lvl .val { color: #F0C040; font-family: 'MedievalSharp', serif; }
+
+  @media (max-width: 768px) {
+    #hero-portrait { width: 200px; bottom: 175px; left: 8px; padding: 8px 10px; }
+    #hero-portrait .hp-avatar { width: 32px; height: 32px; font-size: 18px; }
+    #hero-portrait .hp-name { font-size: 11px; }
+    #hero-portrait .hp-class { font-size: 8px; }
+    #hero-portrait .hp-bar-wrap { height: 12px; }
+    #hero-portrait .hp-bar-text { font-size: 9px; }
+    #hero-portrait .hp-gold-row .hp-stat .val { font-size: 11px; }
+  }
+
   /* ─── DEATH OVERLAY ────────────────────────────────────── */
   #death-overlay {
     position: fixed; inset: 0; z-index: 150;
@@ -1294,6 +1410,33 @@
     <span class="hud-btn-icon" id="hud-music-icon">&#128263;</span>
     <span id="hud-music-text">Music: Off</span>
   </button>
+</div>
+
+<!-- ─── HERO PORTRAIT (big HP/MP/XP bars, always visible) ── -->
+<div id="hero-portrait">
+  <div class="hp-header">
+    <div class="hp-avatar" id="hp-avatar">⚔</div>
+    <div class="hp-info">
+      <div class="hp-name" id="hp-name">—</div>
+      <div class="hp-class" id="hp-class">—</div>
+    </div>
+  </div>
+  <div class="hp-bar-wrap" title="Health">
+    <div class="hp-bar-fill hp" id="hp-bar-fill" style="width:100%"></div>
+    <div class="hp-bar-text" id="hp-bar-text">—</div>
+  </div>
+  <div class="hp-bar-wrap" title="Mana">
+    <div class="hp-bar-fill mp" id="mp-bar-fill" style="width:100%"></div>
+    <div class="hp-bar-text" id="mp-bar-text">—</div>
+  </div>
+  <div class="hp-bar-wrap" title="Experience" style="height:8px">
+    <div class="hp-bar-fill xp" id="xp-bar-fill" style="width:0%"></div>
+  </div>
+  <div class="hp-gold-row">
+    <div class="hp-stat lvl"><div class="lbl">Level</div><div class="val" id="hp-lvl">1</div></div>
+    <div class="hp-stat gold"><div class="lbl">Gold</div><div class="val" id="hp-gold">0</div></div>
+    <div class="hp-stat kda"><div class="lbl">K/D/A</div><div class="val" id="hp-kda">0/0/0</div></div>
+  </div>
 </div>
 
 <!-- ─── DEATH OVERLAY ─────────────────────────────────── -->
@@ -4544,14 +4687,37 @@ function updatePlayerControls() {
 
   const info = document.getElementById('pc-hero-info');
   const hpPct = Math.round(hero.hp / hero.maxHp * 100);
+  const mpPct = hero.maxMana > 0 ? Math.round(hero.mana / hero.maxMana * 100) : 0;
+  const xpPct = hero.xpToNext ? Math.min(100, Math.round(hero.xp / hero.xpToNext * 100)) : 0;
+
   if (hero.alive) {
     const nameSpan = hero.displayName ? `<span style="color:#FFD700;font-weight:700">${hero.displayName}</span> · ` : '';
-    const xpPct = hero.xpToNext ? Math.min(100, Math.round(hero.xp / hero.xpToNext * 100)) : 0;
     const xpBar = `<span style="display:inline-block;width:60px;height:6px;background:#0A0804;border:1px solid #5A4A2A;border-radius:2px;vertical-align:middle;margin-left:4px;position:relative"><span style="display:block;width:${xpPct}%;height:100%;background:linear-gradient(90deg,#C8960C,#FFD700);box-shadow:0 0 4px rgba(255,215,0,0.5)"></span></span>`;
     info.innerHTML = `${nameSpan}HP: <span style="color:${hpPct>50?'#66AA66':hpPct>25?'#CCAA44':'#CC4444'}">${hero.hp}/${hero.maxHp}</span> · MP: <span style="color:#4488CC">${Math.round(hero.mana)}</span> · Gold: <span style="color:#F0C040">${hero.gold}</span> · Lv${hero.level}${xpBar}`;
   } else {
     const respawnSec = hero.respawnIn ? Math.ceil(hero.respawnIn / 20) : '?';
     info.innerHTML = `<span style="color:#CC4444;font-weight:700">DEAD — respawning in ${respawnSec}s</span>`;
+  }
+
+  // Update hero portrait panel (big bars, always visible)
+  const portrait = document.getElementById('hero-portrait');
+  if (portrait) {
+    portrait.classList.add('show');
+    const classIcons = { knight: '🛡', ranger: '🏹', mage: '✨', priest: '✝', siegemaster: '💣' };
+    document.getElementById('hp-avatar').textContent = classIcons[hero.heroClass] || '⚔';
+    document.getElementById('hp-name').textContent = hero.displayName || hero.heroClass.toUpperCase();
+    document.getElementById('hp-class').textContent = hero.heroClass + ' · ' + hero.faction;
+    const hpFill = document.getElementById('hp-bar-fill');
+    hpFill.style.width = hpPct + '%';
+    hpFill.classList.toggle('low', hpPct <= 25);
+    hpFill.classList.toggle('mid', hpPct > 25 && hpPct <= 50);
+    document.getElementById('hp-bar-text').textContent = hero.hp + ' / ' + hero.maxHp;
+    document.getElementById('mp-bar-fill').style.width = mpPct + '%';
+    document.getElementById('mp-bar-text').textContent = Math.round(hero.mana) + ' / ' + hero.maxMana;
+    document.getElementById('xp-bar-fill').style.width = xpPct + '%';
+    document.getElementById('hp-lvl').textContent = hero.level;
+    document.getElementById('hp-gold').textContent = hero.gold.toLocaleString();
+    document.getElementById('hp-kda').textContent = (hero.kills || 0) + '/' + (hero.deaths || 0) + '/' + (hero.assists || 0);
   }
 
   // Update ability hotkey slots
@@ -4567,6 +4733,10 @@ function updatePlayerControls() {
       if (cdEl) cdEl.textContent = ab.cd > 0 ? ab.cd : '';
       if (slot) {
         slot.classList.toggle('on-cd', ab.cd > 0);
+        // Tooltip payload — hover shows this in the floating tooltip
+        slot.title = ab.name + (ab.tier ? ' (Tier ' + ab.tier + ')' : '');
+        slot.dataset.abilityName = ab.name;
+        slot.dataset.abilityTier = ab.tier || 1;
       }
     });
   }

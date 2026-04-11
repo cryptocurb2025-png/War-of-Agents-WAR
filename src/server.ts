@@ -1601,11 +1601,15 @@ function handleRespawns() {
         hero.alive = true;
         hero.hp = hero.maxHp;
         hero.mana = hero.maxMana;
-        const laneInfo = LANES[hero.lane];
-        hero.pos = {
-          x: hero.faction === 'alliance' ? 200 + Math.random() * 100 : MAP_W - 300 + Math.random() * 100,
-          y: laneInfo.minY + Math.random() * (laneInfo.maxY - laneInfo.minY),
-        };
+        // Spawn at own base — not random in mid lane. Players need a clear,
+        // consistent respawn point so death isn't disorienting.
+        const baseX = hero.faction === 'alliance' ? 200 : MAP_W - 200;
+        const baseY = MAP_H / 2 + (Math.random() - 0.5) * 80;
+        hero.pos = { x: baseX, y: baseY };
+        // Clear any stale move/attack commands from before death
+        hero.moveTarget = null;
+        hero.focusTargetId = null;
+        hero.pendingAbilityId = null;
       }
     }
   }

@@ -97,34 +97,53 @@
 
   #game-container canvas { display: block; }
 
-  /* ─── KING OF THE HILL BANNER (top center) ─────────── */
+  /* ─── KING OF THE HILL BANNER (top center) — carved stone plaque ── */
   #king-banner {
     position: absolute;
     top: 8px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 25;
-    background: linear-gradient(135deg, #1A1208 0%, #0E0A04 100%);
-    border: 1px solid #C8960C;
-    border-radius: 6px;
-    padding: 6px 16px;
+    background:
+      linear-gradient(180deg, rgba(60,42,14,0.55) 0%, rgba(20,14,4,0.95) 45%, rgba(10,8,4,0.98) 100%),
+      radial-gradient(ellipse at top, rgba(200,150,12,0.2), transparent 70%);
+    border: 2px solid;
+    border-image: linear-gradient(180deg, #F0C040, #8B6914, #C8960C, #5A4A2A) 1;
+    border-radius: 4px;
+    padding: 8px 22px 10px;
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
     font-family: 'Cinzel', serif;
-    box-shadow: 0 0 20px rgba(200,150,12,0.25), inset 0 1px 0 rgba(255,215,0,0.15);
+    box-shadow:
+      0 0 30px rgba(200,150,12,0.35),
+      inset 0 2px 0 rgba(255,215,0,0.25),
+      inset 0 -2px 0 rgba(0,0,0,0.6),
+      0 4px 12px rgba(0,0,0,0.8);
     pointer-events: auto;
     cursor: pointer;
     transition: all 0.2s;
   }
-  #king-banner:hover { box-shadow: 0 0 30px rgba(200,150,12,0.45); transform: translateX(-50%) translateY(-1px); }
-  #king-banner .king-crown { font-size: 18px; }
-  #king-banner .king-label { color: #9A8B6E; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; }
-  #king-banner .king-name { color: #FFD700; font-size: 13px; font-weight: 900; letter-spacing: 0.5px; }
-  #king-banner .king-elo { color: #C8960C; font-size: 10px; }
-  #king-banner .king-divider { width: 1px; height: 24px; background: rgba(200,150,12,0.3); }
-  #king-banner .king-drip { color: #44CC66; font-size: 10px; font-weight: 700; }
-  #king-banner .king-drip-num { color: #FFD700; font-weight: 900; }
+  #king-banner::before, #king-banner::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 8px; height: 8px;
+    background: radial-gradient(circle, #F0C040 20%, #8B6914 60%, transparent 80%);
+    border-radius: 50%;
+    transform: translateY(-50%);
+    box-shadow: 0 0 8px #C8960C;
+  }
+  #king-banner::before { left: 4px; }
+  #king-banner::after { right: 4px; }
+  #king-banner:hover { box-shadow: 0 0 45px rgba(255,215,0,0.55), inset 0 2px 0 rgba(255,215,0,0.4), inset 0 -2px 0 rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.8); transform: translateX(-50%) translateY(-1px); }
+  #king-banner .king-crown { font-size: 22px; filter: drop-shadow(0 0 6px rgba(255,215,0,0.6)); }
+  #king-banner .king-label { color: #9A8B6E; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
+  #king-banner .king-name { color: #FFD700; font-size: 15px; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 10px rgba(255,215,0,0.5), 0 2px 2px rgba(0,0,0,0.8); font-family: 'MedievalSharp', serif; }
+  #king-banner .king-elo { color: #C8960C; font-size: 11px; font-weight: 700; }
+  #king-banner .king-divider { width: 2px; height: 30px; background: linear-gradient(180deg, transparent, #8B6914, transparent); }
+  #king-banner .king-drip { color: #66CC66; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+  #king-banner .king-drip-num { color: #FFD700; font-weight: 900; font-size: 12px; text-shadow: 0 0 8px rgba(255,215,0,0.5); }
 
   /* ─── HOW-TO-PLAY TUTORIAL OVERLAY ───────────────────── */
   #tutorial-overlay {
@@ -1065,12 +1084,12 @@
     <div class="hk-slot hk-item" id="hk-4" data-key="4"><div class="hk-key">4</div><div class="hk-name" id="hk-4-name">Cloak</div></div>
     <div class="hk-slot hk-item" id="hk-5" data-key="5"><div class="hk-key">5</div><div class="hk-name" id="hk-5-name">Relic</div></div>
   </div>
-  <!-- Hero stats bar -->
-  <div id="pc-stats-bar" style="position:fixed;bottom:194px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:11px;color:#AAA080;background:#0A0804dd;border:1px solid #5A4A2A;border-radius:4px;padding:4px 12px;display:flex;gap:12px;align-items:center">
-    <span id="pc-title" style="color:#C8960C;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:0.08em">YOUR HERO</span>
-    <span id="pc-hero-info"></span>
-    <span id="pc-status" style="color:#C8960C;font-size:10px"></span>
-    <button id="pc-leave-btn" onclick="leaveMatch()" style="margin-left:8px;background:transparent;color:#9A8B6E;border:1px solid rgba(154,139,110,0.4);border-radius:3px;padding:3px 10px;font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Leave</button>
+  <!-- Hero stats bar — stone plaque -->
+  <div id="pc-stats-bar" style="position:fixed;bottom:200px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:11px;color:#C8B890;background:linear-gradient(180deg,#1E160A 0%,#0A0804 100%);border:2px solid;border-image:linear-gradient(180deg,#8B6914,#5A4A2A,#2A1A08) 1;border-radius:4px;padding:6px 16px 8px;display:flex;gap:14px;align-items:center;box-shadow:inset 0 1px 0 rgba(240,192,64,0.2),inset 0 -1px 0 rgba(0,0,0,0.6),0 3px 8px rgba(0,0,0,0.7)">
+    <span id="pc-title" style="color:#F0C040;font-weight:900;text-transform:uppercase;font-size:10px;letter-spacing:0.12em;text-shadow:0 0 6px rgba(240,192,64,0.5),0 1px 1px #000;font-family:'MedievalSharp',serif">YOUR HERO</span>
+    <span id="pc-hero-info" style="font-weight:700"></span>
+    <span id="pc-status" style="color:#C8960C;font-size:10px;font-style:italic"></span>
+    <button id="pc-leave-btn" onclick="leaveMatch()" style="margin-left:8px;background:linear-gradient(180deg,#2A1A08,#0A0804);color:#8A7A5A;border:1px solid rgba(154,139,110,0.4);border-radius:3px;padding:4px 12px;font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all 0.15s">Leave</button>
   </div>
   <!-- Movement hint -->
   <div id="pc-move-hint" style="position:fixed;bottom:168px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:9px;color:#5A4A2A;letter-spacing:0.08em">
@@ -1080,23 +1099,63 @@
 
 <style>
 .hk-slot {
-  width:56px;height:56px;background:linear-gradient(180deg,#1A1408,#0A0804);border:2px solid #5A4A2A;border-radius:5px;
+  width:60px;height:60px;
+  background:
+    linear-gradient(180deg, #2A1A08 0%, #1A1208 50%, #080402 100%),
+    radial-gradient(circle at 30% 20%, rgba(200,150,12,0.12), transparent 60%);
+  border:2px solid;
+  border-image: linear-gradient(180deg, #8B6914, #5A4A2A, #3A2A14) 1;
+  border-radius:4px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;
-  transition:border-color 0.15s,box-shadow 0.15s;user-select:none;
+  transition:all 0.15s;user-select:none;
+  box-shadow:
+    inset 0 1px 0 rgba(240,192,64,0.25),
+    inset 0 -1px 0 rgba(0,0,0,0.6),
+    0 2px 4px rgba(0,0,0,0.8);
 }
-.hk-slot:hover{border-color:#C8960C;box-shadow:0 0 10px rgba(200,150,12,0.3)}
-.hk-slot.on-cd{opacity:0.4}
-.hk-slot.pressed{border-color:#F0C040;box-shadow:0 0 16px rgba(240,192,64,0.5);transform:scale(0.95)}
-.hk-slot.owned{border-color:#2A5A2A;background:linear-gradient(180deg,#0A1A0A,#0A0804)}
-.hk-key{font-size:14px;font-weight:900;color:#C8960C;text-shadow:0 0 6px rgba(200,150,12,0.4)}
-.hk-name{font-size:8px;color:#8A7A5A;margin-top:2px;text-align:center;line-height:1.1;max-width:52px;overflow:hidden}
-.hk-cd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#FF6644;text-shadow:0 0 8px rgba(255,100,60,0.6);pointer-events:none}
-.hk-item .hk-key{color:#66AA66;font-size:12px}
-.hk-item .hk-name{color:#66AA66}
-.hk-slot.ult{border-color:#C8960C;background:linear-gradient(180deg,#3A2A0A,#1A1004);box-shadow:0 0 12px rgba(200,150,12,0.25)}
-.hk-slot.ult .hk-key{color:#FFD700;text-shadow:0 0 10px rgba(255,215,0,0.6)}
-.hk-slot.ult .hk-name{color:#F0C040}
-.hk-slot.ult.on-cd{opacity:0.5}
+.hk-slot:hover{
+  border-image: linear-gradient(180deg, #F0C040, #C8960C, #8B6914) 1;
+  box-shadow:
+    inset 0 1px 0 rgba(240,192,64,0.4),
+    inset 0 -1px 0 rgba(0,0,0,0.6),
+    0 0 14px rgba(200,150,12,0.45),
+    0 2px 4px rgba(0,0,0,0.8);
+  transform:translateY(-1px);
+}
+.hk-slot.on-cd{opacity:0.35;filter:grayscale(0.5)}
+.hk-slot.pressed{
+  border-image: linear-gradient(180deg, #FFD700, #F0C040, #C8960C) 1;
+  box-shadow:0 0 20px rgba(255,215,0,0.7), inset 0 0 16px rgba(255,215,0,0.25);
+  transform:scale(0.94)
+}
+.hk-slot.owned{
+  border-image: linear-gradient(180deg, #5A8B3A, #3A5A2A, #1A2A12) 1;
+  background:linear-gradient(180deg,#1A2A0A,#0A1404);
+}
+.hk-key{font-size:15px;font-weight:900;color:#F0C040;text-shadow:0 0 8px rgba(240,192,64,0.6), 0 1px 1px #000;font-family:'MedievalSharp',serif}
+.hk-name{font-size:8px;color:#8A7A5A;margin-top:3px;text-align:center;line-height:1.1;max-width:56px;overflow:hidden;letter-spacing:0.3px}
+.hk-cd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#FF6644;text-shadow:0 0 10px rgba(255,100,60,0.7), 0 2px 2px #000;pointer-events:none;font-family:'Cinzel',serif}
+.hk-item .hk-key{color:#88DD88;font-size:13px}
+.hk-item .hk-name{color:#88DD88}
+.hk-slot.ult{
+  border-image: linear-gradient(180deg, #FFD700, #C8960C, #8B6914) 1;
+  background:
+    linear-gradient(180deg, #4A3208 0%, #2A1A04 50%, #180C02 100%),
+    radial-gradient(circle at 50% 30%, rgba(255,215,0,0.2), transparent 70%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,215,0,0.4),
+    inset 0 -1px 0 rgba(0,0,0,0.6),
+    0 0 18px rgba(255,215,0,0.3),
+    0 2px 4px rgba(0,0,0,0.8);
+  animation: ultPulse 2.8s ease-in-out infinite;
+}
+@keyframes ultPulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,215,0,0.4), inset 0 -1px 0 rgba(0,0,0,0.6), 0 0 18px rgba(255,215,0,0.3), 0 2px 4px rgba(0,0,0,0.8); }
+  50% { box-shadow: inset 0 1px 0 rgba(255,215,0,0.6), inset 0 -1px 0 rgba(0,0,0,0.6), 0 0 28px rgba(255,215,0,0.55), 0 2px 4px rgba(0,0,0,0.8); }
+}
+.hk-slot.ult .hk-key{color:#FFD700;text-shadow:0 0 12px rgba(255,215,0,0.8), 0 2px 2px #000;font-size:17px}
+.hk-slot.ult .hk-name{color:#FFD700;font-weight:700}
+.hk-slot.ult.on-cd{opacity:0.5;animation:none}
 </style>
 
 <!-- ─── SPECTATOR CHAT ──────────────────────────────── -->
@@ -1110,7 +1169,7 @@
 </div>
 
 <!-- ─── KING OF THE HILL BANNER ───────────────────── -->
-<div id="king-banner" onclick="openLeaderboard()" title="Click to view full leaderboard">
+<div id="king-banner" onclick="openLeaderboard()" title="Click to view the full leaderboard and current King sponsor pool">
   <span class="king-crown">&#128081;</span>
   <div>
     <div class="king-label">King of the Hill</div>
@@ -1120,6 +1179,11 @@
   <div>
     <div class="king-label">Sponsor Drip</div>
     <div class="king-drip"><span class="king-drip-num" id="king-drip">—</span> $WAR/hr</div>
+  </div>
+  <div class="king-divider"></div>
+  <div>
+    <div class="king-label">Burned Today</div>
+    <div class="king-drip"><span class="king-drip-num" id="king-burn-total">0</span> $WAR</div>
   </div>
 </div>
 
@@ -1535,10 +1599,17 @@ ws.onmessage = (e) => {
       const myHeroId = myHeroState ? myHeroState.id : null;
       for (const evt of gameState.combatEvents) {
         spawnAbilityEffect(evt);
-        // Play sounds for own hero's abilities
-        if (myHeroId && evt.sourceId === myHeroId) {
-          if (evt.type === 'ability_heal') sfxHeal();
-          else if (evt.type === 'ability_hit' && evt.damage) sfxAbilityHit();
+        // Play sounds and shake the camera for own hero's abilities + hits
+        if (myHeroId) {
+          if (evt.sourceId === myHeroId) {
+            if (evt.type === 'ability_heal') sfxHeal();
+            else if (evt.type === 'ability_hit' && evt.damage) { sfxAbilityHit(); triggerShake(evt.aoe ? 12 : 6); }
+            else if (evt.type === 'auto_attack') triggerShake(3);
+          }
+          // Took damage — bigger shake
+          if (evt.targetId === myHeroId && evt.type !== 'ability_heal' && evt.damage) {
+            triggerShake(Math.min(15, 4 + evt.damage / 20));
+          }
         }
       }
     }
@@ -1772,10 +1843,30 @@ function pCreate() {
   sunMoonText = this.add.text(MAP_W - 80, 20, '\u2600', { fontSize: '32px', color: '#FFD700' });
   sunMoonText.setDepth(101).setScrollFactor(0);
 
-  // ─── Right-click targeting ─────────────────────────────────
+  // ─── Click / right-click handling ─────────────────────────
   this.input.mouse.disableContextMenu();
   this.input.on('pointerdown', (pointer) => {
-    if (!playerAgentId || !gameState) return;
+    if (!gameState) return;
+
+    // Spectators (no playerAgentId): left-click any hero to focus the camera
+    if (!playerAgentId) {
+      if (pointer.leftButtonDown()) {
+        const worldX = pointer.worldX, worldY = pointer.worldY;
+        let best = null, bestDist = 80;
+        for (const h of gameState.heroes) {
+          if (!h.alive) continue;
+          const dx = h.x - worldX, dy = h.y - worldY;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < bestDist) { bestDist = d; best = h; }
+        }
+        if (best) {
+          spectatorFollowId = best.id;
+          initAudio(); playTone(900, 0.05, 0.08, 'sine');
+        }
+      }
+      return;
+    }
+
     if (pointer.rightButtonDown()) {
       // Convert screen coords to world coords
       const worldX = pointer.worldX;
@@ -1857,9 +1948,21 @@ function heroTexKey(heroClass, faction) {
   return map[heroClass] || (isA ? 'a_knight' : 'h_knight');
 }
 
+// Screen shake — triggered by combat events
+let _shakeIntensity = 0;
+function triggerShake(amount) {
+  _shakeIntensity = Math.max(_shakeIntensity, amount);
+}
+
+// Spectator camera follow — click a hero to lock camera on them
+let spectatorFollowId = null;
+
 function pUpdate() {
   if (!graphics) return;
   graphics.clear();
+
+  // Decay the shake
+  if (_shakeIntensity > 0) _shakeIntensity = Math.max(0, _shakeIntensity - 0.6);
 
   // ─── Camera: follow the player hero if we have one ─────────────
   // Spectator view stays wide; player view zooms in and locks to the hero.
@@ -1878,14 +1981,35 @@ function pUpdate() {
       const currentY = cam.scrollY + cam.height / cam.zoom / 2;
       const newX = currentX + (targetX - currentX) * 0.15;
       const newY = currentY + (targetY - currentY) * 0.15;
-      cam.centerOn(newX, newY);
+      // Apply screen shake offset
+      const shakeX = _shakeIntensity > 0 ? (Math.random() - 0.5) * _shakeIntensity * 4 : 0;
+      const shakeY = _shakeIntensity > 0 ? (Math.random() - 0.5) * _shakeIntensity * 4 : 0;
+      cam.centerOn(newX + shakeX, newY + shakeY);
     }
   } else if (cam && gameState && !playerAgentId) {
-    // Spectator: keep the wide view
-    const wideZoom = phaserScene.scale.width / MAP_W;
-    if (Math.abs(cam.zoom - wideZoom) > 0.001) {
-      cam.setZoom(wideZoom);
-      cam.centerOn(MAP_W / 2, MAP_H / 2);
+    // Spectator: either follow a clicked hero, or wide view
+    if (spectatorFollowId) {
+      const target = gameState.heroes.find(h => h.id === spectatorFollowId && h.alive);
+      if (!target) {
+        spectatorFollowId = null;
+        const wideZoom = phaserScene.scale.width / MAP_W;
+        cam.setZoom(wideZoom);
+      } else {
+        const targetZoom = Math.min(phaserScene.scale.width / 1800, phaserScene.scale.height / 900);
+        const lerpZoom = cam.zoom + (targetZoom - cam.zoom) * 0.04;
+        cam.setZoom(lerpZoom);
+        const currentX = cam.scrollX + cam.width / cam.zoom / 2;
+        const currentY = cam.scrollY + cam.height / cam.zoom / 2;
+        const newX = currentX + (target.x - currentX) * 0.12;
+        const newY = currentY + (target.y - currentY) * 0.12;
+        cam.centerOn(newX, newY);
+      }
+    } else {
+      const wideZoom = phaserScene.scale.width / MAP_W;
+      if (Math.abs(cam.zoom - wideZoom) > 0.001) {
+        cam.setZoom(wideZoom);
+        cam.centerOn(MAP_W / 2, MAP_H / 2);
+      }
     }
   }
 
@@ -3582,26 +3706,31 @@ window.cheer = async function(faction) {
   } catch (e) {}
 };
 
-// ─── King of the Hill polling ─────────────────────────────────────
+// ─── King of the Hill + cheer burn polling ────────────────────────
 async function pollKing() {
   try {
-    const r = await fetch('/api/king');
-    const d = await r.json();
-    if (d && d.king) {
-      const k = d.king;
+    const [kr, cr] = await Promise.all([
+      fetch('/api/king').then(r => r.json()).catch(() => null),
+      fetch('/api/cheer/status').then(r => r.json()).catch(() => null),
+    ]);
+    if (kr && kr.king) {
+      const k = kr.king;
       const display = k.name && k.name.length > 0 ? k.name : (k.heroClass || 'unknown');
       document.getElementById('king-name').textContent = display;
       document.getElementById('king-elo').textContent = '· ELO ' + k.elo;
-      document.getElementById('king-drip').textContent = (d.hourlyDripWar || 0).toLocaleString();
+      document.getElementById('king-drip').textContent = (kr.hourlyDripWar || 0).toLocaleString();
     } else {
       document.getElementById('king-name').textContent = 'No King yet';
       document.getElementById('king-elo').textContent = '';
       document.getElementById('king-drip').textContent = '0';
     }
+    if (cr) {
+      document.getElementById('king-burn-total').textContent = (cr.totalWarBurned || 0).toLocaleString();
+    }
   } catch (e) {}
 }
 pollKing();
-setInterval(pollKing, 8000);
+setInterval(pollKing, 6000);
 
 // ─── Leaderboard modal ────────────────────────────────────────────
 window.openLeaderboard = async function() {

@@ -947,6 +947,7 @@
     <div class="hk-slot" id="hk-w" data-key="W"><div class="hk-key">W</div><div class="hk-name" id="hk-w-name">-</div><div class="hk-cd" id="hk-w-cd"></div></div>
     <div class="hk-slot" id="hk-e" data-key="E"><div class="hk-key">E</div><div class="hk-name" id="hk-e-name">-</div><div class="hk-cd" id="hk-e-cd"></div></div>
     <div class="hk-slot" id="hk-r" data-key="R"><div class="hk-key">R</div><div class="hk-name" id="hk-r-name">-</div><div class="hk-cd" id="hk-r-cd"></div></div>
+    <div class="hk-slot ult" id="hk-t" data-key="T"><div class="hk-key">T</div><div class="hk-name" id="hk-t-name">-</div><div class="hk-cd" id="hk-t-cd"></div></div>
     <div style="width:8px"></div>
     <!-- Item slots 1-5 -->
     <div class="hk-slot hk-item" id="hk-1" data-key="1"><div class="hk-key">1</div><div class="hk-name" id="hk-1-name">Boots</div></div>
@@ -964,7 +965,7 @@
   </div>
   <!-- Movement hint -->
   <div id="pc-move-hint" style="position:fixed;bottom:168px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:9px;color:#5A4A2A;letter-spacing:0.08em">
-    WASD/Arrows: Move &bull; Q/W/E/R: Abilities &bull; 1-5: Buy Items &bull; SPACE: Attack nearest
+    WASD/Arrows: Move &bull; Q/W/E/R/T: Abilities (T = ult) &bull; 1-5: Buy Items &bull; SPACE: Attack nearest &bull; B: Retreat &bull; ESC: Stop
   </div>
 </div>
 
@@ -983,6 +984,10 @@
 .hk-cd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#FF6644;text-shadow:0 0 8px rgba(255,100,60,0.6);pointer-events:none}
 .hk-item .hk-key{color:#66AA66;font-size:12px}
 .hk-item .hk-name{color:#66AA66}
+.hk-slot.ult{border-color:#C8960C;background:linear-gradient(180deg,#3A2A0A,#1A1004);box-shadow:0 0 12px rgba(200,150,12,0.25)}
+.hk-slot.ult .hk-key{color:#FFD700;text-shadow:0 0 10px rgba(255,215,0,0.6)}
+.hk-slot.ult .hk-name{color:#F0C040}
+.hk-slot.ult.on-cd{opacity:0.5}
 </style>
 
 <!-- ─── SPECTATOR CHAT ──────────────────────────────── -->
@@ -3576,7 +3581,7 @@ const ITEMS = [
   {id:'cloak',name:'Cloak',cost:200,key:'4'},
   {id:'relic',name:'Relic',cost:600,key:'5'},
 ];
-const ABILITY_KEYS = ['q','w','e','r'];
+const ABILITY_KEYS = ['q','w','e','r','t'];
 const keysDown = {};
 let moveInterval = null;
 let myHeroAbilities = [];
@@ -3873,7 +3878,7 @@ function updatePlayerControls() {
   if (hero.abilities) {
     myHeroAbilities = hero.abilities;
     hero.abilities.forEach((ab, i) => {
-      if (i >= 4) return;
+      if (i >= 5) return;
       const key = ABILITY_KEYS[i];
       const nameEl = document.getElementById('hk-' + key + '-name');
       const cdEl = document.getElementById('hk-' + key + '-cd');

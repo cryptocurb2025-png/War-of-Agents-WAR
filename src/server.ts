@@ -396,39 +396,39 @@ const SHOP_ITEMS: Item[] = [
 function createAbilities(heroClass: HeroClass): Ability[] {
   const base: Record<HeroClass, Ability[]> = {
     knight: [
-      { id: 'shield_bash', name: 'Shield Bash', cooldown: 60, currentCd: 0, damage: 42, range: 80, tier: 1, maxTier: 5, manaCost: 15, aoe: 0, effect: 'stun' },
-      { id: 'charge', name: 'Charge', cooldown: 100, currentCd: 0, damage: 60, range: 250, tier: 1, maxTier: 5, manaCost: 25, aoe: 0, effect: 'dash' },
-      { id: 'whirlwind', name: 'Whirlwind', cooldown: 80, currentCd: 0, damage: 48, range: 120, tier: 1, maxTier: 5, manaCost: 30, aoe: 120, effect: 'spin' },
-      { id: 'fortify', name: 'Fortify', cooldown: 170, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 40, aoe: 0, effect: 'armor_buff' },
-      { id: 'rally', name: 'Battle Rally', cooldown: 255, currentCd: 0, damage: 0, range: 350, tier: 1, maxTier: 5, manaCost: 60, aoe: 350, effect: 'team_buff' },
+      { id: 'shield_bash', name: 'Shield Bash', cooldown: 50, currentCd: 0, damage: 55, range: 200, tier: 1, maxTier: 5, manaCost: 15, aoe: 0, effect: 'stun' },
+      { id: 'charge', name: 'Charge', cooldown: 90, currentCd: 0, damage: 75, range: 500, tier: 1, maxTier: 5, manaCost: 25, aoe: 0, effect: 'dash' },
+      { id: 'whirlwind', name: 'Whirlwind', cooldown: 70, currentCd: 0, damage: 60, range: 200, tier: 1, maxTier: 5, manaCost: 30, aoe: 200, effect: 'spin' },
+      { id: 'fortify', name: 'Fortify', cooldown: 150, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 40, aoe: 0, effect: 'armor_buff' },
+      { id: 'rally', name: 'Battle Rally', cooldown: 220, currentCd: 0, damage: 0, range: 500, tier: 1, maxTier: 5, manaCost: 60, aoe: 500, effect: 'team_buff' },
     ],
     ranger: [
-      { id: 'power_shot', name: 'Power Shot', cooldown: 40, currentCd: 0, damage: 66, range: 400, tier: 1, maxTier: 5, manaCost: 15, aoe: 0 },
-      { id: 'multi_shot', name: 'Multi Shot', cooldown: 70, currentCd: 0, damage: 36, range: 350, tier: 1, maxTier: 5, manaCost: 25, aoe: 100 },
-      { id: 'trap', name: 'Bear Trap', cooldown: 120, currentCd: 0, damage: 24, range: 200, tier: 1, maxTier: 5, manaCost: 20, aoe: 60, effect: 'slow' },
-      { id: 'eagle_eye', name: 'Eagle Eye', cooldown: 128, currentCd: 0, damage: 96, range: 500, tier: 1, maxTier: 5, manaCost: 35, aoe: 0, effect: 'crit' },
-      { id: 'rain_arrows', name: 'Rain of Arrows', cooldown: 213, currentCd: 0, damage: 54, range: 400, tier: 1, maxTier: 5, manaCost: 55, aoe: 200 },
+      { id: 'power_shot', name: 'Power Shot', cooldown: 35, currentCd: 0, damage: 80, range: 600, tier: 1, maxTier: 5, manaCost: 15, aoe: 0 },
+      { id: 'multi_shot', name: 'Multi Shot', cooldown: 60, currentCd: 0, damage: 45, range: 550, tier: 1, maxTier: 5, manaCost: 25, aoe: 150 },
+      { id: 'trap', name: 'Bear Trap', cooldown: 100, currentCd: 0, damage: 35, range: 350, tier: 1, maxTier: 5, manaCost: 20, aoe: 80, effect: 'slow' },
+      { id: 'eagle_eye', name: 'Eagle Eye', cooldown: 110, currentCd: 0, damage: 130, range: 800, tier: 1, maxTier: 5, manaCost: 35, aoe: 0, effect: 'crit' },
+      { id: 'rain_arrows', name: 'Rain of Arrows', cooldown: 180, currentCd: 0, damage: 70, range: 600, tier: 1, maxTier: 5, manaCost: 55, aoe: 280 },
     ],
     mage: [
-      { id: 'fireball', name: 'Fireball', cooldown: 50, currentCd: 0, damage: 78, range: 350, tier: 1, maxTier: 5, manaCost: 20, aoe: 80, effect: 'burn' },
-      { id: 'frost_bolt', name: 'Frost Bolt', cooldown: 45, currentCd: 0, damage: 48, range: 300, tier: 1, maxTier: 5, manaCost: 15, aoe: 0, effect: 'slow' },
-      { id: 'arcane_blast', name: 'Arcane Blast', cooldown: 60, currentCd: 0, damage: 90, range: 250, tier: 1, maxTier: 5, manaCost: 30, aoe: 100 },
-      { id: 'blink', name: 'Blink', cooldown: 100, currentCd: 0, damage: 0, range: 300, tier: 1, maxTier: 5, manaCost: 25, aoe: 0, effect: 'teleport' },
-      { id: 'meteor', name: 'Meteor Storm', cooldown: 250, currentCd: 0, damage: 180, range: 400, tier: 1, maxTier: 5, manaCost: 80, aoe: 250 },
+      { id: 'fireball', name: 'Fireball', cooldown: 40, currentCd: 0, damage: 95, range: 550, tier: 1, maxTier: 5, manaCost: 20, aoe: 120, effect: 'burn' },
+      { id: 'frost_bolt', name: 'Frost Bolt', cooldown: 35, currentCd: 0, damage: 60, range: 500, tier: 1, maxTier: 5, manaCost: 15, aoe: 0, effect: 'slow' },
+      { id: 'arcane_blast', name: 'Arcane Blast', cooldown: 50, currentCd: 0, damage: 110, range: 450, tier: 1, maxTier: 5, manaCost: 30, aoe: 150 },
+      { id: 'blink', name: 'Blink', cooldown: 80, currentCd: 0, damage: 0, range: 600, tier: 1, maxTier: 5, manaCost: 25, aoe: 0, effect: 'teleport' },
+      { id: 'meteor', name: 'Meteor Storm', cooldown: 220, currentCd: 0, damage: 220, range: 700, tier: 1, maxTier: 5, manaCost: 80, aoe: 320 },
     ],
     priest: [
-      { id: 'heal', name: 'Holy Light', cooldown: 40, currentCd: 0, damage: -72, range: 300, tier: 1, maxTier: 5, manaCost: 20, aoe: 0, effect: 'heal' },
-      { id: 'smite', name: 'Holy Smite', cooldown: 50, currentCd: 0, damage: 54, range: 300, tier: 1, maxTier: 5, manaCost: 15, aoe: 0 },
-      { id: 'shield_aura', name: 'Divine Shield', cooldown: 128, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 35, aoe: 0, effect: 'invuln' },
-      { id: 'mass_heal', name: 'Mass Heal', cooldown: 170, currentCd: 0, damage: -120, range: 350, tier: 1, maxTier: 5, manaCost: 60, aoe: 300, effect: 'heal' },
-      { id: 'resurrection', name: 'Resurrection', cooldown: 340, currentCd: 0, damage: 0, range: 200, tier: 1, maxTier: 5, manaCost: 100, aoe: 0, effect: 'revive' },
+      { id: 'heal', name: 'Holy Light', cooldown: 35, currentCd: 0, damage: -90, range: 500, tier: 1, maxTier: 5, manaCost: 20, aoe: 0, effect: 'heal' },
+      { id: 'smite', name: 'Holy Smite', cooldown: 45, currentCd: 0, damage: 70, range: 500, tier: 1, maxTier: 5, manaCost: 15, aoe: 0 },
+      { id: 'shield_aura', name: 'Divine Shield', cooldown: 110, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 35, aoe: 0, effect: 'invuln' },
+      { id: 'mass_heal', name: 'Mass Heal', cooldown: 150, currentCd: 0, damage: -150, range: 550, tier: 1, maxTier: 5, manaCost: 60, aoe: 380, effect: 'heal' },
+      { id: 'resurrection', name: 'Resurrection', cooldown: 300, currentCd: 0, damage: 0, range: 350, tier: 1, maxTier: 5, manaCost: 100, aoe: 0, effect: 'revive' },
     ],
     siegemaster: [
-      { id: 'cannon', name: 'Cannon Shot', cooldown: 60, currentCd: 0, damage: 84, range: 450, tier: 1, maxTier: 5, manaCost: 20, aoe: 100 },
-      { id: 'mortar', name: 'Mortar Barrage', cooldown: 100, currentCd: 0, damage: 60, range: 500, tier: 1, maxTier: 5, manaCost: 35, aoe: 150 },
-      { id: 'fortification', name: 'Fortification', cooldown: 128, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 30, aoe: 0, effect: 'tower_buff' },
-      { id: 'demolish', name: 'Demolish', cooldown: 80, currentCd: 0, damage: 120, range: 150, tier: 1, maxTier: 5, manaCost: 25, aoe: 0, effect: 'structure_dmg' },
-      { id: 'siege_mode', name: 'Siege Mode', cooldown: 255, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 50, aoe: 0, effect: 'transform' },
+      { id: 'cannon', name: 'Cannon Shot', cooldown: 50, currentCd: 0, damage: 100, range: 650, tier: 1, maxTier: 5, manaCost: 20, aoe: 130 },
+      { id: 'mortar', name: 'Mortar Barrage', cooldown: 90, currentCd: 0, damage: 75, range: 750, tier: 1, maxTier: 5, manaCost: 35, aoe: 200 },
+      { id: 'fortification', name: 'Fortification', cooldown: 110, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 30, aoe: 0, effect: 'tower_buff' },
+      { id: 'demolish', name: 'Demolish', cooldown: 70, currentCd: 0, damage: 150, range: 250, tier: 1, maxTier: 5, manaCost: 25, aoe: 0, effect: 'structure_dmg' },
+      { id: 'siege_mode', name: 'Siege Mode', cooldown: 230, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 50, aoe: 0, effect: 'transform' },
     ],
   };
   return base[heroClass];
@@ -1105,8 +1105,33 @@ function heroAI(hero: HeroEntity, dt: number) {
   }
 
   // Move toward target or attack (respect lane bounds)
+  // Ranged classes kite: if a melee enemy is closer than half their range, back off
+  // while still firing.
+  const isRanged = hero.range >= 200;
+  const closestEnemyHero = [...state.heroes.values()]
+    .filter(h => h.alive && h.faction !== hero.faction)
+    .map(h => ({ h, d: dist(hero.pos, h.pos) }))
+    .sort((a, b) => a.d - b.d)[0];
+  const meleeThreatNearby = isRanged && closestEnemyHero && closestEnemyHero.d < 180;
+
   if (d > hero.range) {
     hero.pos = moveToward(hero.pos, target.pos, hero.speed, dt, hero.lane);
+  } else if (meleeThreatNearby && closestEnemyHero) {
+    // Kite — step away from the melee threat while still attacking the focus target
+    const away = {
+      x: hero.pos.x + (hero.pos.x - closestEnemyHero.h.pos.x) / closestEnemyHero.d * 100,
+      y: hero.pos.y + (hero.pos.y - closestEnemyHero.h.pos.y) / closestEnemyHero.d * 100,
+    };
+    hero.pos = moveToward(hero.pos, away, hero.speed * 0.7, dt, hero.lane);
+    if (hero.currentAttackCd <= 0 && d <= hero.range) {
+      applyDamage(target, hero.damage, hero.id);
+      hero.currentAttackCd = hero.attackCd;
+      state.projectiles.push({
+        id: nextId('proj'), from: { ...hero.pos }, to: { ...target.pos },
+        progress: 0, speed: 0.1, damage: 0, sourceId: hero.id, targetId: target.id,
+        faction: hero.faction, color: hero.faction === 'alliance' ? '#aaccff' : '#ffaa88',
+      });
+    }
   } else {
     if (hero.currentAttackCd <= 0) {
       applyDamage(target, hero.damage, hero.id);

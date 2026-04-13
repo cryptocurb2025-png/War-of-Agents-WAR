@@ -2244,8 +2244,9 @@ const ABILITY_RANGES = {
 
 // ─── Generate textures programmatically ─────────────────────────
 function pPreload() {
-  console.log('Phaser: preload started');
+  console.log('[PHASER] preload started');
   const scene = this;
+  window._phaserPreloadOk = false;
 
   // Helper: draw into a texture
   function genTex(key, w, h, drawFn) {
@@ -2672,9 +2673,12 @@ function pPreload() {
     g.fillStyle(0xE24B4A, 0.18); g.fillEllipse(40, 20, 76, 30);
     g.lineStyle(2, 0xE24B4A, 0.35); g.strokeEllipse(40, 20, 72, 26);
   });
+  window._phaserPreloadOk = true;
+  console.log('[PHASER] preload complete — all textures generated');
 }
 
 function pCreate() {
+  console.log('[PHASER] create started, preloadOk:', window._phaserPreloadOk);
   phaserScene = this;
   cam = this.cameras.main;
   cam.setBackgroundColor('#0d0d1a');
@@ -2879,7 +2883,7 @@ let _announcedTowers = new Set();
 let spectatorFollowId = null;
 
 function pUpdate() {
-  if (!graphics) return;
+  if (!graphics) { console.warn('[pUpdate] no graphics object'); return; }
   graphics.clear();
 
   // Decay the shake

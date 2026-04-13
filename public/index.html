@@ -491,7 +491,9 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 .faction-panel {
   border-radius: 12px; padding: 40px 32px 32px; text-align: center;
   position: relative; overflow: hidden; transition: all 0.4s ease;
+  display: flex; flex-direction: column; align-items: center;
 }
+.faction-panel .faction-join { margin-top: auto; }
 .faction-panel:hover { transform: translateY(-8px); }
 
 /* Alliance card */
@@ -538,7 +540,7 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 
 /* Emblem */
 .faction-crest { width: 180px; height: 200px; margin: 0 auto 20px; position: relative; display: flex; align-items: center; justify-content: center; }
-.faction-crest svg { width: 160px; height: auto; position: relative; z-index: 2; }
+.faction-crest > svg:not(.rune-ring) { width: 180px; height: auto; position: relative; z-index: 2; }
 
 /* Emblem glow */
 .crest-glow { position: absolute; width: 200px; height: 200px; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; }
@@ -903,7 +905,7 @@ footer { background: #06050300; border-top: 2px solid; border-image: linear-grad
           <li><strong>Ballista</strong>Siege weapon</li>
         </ul>
         <p class="faction-bonus" style="color:#4A8FE0">+10% combat bonus during day</p>
-        <a href="/play?faction=alliance" class="faction-join">Join Alliance &rarr;</a>
+        <a href="/play" class="faction-join">Join Alliance &rarr;</a>
       </div>
       <!-- VS DIVIDER -->
       <div class="vs-divider"><span class="vs-text">VS</span></div>
@@ -912,10 +914,10 @@ footer { background: #06050300; border-top: 2px solid; border-image: linear-grad
         <div class="faction-seal"></div>
         <canvas class="faction-particles" id="horde-particles"></canvas>
         <!-- Corner decorations (crossed axes) -->
-        <svg class="faction-corner tl" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/><line x1="17" y1="17" x2="3" y2="3" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <svg class="faction-corner tr" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/><line x1="17" y1="17" x2="3" y2="3" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <svg class="faction-corner bl" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/><line x1="17" y1="17" x2="3" y2="3" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <svg class="faction-corner br" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/><line x1="17" y1="17" x2="3" y2="3" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <svg class="faction-corner tl" viewBox="0 0 20 20"><line x1="4" y1="16" x2="16" y2="4" stroke="#8A6040" stroke-width="1.2" stroke-linecap="round"/><path d="M14 4 L16 4 L16 6" fill="none" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="16" x2="4" y2="4" stroke="#8A6040" stroke-width="1.2" stroke-linecap="round"/><path d="M4 6 L4 4 L6 4" fill="none" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <svg class="faction-corner tr" viewBox="0 0 20 20"><line x1="4" y1="16" x2="16" y2="4" stroke="#8A6040" stroke-width="1.2" stroke-linecap="round"/><path d="M14 4 L16 4 L16 6" fill="none" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="16" x2="4" y2="4" stroke="#8A6040" stroke-width="1.2" stroke-linecap="round"/><path d="M4 6 L4 4 L6 4" fill="none" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <svg class="faction-corner bl" viewBox="0 0 20 20"><line x1="4" y1="16" x2="16" y2="4" stroke="#8A6040" stroke-width="1.2" stroke-linecap="round"/><path d="M14 4 L16 4 L16 6" fill="none" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="16" x2="4" y2="4" stroke="#8A6040" stroke-width="1.2" stroke-linecap="round"/><path d="M4 6 L4 4 L6 4" fill="none" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <svg class="faction-corner br" viewBox="0 0 20 20"><line x1="4" y1="16" x2="16" y2="4" stroke="#8A6040" stroke-width="1.2" stroke-linecap="round"/><path d="M14 4 L16 4 L16 6" fill="none" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="16" x2="4" y2="4" stroke="#8A6040" stroke-width="1.2" stroke-linecap="round"/><path d="M4 6 L4 4 L6 4" fill="none" stroke="#8A6040" stroke-width="1.5" stroke-linecap="round"/></svg>
         <div class="faction-crest">
           <div class="crest-glow"></div>
           <!-- Rune ring -->
@@ -939,7 +941,7 @@ footer { background: #06050300; border-top: 2px solid; border-image: linear-grad
           <li><strong>Colossus</strong>Siege brute</li>
         </ul>
         <p class="faction-bonus" style="color:#E24B4A">+15% combat bonus during night</p>
-        <a href="/play?faction=horde" class="faction-join">Join Iron Horde &rarr;</a>
+        <a href="/play" class="faction-join">Join Iron Horde &rarr;</a>
       </div>
     </div>
   </div>

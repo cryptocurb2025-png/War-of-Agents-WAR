@@ -97,9 +97,10 @@
     overflow: hidden;
     min-height: 300px;
     width: 100%;
+    z-index: 1;
   }
 
-  #game-container canvas { display: block; }
+  #game-container canvas { display: block; position: relative; z-index: 1; }
 
   /* ─── KING OF THE HILL BANNER (top center) — carved stone plaque ── */
   #king-banner {
@@ -651,9 +652,17 @@
     padding: 6px 8px;
     overflow-x: auto;
     align-items: stretch;
-    background: #0A0804;
+    background: #0A0804 !important;
     position: relative;
     z-index: 11;
+    min-height: 100%;
+  }
+  /* Force every child in heroes-panel to be opaque dark */
+  #heroes-panel > * {
+    background: linear-gradient(170deg, #1A1408, #0E0A04, #12100A) !important;
+  }
+  #heroes-panel > .empty-slot {
+    background: #0A0A10 !important;
   }
 
   .hero-card {
@@ -694,6 +703,11 @@
     pointer-events: none; z-index: 1;
   }
   .hero-card.mine { border: 2px solid #C8960C !important; box-shadow: 0 0 12px rgba(200,150,12,0.2) !important; }
+  .hero-card.levelup { animation: levelupFlash 1s ease-out; }
+  @keyframes levelupFlash {
+    0% { border-color: #FFD700 !important; box-shadow: 0 0 20px rgba(255,215,0,0.5) !important; }
+    100% { border-color: inherit; box-shadow: none; }
+  }
   .hero-card.empty-slot {
     background: #0A0A10; border-color: #1A1A24; opacity: 0.5;
     min-height: 80px; display: flex; align-items: center; justify-content: center;
@@ -3846,6 +3860,7 @@ function updateUI() {
   document.getElementById('st-time').textContent = timeStr;
 
   // Hero cards
+  if (!window._prevHeroLevels) window._prevHeroLevels = {};
   const panel = document.getElementById('heroes-panel');
   panel.innerHTML = '';
 
@@ -3857,8 +3872,12 @@ function updateUI() {
   for (const h of sorted) {
     const card = document.createElement('div');
     const isMine = playerAgentId && h.agentId === playerAgentId;
-    card.className = `hero-card ${h.faction} ${h.alive?'':'dead'} ${isMine?'mine':''}`;
-    const streak = h.killStreak>=3 ? `<span class="streak-badge">${h.killStreak}x</span>` : '';
+    const prevLvl = window._prevHeroLevels[h.id] || h.level;
+    const justLeveled = h.level > prevLvl;
+    window._prevHeroLevels[h.id] = h.level;
+    card.className = `hero-card ${h.faction} ${h.alive?'':'dead'} ${isMine?'mine':''} ${justLeveled?'levelup':''}`;
+    const streak = h.killStreak>=3 ? `<span class="streak-badge">\uD83D\uDD25${h.killStreak}x</span>` : '';
+    const deadIcon = !h.alive ? '\u2620 ' : '';
     const icon = CLASS_ICONS[h.heroClass]||'';
     const clr = CLASS_CARD_COLORS[h.heroClass]||'#aaa';
     const hpPct = h.alive?(h.hp/h.maxHp*100):0;
@@ -3877,7 +3896,7 @@ function updateUI() {
       <div class="hero-header">
         <div class="class-icon" style="background:${clr}18;border:1px solid ${clr}66">${icon}</div>
         <div>
-          <div class="name">${h.heroClass} ${streak}</div>
+          <div class="name">${deadIcon}${h.heroClass} ${streak}</div>
           <div class="agent-label">${agentLabel} <span class="level-badge">LV ${h.level}</span></div>
           <div class="faction-label ${h.faction}">${h.faction==='alliance'?'Alliance':'Horde'}</div>
         </div>
@@ -3887,7 +3906,7 @@ function updateUI() {
       <div class="kda">K: ${h.kills} / D: ${h.deaths} / A: ${h.assists}</div>
       <div class="stats">${h.hp}/${h.maxHp} HP | ${h.gold}g | DMG:${h.damage}</div>
       <div class="items-row">${pills}</div>
-      ${!h.alive?`<div style="color:#E24B4A;font-size:10px;font-weight:700">\u2620 DEAD (${h.respawnIn})</div>`:''}
+      ${!h.alive?`<div style="color:#E24B4A;font-size:10px;font-weight:700;text-align:center;padding:2px 0;background:rgba(180,30,30,0.15);border-radius:3px;margin-top:2px">\u2620 DEAD &mdash; respawn ${Math.ceil((h.respawnIn||100)/20)}s</div>`:''}
     `;
     panel.appendChild(card);
   }

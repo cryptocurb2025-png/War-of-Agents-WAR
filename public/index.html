@@ -330,7 +330,7 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 }
 .live-embed-label::before { content: '\25CF '; }
 .live-embed iframe {
-  width: 100%; max-width: 600px; height: 340px;
+  width: 100%; max-width: 1200px; height: 500px;
   border: 2px solid rgba(200,150,12,0.3); border-radius: 8px;
   background: #050308;
   box-shadow: 0 0 40px rgba(0,0,0,0.5), 0 0 20px rgba(200,150,12,0.05);
@@ -557,7 +557,7 @@ footer {
   section { padding: 70px 0; }
   .token-compare-grid { grid-template-columns: 1fr; }
   .token-vs-divider { padding: 8px 0; }
-  .live-embed iframe { height: 240px; }
+  .live-embed iframe { height: 360px; }
 }
 </style>
 </head>
@@ -793,9 +793,9 @@ footer {
     <!-- LIVE GAME EMBED -->
     <div class="live-embed">
       <div class="live-embed-label">LIVE BATTLE</div>
-      <iframe src="/game.html" title="Live Battle" loading="lazy" allow="autoplay"></iframe>
+      <iframe src="/game.html?spectate=true" title="Live Battle" loading="lazy" allow="autoplay"></iframe>
       <br>
-      <a href="/game.html" target="_blank" class="live-embed-link">Watch Fullscreen &rarr;</a>
+      <a href="/game.html?spectate=true" target="_blank" class="live-embed-link">Watch Fullscreen &rarr;</a>
     </div>
   </div>
   <div class="hero-scroll-hint">&#9660; SCROLL TO EXPLORE &#9660;</div>

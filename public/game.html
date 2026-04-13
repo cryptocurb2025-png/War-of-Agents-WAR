@@ -4223,8 +4223,8 @@ window.openTutorial = function() {
   document.getElementById('tutorial-overlay').classList.add('show');
 };
 
-// Auto-show on first visit
-if (!localStorage.getItem('woa_tutorial_seen')) {
+// Auto-show on first visit (skip in spectate/preview mode)
+if (!IS_SPECTATE && !localStorage.getItem('woa_tutorial_seen')) {
   setTimeout(() => openTutorial(), 800);
 }
 
@@ -4587,9 +4587,24 @@ if (musicEnabled) {
   });
 })();
 
-// ─── Player Controls — Dota-style keyboard system ─────────────────
+// ─── Spectate mode: ?spectate=true disables all login/modals/bets ──
 const urlParams = new URLSearchParams(window.location.search);
-const playerAgentId = urlParams.get('player') || localStorage.getItem('woa_agentId');
+const IS_SPECTATE = urlParams.get('spectate') === 'true';
+
+// In spectate mode: hide betting panel, player controls bar, and never show ghost banner
+if (IS_SPECTATE) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const bp = document.getElementById('betting-panel');
+    if (bp) bp.style.display = 'none';
+    const pc = document.getElementById('player-controls');
+    if (pc) pc.style.display = 'none';
+    const tb = document.getElementById('top-bar');
+    if (tb) tb.style.cursor = 'default';
+  });
+}
+
+// ─── Player Controls — Dota-style keyboard system ─────────────────
+const playerAgentId = IS_SPECTATE ? null : (urlParams.get('player') || localStorage.getItem('woa_agentId'));
 const ITEMS = [
   {id:'boots',name:'Boots',cost:200,key:'1'},
   {id:'sword',name:'Sword',cost:300,key:'2'},
@@ -4890,6 +4905,7 @@ if (playerAgentId) {
     return el;
   }
   window.showGhostBanner = function() {
+    if (IS_SPECTATE) return; // never show in spectate/preview mode
     const el = ensureGhostBanner();
     el.style.display = 'block';
   };

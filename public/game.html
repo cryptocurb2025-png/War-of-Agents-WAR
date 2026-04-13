@@ -2607,16 +2607,12 @@ function pUpdate() {
 
   const halfW = MAP_W / 2;
 
-  // Draw base terrain even before WebSocket connects
-  graphics.fillStyle(0x3A7A2A, 1);
-  graphics.fillRect(0, 0, halfW, MAP_H);
-  graphics.fillStyle(0x2A1508, 1);
-  graphics.fillRect(halfW, 0, halfW, MAP_H);
-  // Lane
-  graphics.fillStyle(0x6B5A3A, 1);
-  graphics.fillRect(0, 1040, halfW, 320);
-  graphics.fillStyle(0x2A1500, 1);
-  graphics.fillRect(halfW, 1040, halfW, 320);
+  // Draw base terrain even before WebSocket connects — unified green
+  graphics.fillStyle(0x2A6A1A, 1);
+  graphics.fillRect(0, 0, MAP_W, MAP_H);
+  // Lane road
+  graphics.fillStyle(0x5A4A2A, 1);
+  graphics.fillRect(0, 1040, MAP_W, 320);
 
   if (!gameState) return; // rest needs game state
 
@@ -2624,29 +2620,38 @@ function pUpdate() {
   const isNight = false;
   const t = gs.tick;
 
-  // ─── TERRAIN (drawn on dynamic graphics every frame — simple & reliable) ───
-  const grassBase = isNight ? 0x1a3010 : 0x3A7A2A;
-  const dirtBase  = isNight ? 0x2a1808 : 0x5A3A1A;
+  // ─── TERRAIN — unified green grass across full map ───
+  const grassBase = isNight ? 0x1a3010 : 0x2A6A1A;
   const treeColor = 0x1A3A0A;
-  // Single mid lane (multi-lane infrastructure kept server-side for future)
   const LANES = [{ name: 'mid', y: 1040, h: 320 }];
   const laneY = 1040, laneH = 320;
 
-  // Left grass half — Alliance lush terrain
+  // Full map grass
   graphics.fillStyle(grassBase, 1);
-  graphics.fillRect(0, 0, halfW, MAP_H);
+  graphics.fillRect(0, 0, MAP_W, MAP_H);
 
-  // Grid seams removed for performance
-
-  // Lighter grass patches for variety
-  graphics.fillStyle(isNight ? 0x1e3812 : 0x3A6A2A, 0.15);
-  const grassPatches = [{x:400,y:300,r:60},{x:1000,y:200,r:45},{x:1600,y:400,r:55},
-    {x:800,y:700,r:50},{x:1400,y:800,r:40},{x:300,y:1600,r:55},
-    {x:900,y:1800,r:45},{x:1500,y:1700,r:50},{x:2000,y:2100,r:40}];
+  // Lighter grass patches spread across full map
+  graphics.fillStyle(isNight ? 0x1e3812 : 0x357A25, 0.2);
+  const grassPatches = [
+    {x:400,y:300,r:60},{x:1000,y:200,r:45},{x:1600,y:400,r:55},{x:2200,y:250,r:50},
+    {x:800,y:700,r:50},{x:1400,y:800,r:40},{x:2800,y:350,r:55},{x:3400,y:500,r:45},
+    {x:300,y:1600,r:55},{x:900,y:1800,r:45},{x:1500,y:1700,r:50},{x:2000,y:2100,r:40},
+    {x:3000,y:700,r:50},{x:3600,y:300,r:45},{x:4200,y:600,r:55},{x:4500,y:400,r:40},
+    {x:2600,y:1700,r:45},{x:3200,y:1900,r:50},{x:3800,y:1600,r:55},{x:4400,y:1800,r:40},
+  ];
   for (const p of grassPatches) graphics.fillCircle(p.x, p.y, p.r);
 
-  // Small ponds (blue water patches)
-  const ponds = [{x:600,y:250,r:25},{x:1800,y:350,r:20},{x:400,y:2050,r:22},{x:1200,y:1750,r:18}];
+  // Darker grass patches for depth
+  graphics.fillStyle(isNight ? 0x142A0A : 0x1A5010, 0.15);
+  const darkPatches = [
+    {x:600,y:500,r:80},{x:1200,y:350,r:60},{x:2000,y:600,r:70},{x:3000,y:400,r:65},
+    {x:3800,y:700,r:75},{x:4400,y:200,r:55},{x:700,y:1900,r:60},{x:3500,y:1800,r:70},
+  ];
+  for (const p of darkPatches) graphics.fillCircle(p.x, p.y, p.r);
+
+  // Small ponds spread across map
+  const ponds = [{x:600,y:250,r:25},{x:1800,y:350,r:20},{x:400,y:2050,r:22},{x:1200,y:1750,r:18},
+    {x:3000,y:300,r:22},{x:3800,y:500,r:20},{x:4200,y:1800,r:18},{x:2600,y:2000,r:24}];
   for (const p of ponds) {
     graphics.fillStyle(isNight ? 0x0A1520 : 0x1A3050, 0.4);
     graphics.fillCircle(p.x, p.y, p.r);
@@ -2654,113 +2659,37 @@ function pUpdate() {
     graphics.fillCircle(p.x - 3, p.y - 3, p.r * 0.5);
   }
 
-  // Flower clusters
-  const flowerSpots = [{x:350,y:200},{x:900,y:180},{x:1500,y:320},{x:700,y:750},
-    {x:1300,y:680},{x:500,y:1850},{x:1100,y:2000},{x:1800,y:1800}];
-  for (const f of flowerSpots) {
-    for (let i = 0; i < 6; i++) {
-      const fx = f.x - 10 + ((i * 7) & 19), fy = f.y - 8 + ((i * 11) & 15);
-      const colors = [0xFFFF66, 0xFFFFFF, 0xFF99CC, 0xFFCC44];
-      graphics.fillStyle(colors[i % 4], isNight ? 0.15 : 0.35);
-      graphics.fillCircle(fx, fy, 2 + (i & 1));
-    }
-  }
-
-  // Light fog/mist on Alliance upper area (holy glow)
-  graphics.fillStyle(isNight ? 0x0A1A3A : 0x4A8FE0, 0.03);
-  graphics.fillRect(0, 0, halfW, 400);
-
-  // Right half — Horde scorched earth (brightened for visibility)
-  graphics.fillStyle(isNight ? 0x120800 : 0x2A1508, 1);
+  // Subtle faction tinting (very light, not split)
+  graphics.fillStyle(0x4A8FE0, 0.015); // Faint blue on Alliance side
+  graphics.fillRect(0, 0, halfW, MAP_H);
+  graphics.fillStyle(0xCC4422, 0.015); // Faint red on Horde side
   graphics.fillRect(halfW, 0, halfW, MAP_H);
 
-  // Dark red fog overlay on upper Horde area
-  graphics.fillStyle(0x440808, 0.25);
-  graphics.fillRect(halfW, 0, halfW, 800);
-
-  // Subtle red tint across horde ground for contrast
-  graphics.fillStyle(0x1A0800, 0.4);
-  graphics.fillRect(halfW, 800, halfW, MAP_H - 800);
-
-  // Lava crack lines (orange #FF4400 at higher opacity for visibility)
-  graphics.lineStyle(3, 0xFF4400, 0.45);
-  const lavaCracks = [
-    [2500,300,2700,500], [2800,100,3000,400], [3200,600,3500,300],
-    [3600,200,3800,500], [4000,400,4200,100], [4300,300,4500,600],
-    [2600,1600,2900,1900], [3100,1700,3400,2000], [3800,1500,4100,1800],
-    [4300,1700,4600,2100],
+  // Trees spread across the FULL map (both sides)
+  const allTrees = [
+    {x:300,y:200}, {x:700,y:400}, {x:1100,y:150}, {x:1500,y:500}, {x:1900,y:300},
+    {x:500,y:800}, {x:1000,y:650}, {x:1700,y:750}, {x:2100,y:550},
+    {x:300,y:1600}, {x:800,y:1800}, {x:1400,y:1900}, {x:1900,y:1700}, {x:2100,y:2100},
+    {x:2700,y:200}, {x:3100,y:400}, {x:3500,y:150}, {x:3900,y:500}, {x:4300,y:300},
+    {x:2600,y:800}, {x:3000,y:650}, {x:3500,y:750}, {x:4100,y:550}, {x:4500,y:400},
+    {x:2700,y:1600}, {x:3200,y:1800}, {x:3700,y:1900}, {x:4100,y:1700}, {x:4500,y:2000},
   ];
-  for (const [x1,y1,x2,y2] of lavaCracks) {
-    graphics.lineBetween(x1, y1, x2, y2);
-    // Glow around crack
-    graphics.lineStyle(8, 0xFF4400, 0.08);
-    graphics.lineBetween(x1, y1, x2, y2);
-    graphics.lineStyle(3, 0xFF4400, 0.3);
+  for (const tr of allTrees) {
+    const th = 40 + ((tr.x * 7) & 25);
+    // Trunk
+    graphics.fillStyle(0x3A2A10, 0.9);
+    graphics.fillRect(tr.x - 4, tr.y, 8, th);
+    // Canopy
+    graphics.fillStyle(treeColor, 0.8);
+    graphics.fillCircle(tr.x, tr.y - 5, 18 + ((tr.x * 3) & 7));
+    graphics.fillStyle(0x2A5A14, 0.5);
+    graphics.fillCircle(tr.x - 5, tr.y - 8, 12);
   }
 
-  // Fire pit circles (animated glowing red)
-  const firePits = [{x:2700,y:400}, {x:3300,y:250}, {x:3900,y:500}, {x:4400,y:350},
-    {x:2800,y:1700}, {x:3400,y:1850}, {x:4000,y:1750}];
-  for (const fp of firePits) {
-    const flicker = Math.sin(t * 0.08 + fp.x * 0.01) * 0.04;
-    graphics.fillStyle(0xFF2200, 0.15 + flicker);
-    graphics.fillCircle(fp.x, fp.y, 55 + Math.sin(t * 0.06 + fp.y) * 5);
-    graphics.fillStyle(0xFF4400, 0.25 + flicker);
-    graphics.fillCircle(fp.x, fp.y, 30);
-    graphics.fillStyle(0xFFAA00, 0.3 + flicker);
-    graphics.fillCircle(fp.x, fp.y, 12);
-    graphics.fillStyle(0xFFDD44, 0.15);
-    graphics.fillCircle(fp.x, fp.y, 5);
-    // Ember particles rising
-    for (let e = 0; e < 3; e++) {
-      const ex = fp.x + Math.sin(t * 0.1 + e * 2 + fp.x) * 20;
-      const ey = fp.y - 20 - ((t * 0.5 + e * 30 + fp.x) % 60);
-      graphics.fillStyle(0xFF6600, 0.3 - ((t * 0.5 + e * 30 + fp.x) % 60) / 60 * 0.3);
-      graphics.fillCircle(ex, ey, 2);
-    }
-  }
-
-  // Dead twisted trees — dark #1A0A0A with red tint tips
-  const mordorTrees = [
-    {x:2600,y:200}, {x:2900,y:550}, {x:3200,y:150}, {x:3500,y:450},
-    {x:3800,y:250}, {x:4100,y:600}, {x:4500,y:300}, {x:4700,y:500},
-  ];
-  for (const mt of mordorTrees) {
-    const th = 50 + ((mt.x * 7) & 30);
-    // Red glow at base of each dead tree
-    graphics.fillStyle(0x660000, 0.12);
-    graphics.fillCircle(mt.x, mt.y + th, 30);
-    // Trunk — higher opacity for visibility
-    graphics.fillStyle(0x1A0A0A, 1);
-    graphics.fillRect(mt.x - 5, mt.y, 10, th);
-    // Branches — thicker and more visible
-    graphics.lineStyle(4, 0x1A0A0A, 0.85);
-    graphics.lineBetween(mt.x, mt.y + 8, mt.x - 24, mt.y - 18);
-    graphics.lineBetween(mt.x, mt.y + 14, mt.x + 22, mt.y - 12);
-    graphics.lineBetween(mt.x - 24, mt.y - 18, mt.x - 34, mt.y - 36);
-    graphics.lineBetween(mt.x + 22, mt.y - 12, mt.x + 32, mt.y - 34);
-    // Red tint on branch tips
-    graphics.fillStyle(0x550000, 0.5);
-    graphics.fillCircle(mt.x - 34, mt.y - 36, 6);
-    graphics.fillCircle(mt.x + 32, mt.y - 34, 6);
-  }
-
-  // Seams removed for performance
-
-  // Thin red danger border at very bottom of Horde side
-  graphics.fillStyle(0x880000, 0.6);
-  graphics.fillRect(halfW, MAP_H - 6, halfW, 6);
-  graphics.fillStyle(0xCC0000, 0.3);
-  graphics.fillRect(halfW, MAP_H - 20, halfW, 20);
-
-  // ─── 3 LANE ROADS ──────────────────────────────────────────
+  // ─── LANE ROAD — uniform dirt color across full width ──────
   for (const lane of LANES) {
-    // Alliance half
-    graphics.fillStyle(isNight ? 0x3a3018 : 0x6B5A3A, 1);
-    graphics.fillRect(0, lane.y, halfW, lane.h);
-    // Horde half — scorched
-    graphics.fillStyle(isNight ? 0x1a0a00 : 0x2A1500, 1);
-    graphics.fillRect(halfW, lane.y, halfW, lane.h);
+    graphics.fillStyle(isNight ? 0x3a3018 : 0x5A4A2A, 1);
+    graphics.fillRect(0, lane.y, MAP_W, lane.h);
     // Road seam lines
     graphics.lineStyle(1, isNight ? 0x2a2010 : 0x5A4A2A, 0.25);
     for (let ry = lane.y + 20; ry < lane.y + lane.h; ry += 40) graphics.lineBetween(0, ry, MAP_W, ry);
@@ -2919,86 +2848,11 @@ function pUpdate() {
     }
   }
 
-  // Horde side — skulls and bones scattered
-  const hordeDecos = [
-    {x:2700,y:200},{x:3200,y:300},{x:3700,y:150},{x:4200,y:280},
-    {x:2800,y:2200},{x:3300,y:2100},{x:3800,y:2250},{x:4300,y:2150},
-    {x:2900,y:700},{x:3400,y:800},{x:3900,y:750},
-    {x:3000,y:1500},{x:3500,y:1600},{x:4000,y:1550},
-  ];
-  for (const d of hordeDecos) {
-    // Small bone/skull
-    graphics.fillStyle(0xD4C8A0, 0.2);
-    graphics.fillCircle(d.x, d.y, 6);
-    graphics.fillStyle(0x1A0A00, 0.3);
-    graphics.fillCircle(d.x - 2, d.y - 1, 1.5);
-    graphics.fillCircle(d.x + 2, d.y - 1, 1.5);
-  }
+  // ─── Subtle center line (midfield marker) ───
+  graphics.lineStyle(1, 0xC8960C, 0.08);
+  graphics.lineBetween(halfW, 0, halfW, MAP_H);
 
-  // ─── MAGICAL RIVER DIVIDER at x=2400 ──────────────────
-  // River bed
-  graphics.fillStyle(isNight ? 0x0A1825 : 0x1A3050, 0.6);
-  graphics.fillRect(halfW - 30, 0, 60, MAP_H);
-
-  // Flowing water (optimized — fewer segments)
-  for (let ry = 0; ry < MAP_H; ry += 20) {
-    const wave = Math.sin(ry * 0.02 + t * 0.04) * 8;
-    graphics.fillStyle(isNight ? 0x1A3055 : 0x2A5080, 0.25);
-    graphics.fillRect(halfW - 18 + wave, ry, 36, 20);
-  }
-
-  // Water highlights
-  for (let ry = 0; ry < MAP_H; ry += 60) {
-    const sx2 = halfW + Math.sin(ry * 0.04 + t * 0.05) * 10;
-    graphics.fillStyle(isNight ? 0x3060A0 : 0x5090CC, 0.2);
-    graphics.fillRect(sx2 - 3, ry, 6, 3);
-  }
-
-  // Gold energy core running through the center
-  graphics.fillStyle(0xF0C040, 0.15);
-  graphics.fillRect(halfW - 3, 0, 6, MAP_H);
-  graphics.fillStyle(0xF0C040, 0.7);
-  graphics.fillRect(halfW - 1, 0, 2, MAP_H);
-
-  // Floating magical particles along the river (sparse)
-  for (let ry = 0; ry < MAP_H; ry += 100) {
-    const px = halfW + Math.sin(ry * 0.03 + t * 0.06) * 12;
-    const py = ry + Math.cos(ry * 0.02 + t * 0.04) * 8;
-    const pAlpha = 0.3 + Math.sin(ry * 0.05 + t * 0.08) * 0.2;
-    graphics.fillStyle(0xFFD700, pAlpha);
-    graphics.fillCircle(px, py, 2);
-    // Secondary blue particle
-    graphics.fillStyle(0x66AAFF, pAlpha * 0.6);
-    graphics.fillCircle(px + 8, py + 12, 1.5);
-  }
-
-  // ─── Stone bridge at lane crossing ──────────────────────
-  const bridgeY = 1200; // mid lane center
-  // Bridge deck
-  graphics.fillStyle(isNight ? 0x3A3028 : 0x6A5A48, 1);
-  graphics.fillRect(halfW - 45, bridgeY - 80, 90, 160);
-  // Bridge rails
-  graphics.fillStyle(isNight ? 0x2A2418 : 0x5A4A38, 1);
-  graphics.fillRect(halfW - 48, bridgeY - 82, 96, 6);
-  graphics.fillRect(halfW - 48, bridgeY + 76, 96, 6);
-  // Bridge pillars
-  graphics.fillStyle(isNight ? 0x2A2218 : 0x4A3A28, 1);
-  graphics.fillRect(halfW - 48, bridgeY - 82, 8, 164);
-  graphics.fillRect(halfW + 40, bridgeY - 82, 8, 164);
-  // Stone texture on bridge
-  graphics.lineStyle(1, isNight ? 0x2A2010 : 0x4A3A28, 0.3);
-  for (let by = bridgeY - 75; by < bridgeY + 75; by += 18) {
-    graphics.lineBetween(halfW - 42, by, halfW + 42, by);
-  }
-  // Gold trim on bridge edges
-  graphics.lineStyle(1, 0xC8960C, 0.3);
-  graphics.lineBetween(halfW - 48, bridgeY - 82, halfW + 48, bridgeY - 82);
-  graphics.lineBetween(halfW - 48, bridgeY + 82, halfW + 48, bridgeY + 82);
-
-  // River bank edges
-  graphics.lineStyle(2, isNight ? 0x1A2A10 : 0x3A4A2A, 0.5);
-  graphics.lineBetween(halfW - 30, 0, halfW - 30, MAP_H);
-  graphics.lineBetween(halfW + 30, 0, halfW + 30, MAP_H);
+  // (River, bridge, Horde debris removed — unified green map)
 
   // ─── STRUCTURES (drawn with graphics each frame) ──────────
   for (const s of gs.structures) {
@@ -4016,6 +3870,17 @@ function updateUI() {
     panel.appendChild(card);
   }
 
+  // Fill remaining slots with empty dark placeholders (up to 6 total)
+  const totalSlots = Math.max(6, sorted.length);
+  for (let i = sorted.length; i < totalSlots; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'hero-card';
+    empty.style.opacity = '0.4';
+    empty.style.borderColor = '#1A1A1A';
+    empty.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#3A3A3A;font-size:10px;letter-spacing:1px;text-transform:uppercase">EMPTY SLOT</div>';
+    panel.appendChild(empty);
+  }
+
   // Kill feed — show last 10 kills
   // Reset kill counter if game was reset or on first load
   if (gs.kills.length < lastKillCount || lastKillCount === 0) {
@@ -4068,17 +3933,13 @@ function updateUI() {
 
   const sx = 160/MAP_W, sy = 160/MAP_H;
 
-  // Territory tint
+  // Territory — unified green
   ctx.fillStyle = '#0c1a0c';
-  ctx.fillRect(0, 0, 80, 160);
-  ctx.fillStyle = '#1a100a';
-  ctx.fillRect(80, 0, 80, 160);
+  ctx.fillRect(0, 0, 160, 160);
 
-  // Mid lane on minimap
+  // Mid lane on minimap — uniform
   ctx.fillStyle = '#3A2A18';
-  ctx.fillRect(0, 1040 * sy, 80, 320 * sy);
-  ctx.fillStyle = '#2A1500';
-  ctx.fillRect(80, 1040 * sy, 80, 320 * sy);
+  ctx.fillRect(0, 1040 * sy, 160, 320 * sy);
 
   // Jungle camps on minimap
   if (gs.camps) {
@@ -4091,11 +3952,11 @@ function updateUI() {
     }
   }
 
-  // Gold divider / river
-  ctx.fillStyle = '#2A5080';
-  ctx.fillRect(79, 0, 2, 160);
+  // Subtle center marker on minimap
   ctx.fillStyle = '#C8960C';
+  ctx.globalAlpha = 0.15;
   ctx.fillRect(79.5, 0, 1, 160);
+  ctx.globalAlpha = 1;
 
   // Structures
   for (const s of gs.structures) {

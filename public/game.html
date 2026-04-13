@@ -2725,7 +2725,9 @@ function pUpdate() {
 
   // Draw base terrain even before WebSocket connects — extended edges
   graphics.fillStyle(0x2A6A1A, 1);
-  graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
+  graphics.fillRect(-200, -200, halfW + 200, MAP_H + 400);
+  graphics.fillStyle(0x2A6A1A, 1);
+  graphics.fillRect(halfW, -200, halfW + 200, MAP_H + 400);
   // Lane road
   graphics.fillStyle(0x5A4A2A, 1);
   graphics.fillRect(-200, 1040, MAP_W + 400, 320);
@@ -2736,85 +2738,241 @@ function pUpdate() {
   const isNight = false;
   const t = gs.tick;
 
-  // ─── TERRAIN — unified green grass across full map ───
-  const grassBase = isNight ? 0x1a3010 : 0x2A6A1A;
-  const treeColor = 0x1A3A0A;
-  const LANES = [{ name: 'mid', y: 1040, h: 320 }];
+  // ─── ERA-BASED TERRAIN SYSTEM ──────────────────────────────────────
+  const era = gs.era || 1;
   const laneY = 1040, laneH = 320;
 
-  // Full map grass (extended 200px on all sides to cover camera edges)
-  graphics.fillStyle(grassBase, 1);
-  graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
+  // === GROUND BASE ===
+  // Alliance side: lush green that gets darker with era
+  const allianceGreen = era >= 3 ? 0x1E5A12 : (era >= 2 ? 0x246818 : 0x2A6A1A);
+  // Horde side: starts similar, gets more scorched with era
+  const hordeGround = era >= 3 ? 0x2A4A10 : (era >= 2 ? 0x285A14 : 0x2A6A1A);
 
-  // Lighter grass patches spread across full map
-  graphics.fillStyle(isNight ? 0x1e3812 : 0x357A25, 0.2);
-  const grassPatches = [
-    {x:400,y:300,r:60},{x:1000,y:200,r:45},{x:1600,y:400,r:55},{x:2200,y:250,r:50},
-    {x:800,y:700,r:50},{x:1400,y:800,r:40},{x:2800,y:350,r:55},{x:3400,y:500,r:45},
-    {x:300,y:1600,r:55},{x:900,y:1800,r:45},{x:1500,y:1700,r:50},{x:2000,y:2100,r:40},
-    {x:3000,y:700,r:50},{x:3600,y:300,r:45},{x:4200,y:600,r:55},{x:4500,y:400,r:40},
-    {x:2600,y:1700,r:45},{x:3200,y:1900,r:50},{x:3800,y:1600,r:55},{x:4400,y:1800,r:40},
-  ];
-  for (const p of grassPatches) graphics.fillCircle(p.x, p.y, p.r);
+  // Extended fill (covers camera edges)
+  graphics.fillStyle(allianceGreen, 1);
+  graphics.fillRect(-200, -200, halfW + 200, MAP_H + 400);
+  graphics.fillStyle(hordeGround, 1);
+  graphics.fillRect(halfW, -200, halfW + 200, MAP_H + 400);
 
-  // Darker grass patches for depth
-  graphics.fillStyle(isNight ? 0x142A0A : 0x1A5010, 0.15);
-  const darkPatches = [
-    {x:600,y:500,r:80},{x:1200,y:350,r:60},{x:2000,y:600,r:70},{x:3000,y:400,r:65},
-    {x:3800,y:700,r:75},{x:4400,y:200,r:55},{x:700,y:1900,r:60},{x:3500,y:1800,r:70},
-  ];
-  for (const p of darkPatches) graphics.fillCircle(p.x, p.y, p.r);
+  // === BATTLEFIELD CENTER — war-torn no-man's land ===
+  // Gets more destroyed as match progresses
+  const centerW = 200 + era * 60; // wider destruction zone in later eras
+  graphics.fillStyle(era >= 3 ? 0x2A2A1A : 0x3A4A2A, 1);
+  graphics.fillRect(halfW - centerW/2, -200, centerW, MAP_H + 400);
 
-  // Small ponds spread across map
-  const ponds = [{x:600,y:250,r:25},{x:1800,y:350,r:20},{x:400,y:2050,r:22},{x:1200,y:1750,r:18},
-    {x:3000,y:300,r:22},{x:3800,y:500,r:20},{x:4200,y:1800,r:18},{x:2600,y:2000,r:24}];
-  for (const p of ponds) {
-    graphics.fillStyle(isNight ? 0x0A1520 : 0x1A3050, 0.4);
-    graphics.fillCircle(p.x, p.y, p.r);
-    graphics.fillStyle(isNight ? 0x1A3060 : 0x3060A0, 0.15);
-    graphics.fillCircle(p.x - 3, p.y - 3, p.r * 0.5);
+  // Scorched earth spots at center (more with era)
+  if (era >= 2) {
+    const scorchSpots = [
+      {x:halfW-80,y:400}, {x:halfW+60,y:700}, {x:halfW-40,y:1000},
+      {x:halfW+90,y:1400}, {x:halfW-60,y:1800}, {x:halfW+40,y:2100},
+    ];
+    for (const s of scorchSpots) {
+      graphics.fillStyle(0x1A1A0A, 0.3 + (era-2)*0.15);
+      graphics.fillCircle(s.x, s.y, 30 + era * 10);
+    }
+  }
+  // Craters in War era
+  if (era >= 4) {
+    const craters = [{x:halfW-50,y:600,r:40},{x:halfW+70,y:1100,r:35},{x:halfW-30,y:1700,r:45},{x:halfW+50,y:2000,r:30}];
+    for (const c of craters) {
+      graphics.fillStyle(0x0A0A04, 0.5);
+      graphics.fillCircle(c.x, c.y, c.r);
+      graphics.lineStyle(2, 0x3A3A1A, 0.3);
+      graphics.strokeCircle(c.x, c.y, c.r);
+    }
   }
 
-  // Subtle faction tinting (very light, not split)
-  graphics.fillStyle(0x4A8FE0, 0.015); // Faint blue on Alliance side
-  graphics.fillRect(0, 0, halfW, MAP_H);
-  graphics.fillStyle(0xCC4422, 0.015); // Faint red on Horde side
-  graphics.fillRect(halfW, 0, halfW, MAP_H);
+  // === LANE ROADS — evolve with era ===
+  // Road color evolves: dirt → cobblestone → paved → war-scarred
+  const roadColors = [0x5A4A2A, 0x5A5040, 0x606058, 0x4A4040];
+  const roadColor = roadColors[Math.min(era-1, 3)];
+  graphics.fillStyle(roadColor, 1);
+  graphics.fillRect(-200, laneY, MAP_W + 400, laneH);
 
-  // Trees spread across the FULL map (both sides)
+  // Road edge lines
+  graphics.lineStyle(2, era >= 3 ? 0x808070 : 0x4A3A1A, 0.5);
+  graphics.lineBetween(-200, laneY, MAP_W + 200, laneY);
+  graphics.lineBetween(-200, laneY + laneH, MAP_W + 200, laneY + laneH);
+
+  // Road surface detail
+  if (era >= 2) {
+    // Cobblestone pattern
+    graphics.lineStyle(1, 0x4A4A3A, 0.12);
+    for (let rx = 0; rx < MAP_W; rx += 40) {
+      graphics.lineBetween(rx, laneY + 10, rx, laneY + laneH - 10);
+    }
+    for (let ry = laneY + 30; ry < laneY + laneH; ry += 40) {
+      graphics.lineBetween(0, ry, MAP_W, ry);
+    }
+  }
+
+  // === TORCH POSTS along lane edges ===
+  const torchSpacing = era >= 3 ? 300 : 400;
+  for (let tx = 200; tx < MAP_W - 200; tx += torchSpacing) {
+    // Top edge torches
+    const torchY1 = laneY - 15;
+    graphics.fillStyle(0x3A2A10, 0.9);
+    graphics.fillRect(tx - 2, torchY1, 4, 20);
+    // Flame (animated)
+    const flicker = Math.sin(t * 0.1 + tx * 0.01) * 3;
+    graphics.fillStyle(0xFF8800, 0.5 + Math.sin(t * 0.15 + tx) * 0.15);
+    graphics.fillCircle(tx, torchY1 - 4 + flicker, 5);
+    graphics.fillStyle(0xFFCC44, 0.3);
+    graphics.fillCircle(tx, torchY1 - 6 + flicker, 3);
+
+    // Bottom edge torches
+    const torchY2 = laneY + laneH - 5;
+    graphics.fillStyle(0x3A2A10, 0.9);
+    graphics.fillRect(tx + 20 - 2, torchY2, 4, 20);
+    graphics.fillStyle(0xFF8800, 0.5 + Math.sin(t * 0.12 + tx + 50) * 0.15);
+    graphics.fillCircle(tx + 20, torchY2 - 4 + Math.sin(t * 0.1 + tx + 50) * 3, 5);
+    graphics.fillStyle(0xFFCC44, 0.3);
+    graphics.fillCircle(tx + 20, torchY2 - 6 + Math.sin(t * 0.1 + tx + 50) * 3, 3);
+  }
+
+  // === FACTION BANNERS at tower positions ===
+  const bannerPositions = [
+    {x:900, faction:'alliance'}, {x:1500, faction:'alliance'},
+    {x:MAP_W-900, faction:'horde'}, {x:MAP_W-1500, faction:'horde'},
+  ];
+  for (const bp of bannerPositions) {
+    const by = laneY - 30;
+    // Pole
+    graphics.fillStyle(0x5A4A2A, 0.8);
+    graphics.fillRect(bp.x - 1, by, 3, 40);
+    // Banner flag (waving animation)
+    const wave = Math.sin(t * 0.06 + bp.x * 0.01) * 4;
+    const bannerColor = bp.faction === 'alliance' ? 0x2244AA : 0xAA2211;
+    graphics.fillStyle(bannerColor, 0.7);
+    graphics.fillTriangle(bp.x + 2, by + 2, bp.x + 18 + wave, by + 8, bp.x + 2, by + 16);
+    // Banner trim
+    graphics.lineStyle(1, 0xC8960C, 0.4);
+    graphics.lineBetween(bp.x + 2, by + 2, bp.x + 18 + wave, by + 8);
+    graphics.lineBetween(bp.x + 18 + wave, by + 8, bp.x + 2, by + 16);
+  }
+
+  // === TREES — spread across both sides ===
+  const treeColor = era >= 3 ? 0x1A4A0A : 0x1A3A0A;
+  const canopyColor = era >= 3 ? 0x2A5A14 : 0x2A4A14;
   const allTrees = [
+    // Alliance side
     {x:300,y:200}, {x:700,y:400}, {x:1100,y:150}, {x:1500,y:500}, {x:1900,y:300},
     {x:500,y:800}, {x:1000,y:650}, {x:1700,y:750}, {x:2100,y:550},
     {x:300,y:1600}, {x:800,y:1800}, {x:1400,y:1900}, {x:1900,y:1700}, {x:2100,y:2100},
+    // Horde side
     {x:2700,y:200}, {x:3100,y:400}, {x:3500,y:150}, {x:3900,y:500}, {x:4300,y:300},
     {x:2600,y:800}, {x:3000,y:650}, {x:3500,y:750}, {x:4100,y:550}, {x:4500,y:400},
     {x:2700,y:1600}, {x:3200,y:1800}, {x:3700,y:1900}, {x:4100,y:1700}, {x:4500,y:2000},
   ];
   for (const tr of allTrees) {
     const th = 40 + ((tr.x * 7) & 25);
+    // Shadow
+    graphics.fillStyle(0x000000, 0.08);
+    graphics.fillEllipse(tr.x + 5, tr.y + th + 5, 20, 8);
     // Trunk
     graphics.fillStyle(0x3A2A10, 0.9);
     graphics.fillRect(tr.x - 4, tr.y, 8, th);
-    // Canopy
-    graphics.fillStyle(treeColor, 0.8);
-    graphics.fillCircle(tr.x, tr.y - 5, 18 + ((tr.x * 3) & 7));
-    graphics.fillStyle(0x2A5A14, 0.5);
-    graphics.fillCircle(tr.x - 5, tr.y - 8, 12);
+    // Canopy layers (fuller trees)
+    graphics.fillStyle(treeColor, 0.85);
+    graphics.fillCircle(tr.x, tr.y - 5, 20 + ((tr.x * 3) & 7));
+    graphics.fillStyle(canopyColor, 0.5);
+    graphics.fillCircle(tr.x - 6, tr.y - 8, 14);
+    graphics.fillCircle(tr.x + 7, tr.y - 3, 12);
+    // Highlight on canopy
+    graphics.fillStyle(0x4A8A2A, 0.15);
+    graphics.fillCircle(tr.x - 3, tr.y - 10, 8);
   }
 
-  // ─── LANE ROAD — uniform dirt color, extended edges ─────
-  for (const lane of LANES) {
-    graphics.fillStyle(isNight ? 0x3a3018 : 0x5A4A2A, 1);
-    graphics.fillRect(-200, lane.y, MAP_W + 400, lane.h);
-    // Road seam lines
-    graphics.lineStyle(1, isNight ? 0x2a2010 : 0x5A4A2A, 0.25);
-    for (let ry = lane.y + 20; ry < lane.y + lane.h; ry += 40) graphics.lineBetween(0, ry, MAP_W, ry);
-    // Road edges
-    graphics.lineStyle(2, isNight ? 0x1a1508 : 0x4A3A1A, 0.5);
-    graphics.lineBetween(0, lane.y, MAP_W, lane.y);
-    graphics.lineBetween(0, lane.y + lane.h, MAP_W, lane.y + lane.h);
-    // Lane label
-    graphics.fillStyle(0xC8960C, 0.15);
+  // === GRASS PATCHES for variety ===
+  const grassPatches = [
+    {x:400,y:300,r:60},{x:1000,y:200,r:45},{x:1600,y:400,r:55},{x:2200,y:250,r:50},
+    {x:800,y:700,r:50},{x:1400,y:800,r:40},{x:2800,y:350,r:55},{x:3400,y:500,r:45},
+    {x:300,y:1600,r:55},{x:900,y:1800,r:45},{x:3000,y:700,r:50},{x:3600,y:300,r:45},
+    {x:4200,y:600,r:55},{x:2600,y:1700,r:45},{x:3200,y:1900,r:50},{x:4400,y:1800,r:40},
+  ];
+  graphics.fillStyle(0x357A25, 0.12);
+  for (const p of grassPatches) graphics.fillCircle(p.x, p.y, p.r);
+
+  // === PONDS / WATER ===
+  const ponds = [{x:600,y:250,r:25},{x:1800,y:350,r:20},{x:400,y:2050,r:22},
+    {x:3000,y:300,r:22},{x:3800,y:500,r:20},{x:4200,y:1800,r:18}];
+  for (const p of ponds) {
+    graphics.fillStyle(0x1A3050, 0.35);
+    graphics.fillCircle(p.x, p.y, p.r);
+    // Reflection
+    graphics.fillStyle(0x3060A0, 0.12);
+    graphics.fillCircle(p.x - 3, p.y - 3, p.r * 0.5);
+    // Ripple animation
+    const ripple = Math.sin(t * 0.04 + p.x) * 2;
+    graphics.lineStyle(1, 0x4080C0, 0.1);
+    graphics.strokeCircle(p.x + ripple, p.y, p.r * 0.7);
+  }
+
+  // === SUBTLE FACTION TINTING ===
+  graphics.fillStyle(0x4A8FE0, 0.012);
+  graphics.fillRect(-200, -200, halfW + 200, MAP_H + 400);
+  graphics.fillStyle(0xCC4422, 0.012);
+  graphics.fillRect(halfW, -200, halfW + 200, MAP_H + 400);
+
+  // === CENTER DIVIDER — gold line ===
+  graphics.lineStyle(1, 0xC8960C, 0.06 + Math.sin(t * 0.02) * 0.02);
+  graphics.lineBetween(halfW, -200, halfW, MAP_H + 200);
+
+  // === BACKGROUND MOUNTAINS (top and bottom edges) ===
+  // Top mountains (distant, parallax feel)
+  graphics.fillStyle(0x1A2A0A, 0.3);
+  const mtPoints = [0,120, 200,50, 400,90, 600,30, 900,80, 1100,20, 1400,70, 1600,40, 1900,85, 2200,25, 2400,75, 2700,35, 3000,65, 3200,20, 3500,60, 3800,30, 4100,70, 4400,25, 4600,50, 4800,100];
+  for (let i = 0; i < mtPoints.length - 2; i += 2) {
+    graphics.fillTriangle(
+      mtPoints[i], -200,
+      mtPoints[i], mtPoints[i+1] - 200,
+      mtPoints[i+2], mtPoints[i+3] - 200
+    );
+  }
+
+  // === ERA-SPECIFIC DECORATIONS ===
+  if (era >= 2) {
+    // Iron Age: stone pillars along lane
+    for (let px = 600; px < MAP_W - 600; px += 800) {
+      graphics.fillStyle(0x6A6A6A, 0.3);
+      graphics.fillRect(px - 4, laneY - 25, 8, 30);
+      graphics.fillRect(px - 6, laneY - 28, 12, 4);
+    }
+  }
+  if (era >= 3) {
+    // Steel Age: rune circles on ground near bases
+    for (const bx of [350, MAP_W - 350]) {
+      const runeAlpha = 0.08 + Math.sin(t * 0.03) * 0.04;
+      graphics.lineStyle(2, 0xC8960C, runeAlpha);
+      graphics.strokeCircle(bx, MAP_H / 2, 80);
+      graphics.strokeCircle(bx, MAP_H / 2, 60);
+      // Rune marks
+      for (let a = 0; a < 6; a++) {
+        const angle = (a / 6) * Math.PI * 2 + t * 0.005;
+        const rx = bx + Math.cos(angle) * 70;
+        const ry = MAP_H / 2 + Math.sin(angle) * 70;
+        graphics.fillStyle(0xC8960C, runeAlpha * 1.5);
+        graphics.fillCircle(rx, ry, 3);
+      }
+    }
+  }
+  if (era >= 4) {
+    // War Age: burning ground patches, smoke effects
+    const burnSpots = [
+      {x:1200,y:1200}, {x:2000,y:1100}, {x:2800,y:1200}, {x:3600,y:1300},
+      {x:1000,y:600}, {x:3800,y:600}, {x:1200,y:1800}, {x:3600,y:1800},
+    ];
+    for (const b of burnSpots) {
+      const flicker = Math.sin(t * 0.08 + b.x * 0.01) * 0.05;
+      graphics.fillStyle(0xFF4400, 0.06 + flicker);
+      graphics.fillCircle(b.x, b.y, 40);
+      graphics.fillStyle(0x000000, 0.1);
+      graphics.fillCircle(b.x, b.y, 25);
+      // Smoke rising
+      const smokeY = b.y - 20 - (t * 0.3 + b.x) % 60;
+      graphics.fillStyle(0x444444, 0.04);
+      graphics.fillCircle(b.x + Math.sin(t * 0.05 + b.x) * 10, smokeY, 15);
+    }
   }
 
   // ─── JUNGLE CAMPS (between lanes) ─────────────────────────
@@ -2855,120 +3013,6 @@ function pUpdate() {
       }
     }
   }
-
-  // ─── 30 TREES — TOP AREA (Y 80 to 380, above top lane) ──
-  for (let i = 0; i < 15; i++) {
-    const tx = 60 + ((i * 97 + 31) % (MAP_W - 120));
-    const ty = 80 + ((i * 193 + 59) % 280);
-    const th = 60 + ((i * 7) % 30); // 60-90px tall
-    const tw = 20 + ((i * 3) % 20); // 20-40px wide
-    const isAlliance = tx < 2400;
-
-    if (isAlliance) {
-      // Bright green healthy tree #2A6A1A
-      graphics.fillStyle(0x2A6A1A, isNight ? 0.5 : 0.75);
-      graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
-      // Second canopy layer
-      graphics.fillStyle(0x2A6A1A, isNight ? 0.35 : 0.55);
-      graphics.fillTriangle(tx, ty - th - 15, tx - tw * 0.7, ty - th * 0.4, tx + tw * 0.7, ty - th * 0.4);
-      // Trunk
-      graphics.fillStyle(isNight ? 0x1A2A0A : 0x2A3A1A, 0.6);
-      graphics.fillRect(tx - 3, ty, 6, 12);
-    } else {
-      // Dead twisted tree — dark #3A2A0A + purple tint
-      graphics.fillStyle(0x3A2A0A, isNight ? 0.5 : 0.75);
-      graphics.fillRect(tx - 4, ty - th * 0.3, 8, th * 0.85);
-      // Purple corruption at base
-      graphics.fillStyle(0x2A1A2A, 0.2);
-      graphics.fillCircle(tx, ty + 5, tw * 0.5);
-      graphics.lineStyle(3, 0x3A2A0A, isNight ? 0.45 : 0.65);
-      graphics.lineBetween(tx, ty - th * 0.2, tx - tw * 0.7, ty - th * 0.6);
-      graphics.lineBetween(tx, ty - th * 0.15, tx + tw * 0.6, ty - th * 0.5);
-      graphics.lineBetween(tx - tw * 0.7, ty - th * 0.6, tx - tw, ty - th * 0.85);
-      graphics.lineBetween(tx + tw * 0.6, ty - th * 0.5, tx + tw * 0.8, ty - th * 0.8);
-    }
-  }
-
-  // ─── 30 TREES — BOTTOM AREA (Y 2020 to 2350, below bot lane) ─
-  for (let i = 0; i < 15; i++) {
-    const tx = 60 + ((i * 109 + 43) % (MAP_W - 120));
-    const ty = 2020 + ((i * 181 + 71) % 320);
-    const th = 60 + ((i * 11) % 30);
-    const tw = 20 + ((i * 5) % 20);
-    const isAlliance = tx < 2400;
-
-    if (isAlliance) {
-      graphics.fillStyle(0x2A6A1A, isNight ? 0.5 : 0.75);
-      graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
-      graphics.fillStyle(0x2A6A1A, isNight ? 0.35 : 0.55);
-      graphics.fillTriangle(tx, ty - th - 15, tx - tw * 0.7, ty - th * 0.4, tx + tw * 0.7, ty - th * 0.4);
-      graphics.fillStyle(isNight ? 0x1A2A0A : 0x2A3A1A, 0.6);
-      graphics.fillRect(tx - 3, ty, 6, 12);
-    } else {
-      graphics.fillStyle(0x4A2A0A, isNight ? 0.45 : 0.7);
-      graphics.fillRect(tx - 3, ty - th * 0.3, 6, th * 0.8);
-      graphics.lineStyle(3, 0x4A2A0A, isNight ? 0.4 : 0.6);
-      graphics.lineBetween(tx, ty - th * 0.2, tx - tw * 0.7, ty - th * 0.6);
-      graphics.lineBetween(tx, ty - th * 0.15, tx + tw * 0.6, ty - th * 0.5);
-      graphics.lineBetween(tx - tw * 0.7, ty - th * 0.6, tx - tw, ty - th * 0.85);
-      graphics.lineBetween(tx + tw * 0.6, ty - th * 0.5, tx + tw * 0.8, ty - th * 0.8);
-    }
-  }
-
-  // ─── JUNGLE TREES (between lanes) ──────────────────────
-  // Between top and mid lanes (Y 620-1020)
-  for (let i = 0; i < 25; i++) {
-    const tx = 100 + ((i * 191 + 37) % (MAP_W - 200));
-    const ty = 640 + ((i * 157 + 53) % 360);
-    const th = 50 + ((i * 7) % 25);
-    const tw = 18 + ((i * 3) % 14);
-    const isAlliance = tx < 2400;
-    graphics.fillStyle(isAlliance ? 0x1A4A0A : 0x2A1A0A, isNight ? 0.4 : 0.55);
-    graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
-    graphics.fillStyle(isAlliance ? 0x0A2A0A : 0x1A0A0A, 0.4);
-    graphics.fillRect(tx - 2, ty, 4, 8);
-  }
-  // Between mid and bot lanes (Y 1380-1780)
-  for (let i = 0; i < 25; i++) {
-    const tx = 100 + ((i * 173 + 41) % (MAP_W - 200));
-    const ty = 1400 + ((i * 163 + 67) % 360);
-    const th = 50 + ((i * 11) % 25);
-    const tw = 18 + ((i * 5) % 14);
-    const isAlliance = tx < 2400;
-    graphics.fillStyle(isAlliance ? 0x1A4A0A : 0x2A1A0A, isNight ? 0.4 : 0.55);
-    graphics.fillTriangle(tx, ty - th, tx - tw, ty, tx + tw, ty);
-    graphics.fillStyle(isAlliance ? 0x0A2A0A : 0x1A0A0A, 0.4);
-    graphics.fillRect(tx - 2, ty, 4, 8);
-  }
-
-  // ─── TERRAIN DECORATIONS — rocks, bushes, flowers ──────
-  // Alliance side — rocks and bushes
-  const allianceDecos = [
-    {x:300,y:200,t:'rock'},{x:800,y:150,t:'bush'},{x:1200,y:300,t:'rock'},
-    {x:1700,y:180,t:'bush'},{x:500,y:2200,t:'rock'},{x:1000,y:2100,t:'bush'},
-    {x:1500,y:2250,t:'rock'},{x:2000,y:2150,t:'bush'},
-    {x:400,y:700,t:'bush'},{x:900,y:800,t:'rock'},{x:1400,y:750,t:'bush'},
-    {x:600,y:1500,t:'rock'},{x:1100,y:1600,t:'bush'},{x:1800,y:1550,t:'rock'},
-  ];
-  for (const d of allianceDecos) {
-    if (d.t === 'rock') {
-      graphics.fillStyle(isNight ? 0x2A3A2A : 0x4A5A4A, 0.5);
-      graphics.fillCircle(d.x, d.y, 12);
-      graphics.fillStyle(isNight ? 0x3A4A3A : 0x5A6A5A, 0.3);
-      graphics.fillCircle(d.x - 3, d.y - 3, 6);
-    } else {
-      graphics.fillStyle(isNight ? 0x1A3A1A : 0x2A5A2A, 0.5);
-      graphics.fillCircle(d.x, d.y, 10);
-      graphics.fillCircle(d.x + 8, d.y + 4, 8);
-      graphics.fillCircle(d.x - 6, d.y + 3, 7);
-    }
-  }
-
-  // ─── Subtle center line (midfield marker) ───
-  graphics.lineStyle(1, 0xC8960C, 0.08);
-  graphics.lineBetween(halfW, 0, halfW, MAP_H);
-
-  // (River, bridge, Horde debris removed — unified green map)
 
   // ─── STRUCTURES (drawn with graphics each frame) ──────────
   for (const s of gs.structures) {

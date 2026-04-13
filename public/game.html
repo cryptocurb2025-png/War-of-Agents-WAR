@@ -598,26 +598,17 @@
      WARCRAFT-THEMED BOTTOM PANEL
      ═══════════════════════════════════════════════════════ */
 
-  /* ─── BOTTOM PANEL — nuclear anti-green fix ─── */
+  /* ─── BOTTOM PANEL — solid dark, no bleed ─── */
   #bottom-panel {
     height: 190px;
-    background-color: #0d0d1a !important;
-    background-image: none !important;
+    background: #0d0d1a !important;
     border-top: 3px solid;
     border-image: linear-gradient(90deg, #8B6914, #F0C040, #C8960C, #F0C040, #8B6914) 1;
     display: flex;
     flex-shrink: 0;
-    z-index: 100;
+    z-index: 200;
     position: relative;
-    isolation: isolate; /* creates new stacking context */
-  }
-  /* Solid opaque cover behind all bottom panel content */
-  #bottom-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: #0d0d1a;
-    z-index: -1;
+    overflow: hidden;
   }
 
   /* ─── MINIMAP — stone-framed scrying orb ─────────────── */
@@ -1427,7 +1418,7 @@
 <!-- ─── MAIN GAME AREA ───────────────────────────────── -->
 <div id="main-area">
   <div id="game-container"></div>
-  <canvas id="entity-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;display:block"></canvas>
+  <canvas id="entity-canvas" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;pointer-events:none;z-index:5;display:block"></canvas>
   <div id="kill-feed">
     <div id="kill-feed-header">COMBAT LOG</div>
   </div>
@@ -5883,11 +5874,12 @@ function updatePlayerControls() {
     const canvas = document.getElementById('entity-canvas');
     if (!canvas || !gameState) return;
 
-    // Size canvas to match its displayed area
-    const rect = canvas.getBoundingClientRect();
+    // Match canvas to game-container size (the actual game viewport)
+    const gc = document.getElementById('game-container');
+    const rect = gc ? gc.getBoundingClientRect() : canvas.getBoundingClientRect();
     const w = Math.round(rect.width);
     const h = Math.round(rect.height);
-    if (w < 10 || h < 10) return; // not laid out yet
+    if (w < 50 || h < 50) return;
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
@@ -5898,7 +5890,7 @@ function updatePlayerControls() {
 
     if (!gameState.heroes) return;
 
-    // Scale from MAP coordinates (4800x2400) to displayed pixel area
+    // Scale: map coordinates (4800x2400) → canvas pixels
     const scaleX = w / MAP_WC;
     const scaleY = h / MAP_HC;
 

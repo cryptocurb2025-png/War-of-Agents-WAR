@@ -597,16 +597,15 @@
      WARCRAFT-THEMED BOTTOM PANEL
      ═══════════════════════════════════════════════════════ */
 
-  /* ─── BOTTOM PANEL — dark stone slab with gold trim ─── */
+  /* ─── BOTTOM PANEL — must fully cover canvas below ─── */
   #bottom-panel {
     height: 190px;
-    background: #0A0804;
-    background-image: linear-gradient(180deg, #0E0A06 0%, #0A0804 40%, #080604 100%);
+    background: #0d0d1a !important;
     border-top: 3px solid;
     border-image: linear-gradient(90deg, #8B6914, #F0C040, #C8960C, #F0C040, #8B6914) 1;
     display: flex;
     flex-shrink: 0;
-    z-index: 10;
+    z-index: 100;
     position: relative;
     box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
   }
@@ -618,9 +617,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    border-right: 1px solid #5A4A2A;
+    border-right: 1px solid #1a1a2a;
     flex-shrink: 0;
-    background: linear-gradient(180deg, #0E0A04, #1A1208);
+    background: #0d0d1a !important;
   }
 
   #minimap-label {
@@ -652,17 +651,19 @@
     padding: 6px 8px;
     overflow-x: auto;
     align-items: stretch;
-    background: #0A0804 !important;
+    background: #0d0d1a !important;
     position: relative;
-    z-index: 11;
+    z-index: 101;
     min-height: 100%;
   }
   /* Force every child in heroes-panel to be opaque dark */
   #heroes-panel > * {
-    background: linear-gradient(170deg, #1A1408, #0E0A04, #12100A) !important;
+    background: #0d0d1a !important;
+    border: 1px solid #1a1a2a;
   }
   #heroes-panel > .empty-slot {
-    background: #0A0A10 !important;
+    background: #0a0a14 !important;
+    border: 1px solid #14141e;
   }
 
   .hero-card {
@@ -826,13 +827,13 @@
   #stats-panel {
     width: 160px;
     padding: 8px 10px;
-    border-left: 1px solid #5A4A2A;
+    border-left: 1px solid #1a1a2a;
     display: flex;
     flex-direction: column;
     gap: 4px;
     flex-shrink: 0;
     font-size: 10px;
-    background: linear-gradient(180deg, #0E0A04, #1A1208);
+    background: #0d0d1a !important;
   }
 
   #stats-label {
@@ -2125,7 +2126,7 @@ function calcZoom(canvasW, canvasH) {
 const config = {
   type: Phaser.CANVAS,
   parent: 'game-container',
-  backgroundColor: '#080808',
+  backgroundColor: '#1a3a10',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
   render: { antialias: false, pixelArt: true },
   banner: false,
@@ -2150,7 +2151,7 @@ let prevHpMap = {}; // track HP changes for damage numbers
 
 // ─── Click-to-Target System ─────────────────────────────────────────
 let currentTargetId = null; // entity ID of current attack target
-let controlMode = 'auto'; // 'auto' or 'manual' — toggled by player
+let controlMode = 'auto'; // default auto, switched to manual for browser players in the playerAgentId block
 let lastSeenMatchId = null; // detect server-side match resets
 let targetRingAngle = 0;   // animated rotation for target ring
 let cameraFreeMode = false; // true = edge-pan instead of hero follow
@@ -4675,6 +4676,24 @@ if (playerAgentId) {
   // ─── Control Mode Toggle ──────────────────────────────────
   const modeToggle = document.getElementById('mode-toggle');
   const modeLabel = document.getElementById('mode-label');
+
+  // Default to MANUAL for browser players (API bots stay auto on server)
+  controlMode = 'manual';
+  modeLabel.textContent = 'MANUAL';
+  modeToggle.style.borderColor = '#44CC66';
+  modeToggle.style.color = '#44CC66';
+  // Tell server we're in manual mode
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'set_control_mode', agentId: playerAgentId, mode: 'manual' }));
+  } else {
+    // WS might not be open yet — send when it opens
+    const _origOnOpen = ws.onopen;
+    ws.onopen = (e) => {
+      if (_origOnOpen) _origOnOpen.call(ws, e);
+      ws.send(JSON.stringify({ type: 'set_control_mode', agentId: playerAgentId, mode: 'manual' }));
+    };
+  }
+
   modeToggle.onclick = () => {
     controlMode = controlMode === 'auto' ? 'manual' : 'auto';
     modeLabel.textContent = controlMode.toUpperCase();
@@ -4684,6 +4703,28 @@ if (playerAgentId) {
       ws.send(JSON.stringify({ type: 'set_control_mode', agentId: playerAgentId, mode: controlMode }));
     }
   };
+
+  // ─── Quick Controls Toast (5 seconds, first time only) ─────
+  if (!localStorage.getItem('woa_controls_seen')) {
+    localStorage.setItem('woa_controls_seen', '1');
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:500;background:#0d0d1aee;border:2px solid #C8960C;border-radius:10px;padding:18px 28px;font-family:Cinzel,serif;color:#D4C9A8;font-size:12px;text-align:center;box-shadow:0 0 30px rgba(200,150,12,0.3);transition:opacity 0.5s;max-width:400px';
+    toast.innerHTML = `
+      <div style="color:#C8960C;font-size:14px;font-weight:900;letter-spacing:2px;margin-bottom:10px">CONTROLS</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;text-align:left;line-height:1.6">
+        <span style="color:#FFD700;font-weight:700">WASD</span><span>Move hero</span>
+        <span style="color:#FFD700;font-weight:700">Right-click</span><span>Move to position</span>
+        <span style="color:#FFD700;font-weight:700">Left-click</span><span>Attack enemy</span>
+        <span style="color:#FFD700;font-weight:700">Q W E R T</span><span>Use abilities</span>
+        <span style="color:#FFD700;font-weight:700">B</span><span>Open shop</span>
+        <span style="color:#FFD700;font-weight:700">Tab</span><span>Scoreboard</span>
+        <span style="color:#FFD700;font-weight:700">Scroll</span><span>Zoom in/out</span>
+        <span style="color:#FFD700;font-weight:700">Space</span><span>Free camera</span>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 5000);
+  }
 
   // ─── Manual Movement System (WebSocket-based) ─────────────
   const moveSpeed = 8;

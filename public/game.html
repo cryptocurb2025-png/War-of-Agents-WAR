@@ -2697,6 +2697,10 @@ function pCreate() {
   graphics = this.add.graphics();
   graphics.setDepth(5);
 
+  // Debug graphics layer — highest depth, guaranteed visible
+  window._debugGfx = this.add.graphics();
+  window._debugGfx.setDepth(999);
+
   // Night overlay
   nightOverlay = this.add.graphics();
   nightOverlay.setDepth(100);
@@ -3780,6 +3784,51 @@ function pUpdate() {
       graphics.fillRect(0, 0, MAP_W, MAP_H);
     }
     window._prevBaseHP[s.id] = s.hp;
+  }
+
+  // ═══ GUARANTEED HERO VISIBILITY — debug layer at depth 999 ═══
+  // This draws large colored circles for ALL entities using a separate
+  // graphics object at the highest depth. If these are visible but
+  // sprites aren't, the issue is in sprite textures not coordinates.
+  if (window._debugGfx && gs) {
+    window._debugGfx.clear();
+    // Draw ALL heroes as large circles
+    for (const h of gs.heroes) {
+      if (!h.alive) continue;
+      const c = h.faction === 'alliance' ? 0x4444FF : 0xFF4444;
+      window._debugGfx.fillStyle(c, 0.9);
+      window._debugGfx.fillCircle(h.x, h.y, 24);
+      // White border
+      window._debugGfx.lineStyle(3, 0xFFFFFF, 0.8);
+      window._debugGfx.strokeCircle(h.x, h.y, 26);
+      // Class initial
+      window._debugGfx.fillStyle(0xFFFFFF, 1);
+      window._debugGfx.fillCircle(h.x, h.y, 4);
+    }
+    // Draw ALL units as small dots
+    for (const u of gs.units) {
+      if (!u.alive) continue;
+      const c = u.faction === 'alliance' ? 0x6688FF : 0xFF6666;
+      window._debugGfx.fillStyle(c, 0.7);
+      window._debugGfx.fillCircle(u.x, u.y, 10);
+    }
+    // Draw structures as squares
+    for (const s of gs.structures) {
+      if (!s.alive) continue;
+      const c = s.faction === 'alliance' ? 0x2244AA : 0xAA2211;
+      window._debugGfx.fillStyle(c, 0.8);
+      window._debugGfx.fillRect(s.x - 15, s.y - 15, 30, 30);
+      window._debugGfx.lineStyle(2, 0xFFFFFF, 0.5);
+      window._debugGfx.strokeRect(s.x - 15, s.y - 15, 30, 30);
+    }
+    // Log once
+    if (!window._debugLoggedOnce) {
+      window._debugLoggedOnce = true;
+      console.log('[DEBUG-VIS] Drawing', gs.heroes.length, 'heroes,', gs.units.length, 'units,', gs.structures.length, 'structures at depth 999');
+      console.log('[DEBUG-VIS] First hero:', gs.heroes[0]?.heroClass, 'at', gs.heroes[0]?.x, gs.heroes[0]?.y);
+      console.log('[DEBUG-VIS] Camera:', cam.zoom.toFixed(4), 'scroll:', cam.scrollX.toFixed(0), cam.scrollY.toFixed(0));
+      console.log('[DEBUG-VIS] Canvas:', phaserScene.scale.width, 'x', phaserScene.scale.height);
+    }
   }
 }
 

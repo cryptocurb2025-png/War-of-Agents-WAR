@@ -5865,16 +5865,13 @@ function updatePlayerControls() {
     knight: '\u2694', ranger: '\uD83C\uDFF9', mage: '\u2728', priest: '\u2720', siegemaster: '\uD83D\uDCA3'
   };
 
+  // Floating damage numbers
+  const _dmgFloats = []; // {x, y, text, color, age}
+
   function renderEntities() {
     const canvas = document.getElementById('entity-canvas');
     if (!canvas || !gameState) return;
-
-    // Match canvas pixel size to display size (prevents blurry rendering)
-    const rect = canvas.getBoundingClientRect();
-    if (canvas.width !== rect.width || canvas.height !== rect.height) {
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-    }
+    if (canvas.width < 10) positionEntityCanvas(); // re-init if needed
 
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -5884,6 +5881,21 @@ function updatePlayerControls() {
     // Scale from MAP coordinates (4800x2400) to canvas pixel coordinates
     const scaleX = canvas.width / MAP_WC;
     const scaleY = canvas.height / MAP_HC;
+
+    // ─── Track HP changes for damage numbers ─────────────
+    if (!window._prevEntityHP) window._prevEntityHP = {};
+    const allEntities = [...gameState.heroes, ...(gameState.units || [])];
+    for (const e of allEntities) {
+      const prev = window._prevEntityHP[e.id];
+      if (prev !== undefined && e.hp < prev) {
+        const dmg = prev - e.hp;
+        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, text: '-' + dmg, color: '#FF4444', age: 0 });
+      } else if (prev !== undefined && e.hp > prev && e.alive) {
+        const heal = e.hp - prev;
+        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, text: '+' + heal, color: '#44FF44', age: 0 });
+      }
+      window._prevEntityHP[e.id] = e.hp;
+    }
 
     // ─── Draw structures ────────────────────────────────────
     if (gameState.structures) {
@@ -5983,7 +5995,7 @@ function updatePlayerControls() {
       const x = hero.x * scaleX, y = hero.y * scaleY;
       const isA = hero.faction === 'alliance';
       const isMine = playerAgentId && hero.agentId === playerAgentId;
-      const s = (1 + (hero.level - 1) * 0.02) * Math.max(scaleX / 0.15, 0.6);
+      const s = (1 + (hero.level - 1) * 0.05) * Math.max(scaleX / 0.15, 0.6); // 5% bigger per level
 
       // Player hero glow
       if (isMine) {
@@ -6153,6 +6165,23 @@ function updatePlayerControls() {
       ctx.fillText('\u2620 ' + secs + 's', x, y);
       ctx.globalAlpha = 1;
     });
+
+    // ─── Floating damage/heal numbers ───────────────────────
+    for (let i = _dmgFloats.length - 1; i >= 0; i--) {
+      const d = _dmgFloats[i];
+      d.age++;
+      if (d.age > 20) { _dmgFloats.splice(i, 1); continue; } // 1 second at 20fps
+      const progress = d.age / 20;
+      ctx.globalAlpha = 1 - progress;
+      ctx.fillStyle = d.color;
+      ctx.font = `bold ${d.text.startsWith('+') ? 11 : 13}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(d.text, d.x + (Math.random() - 0.5) * 2, d.y - d.age * 1.5);
+      ctx.globalAlpha = 1;
+    }
+    // Cap float count
+    while (_dmgFloats.length > 50) _dmgFloats.shift();
   }
 
   // Run entity rendering at 20fps (independent of Phaser)
@@ -6160,19 +6189,18 @@ function updatePlayerControls() {
 
   // Position the entity canvas correctly inside main-area
   function positionEntityCanvas() {
-    const gc = document.getElementById('game-container');
     const bp = document.getElementById('bottom-panel');
     const tb = document.getElementById('top-bar');
     const ec = document.getElementById('entity-canvas');
     if (!ec) return;
-    // Fill full viewport width, from below top-bar to above bottom-panel
-    const topH = tb ? tb.offsetHeight : 42;
-    const botH = bp ? bp.offsetHeight : 190;
-    ec.style.position = 'fixed';
-    ec.style.top = topH + 'px';
-    ec.style.left = '0';
-    ec.style.width = window.innerWidth + 'px';
-    ec.style.height = (window.innerHeight - topH - botH) + 'px';
+    const topH = (tb && !IS_SPECTATE) ? tb.offsetHeight : 0;
+    const botH = (bp && !IS_SPECTATE) ? bp.offsetHeight : 0;
+    const w = window.innerWidth;
+    const h = window.innerHeight - topH - botH;
+    ec.style.cssText = `position:fixed;top:${topH}px;left:0;width:${w}px;height:${h}px;pointer-events:none;z-index:5`;
+    // Set pixel dimensions for crisp rendering
+    ec.width = w;
+    ec.height = h;
   }
   positionEntityCanvas();
   window.addEventListener('resize', positionEntityCanvas);

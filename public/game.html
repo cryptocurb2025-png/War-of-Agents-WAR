@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="War of Agents — AI Agent MOBA Arena. Alliance vs Iron Horde.">
 <meta name="theme-color" content="#C8960C">
+<meta property="og:title" content="War of Agents — Live Battle">
+<meta property="og:description" content="Watch AI agents battle in real-time. Alliance vs Iron Horde MOBA arena.">
+<meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
 <title>War of Agents — Alliance vs Iron Horde</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=MedievalSharp&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1204,12 +1207,130 @@
     animation: fadeIn 0.3s ease, announceOut 0.5s ease 4s forwards;
     white-space: nowrap;
   }
+
+  /* ─── LOADING SCREEN ──────────────────────────────────── */
+  #loading-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 9999;
+    background: #050308;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #loading-screen .faction-glow {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background:
+      radial-gradient(ellipse at 15% 50%, rgba(74,143,224,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 50%, rgba(226,75,74,0.15) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  #loading-screen .ls-title {
+    font-family: 'MedievalSharp', cursive;
+    font-size: clamp(36px, 6vw, 72px);
+    color: #C8960C;
+    text-shadow: 0 0 30px rgba(200,150,12,0.5), 0 0 60px rgba(200,150,12,0.2), 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: 0.12em;
+    z-index: 1;
+    text-align: center;
+  }
+  #loading-screen .ls-subtitle {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(12px, 1.8vw, 18px);
+    color: #8a7a5a;
+    letter-spacing: 0.3em;
+    margin-top: 10px;
+    z-index: 1;
+    text-align: center;
+  }
+  #loading-screen .ls-bar-wrap {
+    width: clamp(200px, 30vw, 360px);
+    height: 4px;
+    background: #1a1510;
+    border-radius: 2px;
+    margin-top: 32px;
+    overflow: hidden;
+    z-index: 1;
+    border: 1px solid #2a200f;
+  }
+  #loading-screen .ls-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #C8960C, #F0C040);
+    border-radius: 2px;
+    animation: lsBarFill 3s ease-out forwards;
+  }
+  @keyframes lsBarFill {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+  /* ember / particle animation */
+  #loading-screen .ls-embers {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  #loading-screen .ls-ember {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: #C8960C;
+    opacity: 0;
+    animation: lsEmberFloat linear infinite;
+  }
+  @keyframes lsEmberFloat {
+    0%   { opacity: 0; transform: translateY(0) scale(1); }
+    15%  { opacity: 0.7; }
+    85%  { opacity: 0.3; }
+    100% { opacity: 0; transform: translateY(-100vh) scale(0.3); }
+  }
 </style>
 </head>
 <body>
 
 <!-- ─── LOADING SCREEN ────────────────────────────────── -->
-<!-- Loading screen removed — game shows immediately -->
+<div id="loading-screen">
+  <div class="faction-glow"></div>
+  <div class="ls-embers"></div>
+  <div class="ls-title">WAR OF AGENTS</div>
+  <div class="ls-subtitle">ALLIANCE VS IRON HORDE</div>
+  <div class="ls-bar-wrap"><div class="ls-bar-fill"></div></div>
+</div>
+<script>
+(function(){
+  // Spawn ember particles
+  var container = document.querySelector('#loading-screen .ls-embers');
+  if(container){
+    for(var i=0;i<18;i++){
+      var e=document.createElement('div');
+      e.className='ls-ember';
+      e.style.left=Math.random()*100+'%';
+      e.style.bottom=(-10-Math.random()*20)+'%';
+      e.style.animationDuration=(4+Math.random()*6)+'s';
+      e.style.animationDelay=(Math.random()*4)+'s';
+      e.style.width=e.style.height=(2+Math.random()*3)+'px';
+      container.appendChild(e);
+    }
+  }
+  // Dismiss function
+  function dismiss(){
+    var ls=document.getElementById('loading-screen');
+    if(!ls||ls.dataset.dismissed) return;
+    ls.dataset.dismissed='1';
+    ls.style.transition='opacity 0.5s';
+    ls.style.opacity='0';
+    setTimeout(function(){ls.remove();},500);
+  }
+  window.dismissLoadingScreen=dismiss;
+  // Auto-dismiss after 3.5s
+  setTimeout(dismiss,3500);
+})();
+</script>
 
 <!-- ─── KILL ANNOUNCEMENTS ────────────────────────────── -->
 <div id="kill-announce"></div>
@@ -2103,6 +2224,105 @@ function pPreload() {
     g.fillStyle(0x5A3A1A, 1); g.fillRect(0, c+14, 18, 8);
   });
 
+  // ─── CREEP / UNIT TEXTURES (36x36, smaller than heroes) ────────
+  const U = 36;
+
+  // Alliance Footman — blue circle with small shield shape
+  genTex('au_footman', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0x4A8FE0, 1); g.fillCircle(c, c, 10);
+    g.fillStyle(0x3A6FBB, 1); g.fillCircle(c, c, 7);
+    // Tiny shield
+    g.fillStyle(0x6AAFFF, 0.9); g.fillRoundedRect(c-5, c-4, 10, 10, 2);
+    g.lineStyle(1, 0xffd700, 0.6); g.strokeRoundedRect(c-5, c-4, 10, 10, 2);
+    g.fillStyle(0xffd700, 0.5); g.fillRect(c-1, c-2, 2, 6);
+  });
+
+  // Horde Iron Warrior — red circle with spike
+  genTex('hu_ironwarrior', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0xCC3333, 1); g.fillCircle(c, c, 10);
+    g.fillStyle(0x992222, 1); g.fillCircle(c, c, 7);
+    // Tiny spike
+    g.fillStyle(0xDD5555, 0.9); g.fillTriangle(c, c-12, c-4, c-3, c+4, c-3);
+    g.fillStyle(0xAA2222, 0.7); g.fillTriangle(c, c+12, c-4, c+3, c+4, c+3);
+  });
+
+  // Alliance Archer — blue with arrow indicator
+  genTex('au_archer', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0x4A8FE0, 1); g.fillCircle(c, c, 9);
+    g.fillStyle(0x3A6FBB, 1); g.fillCircle(c, c, 6);
+    // Tiny bow arc
+    g.lineStyle(2, 0x6B4A1A, 0.8);
+    g.beginPath(); g.arc(c+2, c, 8, -1.0, 1.0); g.strokePath();
+    g.lineStyle(1, 0xCCCCCC, 0.6); g.lineBetween(c-4, c, c+8, c);
+  });
+
+  // Horde Shredder — red with blade
+  genTex('hu_shredder', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0xCC3333, 1); g.fillCircle(c, c, 9);
+    g.fillStyle(0x992222, 1); g.fillCircle(c, c, 6);
+    // Tiny blade spike
+    g.fillStyle(0x888888, 0.9); g.fillTriangle(c+2, c-10, c-2, c, c+6, c);
+    g.fillStyle(0xDD5555, 0.7); g.fillRect(c-3, c-2, 6, 4);
+  });
+
+  // Alliance Gryphon — blue with wing shape
+  genTex('au_gryphon', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0x4A8FE0, 1); g.fillCircle(c, c, 10);
+    g.fillStyle(0x6AAFFF, 0.8); g.fillTriangle(c, c-4, c-10, c+4, c-2, c+4);
+    g.fillStyle(0x6AAFFF, 0.8); g.fillTriangle(c, c-4, c+10, c+4, c+2, c+4);
+    g.fillStyle(0xffd700, 0.6); g.fillCircle(c, c, 3);
+  });
+
+  // Horde Gryphon equivalent — red with wing
+  genTex('hu_gryphon', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0xCC3333, 1); g.fillCircle(c, c, 10);
+    g.fillStyle(0xDD5555, 0.8); g.fillTriangle(c, c-4, c-10, c+4, c-2, c+4);
+    g.fillStyle(0xDD5555, 0.8); g.fillTriangle(c, c-4, c+10, c+4, c+2, c+4);
+    g.fillStyle(0xFF6644, 0.6); g.fillCircle(c, c, 3);
+  });
+
+  // Alliance Warlock — blue with magic spark
+  genTex('au_warlock', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0x4A8FE0, 1); g.fillCircle(c, c, 9);
+    g.fillStyle(0x3A6FBB, 1); g.fillCircle(c, c, 6);
+    g.fillStyle(0x8866FF, 0.8); g.fillCircle(c, c-6, 4);
+    g.fillStyle(0xBB99FF, 1); g.fillCircle(c, c-6, 2);
+  });
+
+  // Horde Warlock — red with magic spark
+  genTex('hu_warlock', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0xCC3333, 1); g.fillCircle(c, c, 9);
+    g.fillStyle(0x992222, 1); g.fillCircle(c, c, 6);
+    g.fillStyle(0x44DD44, 0.8); g.fillCircle(c, c-6, 4);
+    g.fillStyle(0x88FF88, 1); g.fillCircle(c, c-6, 2);
+  });
+
+  // Alliance Ballista — blue with cannon shape
+  genTex('au_ballista', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0x4A8FE0, 1); g.fillCircle(c, c, 9);
+    g.fillStyle(0x555555, 0.9); g.fillRect(c, c-3, 12, 6);
+    g.fillStyle(0x333333, 1); g.fillCircle(c, c, 4);
+    g.lineStyle(1, 0xffd700, 0.4); g.strokeRect(c, c-3, 12, 6);
+  });
+
+  // Horde Colossus — red with heavy shape
+  genTex('hu_colossus', U, U, (g) => {
+    const c = U/2;
+    g.fillStyle(0xCC3333, 1); g.fillCircle(c, c, 10);
+    g.fillStyle(0x5A3A1A, 0.9); g.fillRect(c-6, c-2, 12, 6);
+    g.fillStyle(0x555555, 1); g.fillCircle(c+6, c-4, 4);
+    g.fillStyle(0x992222, 0.7); g.fillRect(c-8, c+4, 16, 3);
+  });
+
   // Glow ring textures (scaled up for 64px sprites)
   genTex('glow_blue', 80, 40, (g) => {
     g.fillStyle(0x4A8FE0, 0.18); g.fillEllipse(40, 20, 76, 30);
@@ -2220,13 +2440,13 @@ function pCreate() {
 function unitTexKey(unitType, faction) {
   const isA = faction === 'alliance';
   const map = {
-    footman: 'a_knight', ironwarrior: 'h_knight',
-    archer: 'a_ranger', shredder: 'h_ranger',
-    gryphon: isA ? 'a_knight' : 'h_knight',
-    warlock: isA ? 'a_mage' : 'h_mage',
-    ballista: 'a_siege', colossus: 'h_siege',
+    footman: 'au_footman', ironwarrior: 'hu_ironwarrior',
+    archer: 'au_archer', shredder: 'hu_shredder',
+    gryphon: isA ? 'au_gryphon' : 'hu_gryphon',
+    warlock: isA ? 'au_warlock' : 'hu_warlock',
+    ballista: 'au_ballista', colossus: 'hu_colossus',
   };
-  return map[unitType] || (isA ? 'a_knight' : 'h_knight');
+  return map[unitType] || (isA ? 'au_footman' : 'hu_ironwarrior');
 }
 
 function heroTexKey(heroClass, faction) {
@@ -3202,14 +3422,14 @@ function renderSprite(id, texKey, entity, t, isHero) {
   const barW = isHero ? 140 : 100;
   let bar = hpBarPool[id];
   if (!bar) {
-    const bg = phaserScene.add.rectangle(entity.x, clampedY - 80, barW + 4, 12, 0x0D1520).setDepth(20).setOrigin(0.5);
+    const bg = phaserScene.add.rectangle(entity.x, clampedY - 80, barW + 4, 12, 0x0D1520).setDepth(20).setOrigin(0.5).setStrokeStyle(1, 0x000000, 0.8);
     const fill = phaserScene.add.rectangle(entity.x - barW/2, clampedY - 80, barW, 8, 0x44AA22).setDepth(21).setOrigin(0, 0.5);
     const lvl = phaserScene.add.text(entity.x, clampedY - 100, '', { fontSize: '22px', color: '#ffd700', fontFamily: 'Cinzel', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setDepth(22).setOrigin(0.5);
     bar = { bg, fill, lvl };
     hpBarPool[id] = bar;
   }
   const pct = Math.max(0, hp / maxHp);
-  const barColor = pct < 0.3 ? 0xff3333 : 0x44AA22;
+  const barColor = pct < 0.3 ? 0xff3333 : pct < 0.6 ? 0xDDCC33 : 0x44AA22;
   bar.bg.setPosition(newX, newY - 48);
   bar.fill.setPosition(newX - barW/2, newY - 48);
   bar.fill.displayWidth = barW * pct;
@@ -3546,14 +3766,27 @@ function drawStructure(s, t, isNight) {
     drawHPBar(hx - 200, hy - 400, 400, 12, s.hp, s.maxHp, 0xC8960C);
 
   } else if (s.structureType === 'barracks') {
+    // Barracks — building with roof, crenellations, and flag
     graphics.fillStyle(dark, 0.8); graphics.fillRect(s.x - 35, s.y - 28, 70, 56);
     graphics.fillStyle(primary, 0.75); graphics.fillRect(s.x - 28, s.y - 22, 56, 44);
+    // Roof triangle
     graphics.lineStyle(2, isA ? 0x4477dd : 0xdd4444, 0.6);
-    graphics.lineBetween(s.x - 35, s.y - 28, s.x, s.y - 38);
-    graphics.lineBetween(s.x, s.y - 38, s.x + 35, s.y - 28);
+    graphics.fillStyle(isA ? 0x1A4ABA : 0x8B0000, 0.7);
+    graphics.fillTriangle(s.x - 38, s.y - 28, s.x, s.y - 44, s.x + 38, s.y - 28);
+    // Crenellations on front edge
+    for (let bx = -30; bx < 30; bx += 12) {
+      graphics.fillStyle(dark, 0.9);
+      graphics.fillRect(s.x + bx, s.y + 24, 8, 6);
+    }
+    // Door
     graphics.fillStyle(0x2a1a08, 0.8); graphics.fillRect(s.x - 8, s.y + 2, 16, 20);
+    // Small flag on roof peak
+    graphics.lineStyle(1, 0xAAAAAA, 0.8); graphics.lineBetween(s.x, s.y - 44, s.x, s.y - 56);
+    const flagW = Math.sin(t * 0.06) * 2;
+    graphics.fillStyle(primary, 0.85); graphics.fillRect(s.x, s.y - 56, 10 + flagW, 7);
+    // Gold trim
     graphics.lineStyle(1, gold, 0.5); graphics.strokeRect(s.x - 35, s.y - 28, 70, 56);
-    drawHPBar(s.x - 28, s.y - 42, 56, 5, s.hp, s.maxHp, primary);
+    drawHPBar(s.x - 28, s.y - 48, 56, 5, s.hp, s.maxHp, primary);
 
   } else {
     // TOWERS — draw as square tower shapes, NOT circles
@@ -3585,9 +3818,13 @@ function drawStructure(s, t, isNight) {
 
 function drawHPBar(x, y, w, h, hp, maxHp, color) {
   const pct = Math.max(0, hp / maxHp);
+  // Black outline
+  graphics.lineStyle(1, 0x000000, 0.8); graphics.strokeRect(x - 2, y - 2, w + 4, h + 4);
+  // Dark background
   graphics.fillStyle(0x0D1520, 0.85); graphics.fillRect(x - 1, y - 1, w + 2, h + 2);
-  graphics.fillStyle(color, 0.9); graphics.fillRect(x, y, w * pct, h);
-  if (pct < 0.3) { graphics.fillStyle(0xff0000, 0.3); graphics.fillRect(x, y, w * pct, h); }
+  // 3-state color: green > 60%, yellow 30-60%, red < 30%
+  const barColor = pct < 0.3 ? 0xff3333 : pct < 0.6 ? 0xDDCC33 : color;
+  graphics.fillStyle(barColor, 0.9); graphics.fillRect(x, y, w * pct, h);
 }
 
 // ─── UI Updates ──────────────────────────────────────────────────

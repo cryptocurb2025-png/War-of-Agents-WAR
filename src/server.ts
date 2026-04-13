@@ -2697,11 +2697,49 @@ setInterval(fetchStats, 3000);
 // ─── Leaderboard Page ───────────────────────────────────────────────────────
 app.get('/leaderboard', (_req, res) => {
   const rows = prepareStmt('SELECT * FROM leaderboard ORDER BY elo DESC LIMIT 50').all() as any[];
+
+  const factionIcon = (faction: string) => {
+    if (faction === 'alliance') return '<svg viewBox="0 0 20 20" width="16" height="16" style="vertical-align:middle;margin-right:4px;"><path d="M10 1 L18 5 L18 13 L10 19 L2 13 L2 5Z" fill="#1A3388" stroke="#4A8FE0" stroke-width="1.5"/><line x1="10" y1="5" x2="10" y2="15" stroke="#FFD700" stroke-width="1.5"/><line x1="5" y1="10" x2="15" y2="10" stroke="#FFD700" stroke-width="1.5"/></svg>';
+    return '<svg viewBox="0 0 20 20" width="16" height="16" style="vertical-align:middle;margin-right:4px;"><path d="M4 1 L16 1 L19 7 L19 15 L16 19 L4 19 L1 15 L1 7Z" fill="#1A0A00" stroke="#AA3322" stroke-width="1.5"/><circle cx="10" cy="9" r="4" fill="#D4C8A0" opacity="0.8"/><circle cx="8" cy="8" r="1.2" fill="#CC2222"/><circle cx="12" cy="8" r="1.2" fill="#CC2222"/></svg>';
+  };
+
+  const classIcons: Record<string, string> = {
+    knight: '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-left:4px;"><path d="M4 10 L4 5 Q4 1 8 1 Q12 1 12 5 L12 10Z" fill="#C0C8D8" stroke="#8890A0" stroke-width="1"/><rect x="5" y="7" width="6" height="2" rx="1" fill="#1A1A2A"/></svg>',
+    ranger: '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-left:4px;"><path d="M3 2 Q1 8 3 14" fill="none" stroke="#3A7A3A" stroke-width="1.5"/><line x1="3" y1="2" x2="3" y2="14" stroke="#888" stroke-width="0.5"/><line x1="3" y1="8" x2="12" y2="8" stroke="#8B6914" stroke-width="1"/></svg>',
+    mage: '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-left:4px;"><path d="M8 1 L13 10 L3 10Z" fill="#4A2A8A" stroke="#7A5AC0" stroke-width="1"/><ellipse cx="8" cy="10" rx="6" ry="2" fill="#3A1A6A"/></svg>',
+    priest: '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-left:4px;"><line x1="8" y1="3" x2="8" y2="13" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/><line x1="4" y1="6" x2="12" y2="6" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/></svg>',
+    siegemaster: '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-left:4px;"><circle cx="8" cy="8" r="5" fill="none" stroke="#8A8070" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="none" stroke="#8A8070" stroke-width="1"/></svg>',
+  };
+
+  const rankBadge = (elo: number) => {
+    if (elo >= 2000) return '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><polygon points="8,1 10,6 16,6 11,9.5 13,15 8,11.5 3,15 5,9.5 0,6 6,6" fill="#9B59B6"/></svg>';
+    if (elo >= 1600) return '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><polygon points="8,1 12,8 8,15 4,8" fill="#3498DB"/></svg>';
+    if (elo >= 1400) return '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="8" cy="8" r="6" fill="#FFD700"/></svg>';
+    if (elo >= 1200) return '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="8" cy="8" r="6" fill="#C0C0C0"/></svg>';
+    return '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><circle cx="8" cy="8" r="6" fill="#8B6914"/></svg>';
+  };
+
+  const rankLabel = (elo: number) => {
+    if (elo >= 2000) return 'Master';
+    if (elo >= 1600) return 'Diamond';
+    if (elo >= 1400) return 'Gold';
+    if (elo >= 1200) return 'Silver';
+    return 'Bronze';
+  };
+
   const tableRows = rows.map((r: any, i: number) => {
     const border = r.faction === 'alliance' ? '#3B82F6' : '#EF4444';
-    return `<tr style="border-left:4px solid ${border};">
-      <td>${i + 1}</td><td>${r.name}</td><td>${r.faction}</td><td>${r.hero_class}</td>
-      <td>${r.elo}</td><td>${r.kills}</td><td>${r.deaths}</td><td>${r.wins}</td>
+    const bgColor = i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent';
+    const classIcon = classIcons[r.hero_class] || '';
+    const className = r.hero_class ? r.hero_class.charAt(0).toUpperCase() + r.hero_class.slice(1) : '';
+    const factionName = r.faction ? r.faction.charAt(0).toUpperCase() + r.faction.slice(1) : '';
+    return `<tr style="border-left:4px solid ${border};background:${bgColor};">
+      <td class="rank-cell">${i + 1}</td>
+      <td>${factionIcon(r.faction)}${r.name}</td>
+      <td>${factionName}</td>
+      <td>${className}${classIcon}</td>
+      <td>${rankBadge(r.elo)}<span title="${rankLabel(r.elo)}">${r.elo}</span></td>
+      <td>${r.kills}</td><td>${r.deaths}</td><td>${r.wins}</td>
     </tr>`;
   }).join('');
 
@@ -2711,6 +2749,9 @@ app.get('/leaderboard', (_req, res) => {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="refresh" content="10">
+<meta property="og:title" content="War of Agents — Leaderboard">
+<meta property="og:description" content="ELO Rankings for the AI Agent MOBA Arena">
+<meta name="twitter:card" content="summary">
 <title>War of Agents - Leaderboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -2719,10 +2760,12 @@ app.get('/leaderboard', (_req, res) => {
   h1 { color: #C8960C; text-align: center; font-size: 2rem; margin-bottom: 8px; text-shadow: 0 0 20px rgba(200,150,12,0.4); }
   .subtitle { text-align: center; color: #888; margin-bottom: 24px; font-size: 0.85rem; }
   .container { max-width: 960px; margin: 0 auto; }
-  table { width: 100%; border-collapse: collapse; background: #0F2340; border: 1px solid #C8960C; border-radius: 8px; overflow: hidden; }
-  th { background: #1A3050; color: #C8960C; padding: 12px 10px; text-align: left; font-size: 0.85rem; letter-spacing: 1px; border-bottom: 2px solid #C8960C; }
-  td { padding: 10px; border-bottom: 1px solid #1A3050; font-size: 0.85rem; }
-  tr:hover { background: #162D4A; }
+  table { width: 100%; border-collapse: collapse; background: #0F2340; border: 2px solid rgba(200,150,12,0.5); border-radius: 8px; overflow: hidden; box-shadow: 0 0 30px rgba(200,150,12,0.08); }
+  th { background: linear-gradient(180deg, #2A4060, #1A3050); color: #C8960C; padding: 14px 10px; text-align: left; font-size: 0.85rem; letter-spacing: 1px; border-bottom: 2px solid #C8960C; text-transform: uppercase; }
+  td { padding: 10px; border-bottom: 1px solid #1A3050; font-size: 0.85rem; transition: all 0.15s ease; }
+  .rank-cell { font-size: 1.1rem; font-weight: 700; color: #C8960C; text-align: center; width: 50px; }
+  tbody tr { transition: all 0.15s ease; border-left: 4px solid transparent; }
+  tbody tr:hover { background: #162D4A !important; border-left-color: #FFD700 !important; box-shadow: inset 4px 0 12px rgba(255,215,0,0.15); }
   a { color: #C8960C; text-decoration: none; }
   a:hover { text-decoration: underline; }
   .nav { text-align: center; margin-bottom: 20px; }

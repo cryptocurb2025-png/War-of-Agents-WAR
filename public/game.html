@@ -5919,98 +5919,183 @@ function updatePlayerControls() {
       });
     }
 
-    // ─── Draw units ─────────────────────────────────────────
+    // ─── Draw units as small soldiers ──────────────────────
     if (gameState.units) {
+      const us = Math.max(scaleX / 0.15, 0.5) * 0.7; // unit scale
       gameState.units.forEach(u => {
         if (!u.alive) return;
         const x = u.x * scaleX, y = u.y * scaleY;
         const isA = u.faction === 'alliance';
-
-        ctx.fillStyle = isA ? '#6AAFFF' : '#FF7A7A';
-        ctx.globalAlpha = 0.8;
-        ctx.beginPath();
-        ctx.arc(x, y, 4 * Math.max(scaleX, 0.15), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
+        // Body
+        ctx.fillStyle = isA ? '#3070C0' : '#8B2222';
+        ctx.fillRect(x-3*us, y-4*us, 6*us, 8*us);
+        // Head
+        ctx.fillStyle = isA ? '#4A8FE0' : '#CC3322';
+        ctx.beginPath(); ctx.arc(x, y-6*us, 3*us, 0, Math.PI*2); ctx.fill();
+        // Legs
+        ctx.fillRect(x-3*us, y+4*us, 2*us, 4*us); ctx.fillRect(x+1*us, y+4*us, 2*us, 4*us);
+        // HP indicator (only if damaged)
+        if (u.hp < u.maxHp) {
+          const pct = u.hp / u.maxHp;
+          ctx.fillStyle = '#111'; ctx.fillRect(x-5*us, y-9*us, 10*us, 2*us);
+          ctx.fillStyle = pct > 0.5 ? '#44AA44' : '#CC3322';
+          ctx.fillRect(x-5*us, y-9*us, 10*us*pct, 2*us);
+        }
       });
     }
 
-    // ─── Draw heroes ────────────────────────────────────────
+    // ─── Draw heroes with character sprites ───────────────────
     gameState.heroes.forEach(hero => {
       if (!hero.alive) return;
       const x = hero.x * scaleX, y = hero.y * scaleY;
       const isA = hero.faction === 'alliance';
       const isMine = playerAgentId && hero.agentId === playerAgentId;
-      const radius = 10 * Math.max(scaleX, 0.2);
+      const s = (1 + (hero.level - 1) * 0.02) * Math.max(scaleX / 0.15, 0.6);
 
       // Player hero glow
       if (isMine) {
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
-        ctx.beginPath();
-        ctx.arc(x, y, radius * 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x, y, radius * 1.8, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.12)';
+        ctx.beginPath(); ctx.arc(x, y, 28*s, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, 22*s, 0, Math.PI * 2); ctx.stroke();
       }
 
-      // Hero circle
-      const hColor = CLASS_COLORS[hero.heroClass] || (isA ? '#4A8FE0' : '#E24B4A');
-      ctx.fillStyle = hColor;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
+      // ── Draw character sprite based on class ──
+      ctx.save();
+      if (hero.heroClass === 'knight') {
+        // Cape
+        ctx.fillStyle = isA ? '#2244AA88' : '#4A0A0A88';
+        ctx.fillRect(x-7*s, y-6*s, 14*s, 18*s);
+        // Legs
+        ctx.fillStyle = isA ? '#B8961E' : '#2A1A0A';
+        ctx.fillRect(x-5*s, y+8*s, 4*s, 10*s); ctx.fillRect(x+1*s, y+8*s, 4*s, 10*s);
+        // Body
+        ctx.fillStyle = isA ? '#D4B840' : '#2A1A1A';
+        ctx.fillRect(x-7*s, y-4*s, 14*s, 14*s);
+        ctx.fillStyle = isA ? '#C8A030' : '#1A0A0A';
+        ctx.fillRect(x-7*s, y+2*s, 14*s, 3*s);
+        // Helmet
+        ctx.fillStyle = isA ? '#D4B840' : '#2A2020';
+        ctx.fillRect(x-6*s, y-14*s, 12*s, 10*s);
+        ctx.fillStyle = '#1A1A2A'; ctx.fillRect(x-4*s, y-7*s, 8*s, 2*s);
+        if (!isA) { ctx.fillStyle = '#FF2200'; ctx.fillRect(x-3*s, y-7*s, 2*s, 1*s); ctx.fillRect(x+1*s, y-7*s, 2*s, 1*s); }
+        // Shield
+        ctx.fillStyle = isA ? '#2244AA' : '#5A2211';
+        ctx.fillRect(x-13*s, y-4*s, 6*s, 12*s);
+        if (isA) { ctx.fillStyle = '#D4B840'; ctx.fillRect(x-11*s, y-1*s, 1*s, 6*s); ctx.fillRect(x-12*s, y+1*s, 3*s, 1*s); }
+        // Sword
+        ctx.fillStyle = '#AAAAAA'; ctx.fillRect(x+8*s, y-14*s, 2*s, 16*s);
+        ctx.fillStyle = '#8B6914'; ctx.fillRect(x+6*s, y, 6*s, 2*s);
+      } else if (hero.heroClass === 'ranger') {
+        // Legs
+        ctx.fillStyle = isA ? '#2A3A1A' : '#1A1A0A';
+        ctx.fillRect(x-4*s, y+8*s, 3*s, 10*s); ctx.fillRect(x+1*s, y+8*s, 3*s, 10*s);
+        // Body
+        ctx.fillStyle = isA ? '#2A4A2A' : '#1A2818';
+        ctx.fillRect(x-6*s, y-2*s, 12*s, 12*s);
+        ctx.fillStyle = '#5A3A10'; ctx.fillRect(x-6*s, y+3*s, 12*s, 2*s);
+        // Hood
+        ctx.fillStyle = isA ? '#1A3A1A' : '#0A1A0A';
+        ctx.beginPath(); ctx.moveTo(x, y-18*s); ctx.lineTo(x-7*s, y-2*s); ctx.lineTo(x+7*s, y-2*s); ctx.fill();
+        // Eyes
+        ctx.fillStyle = isA ? '#66DD66' : '#FF4444';
+        ctx.fillRect(x-2*s, y-5*s, 1*s, 1*s); ctx.fillRect(x+1*s, y-5*s, 1*s, 1*s);
+        // Bow
+        ctx.strokeStyle = '#8B6914'; ctx.lineWidth = Math.max(1, 2*s);
+        ctx.beginPath(); ctx.arc(x+10*s, y-2*s, 8*s, -0.8, 0.8); ctx.stroke();
+        ctx.strokeStyle = '#D4C9A8'; ctx.lineWidth = Math.max(0.5, 1*s);
+        ctx.beginPath(); ctx.moveTo(x+10*s, y-8*s); ctx.lineTo(x+10*s, y+4*s); ctx.stroke();
+      } else if (hero.heroClass === 'mage') {
+        // Robe
+        ctx.fillStyle = isA ? '#3A2A7A' : '#2A0A2A';
+        ctx.beginPath(); ctx.moveTo(x-10*s, y+16*s); ctx.lineTo(x+10*s, y+16*s); ctx.lineTo(x+6*s, y-2*s); ctx.lineTo(x-6*s, y-2*s); ctx.fill();
+        // Head
+        ctx.fillStyle = '#DDB088'; ctx.beginPath(); ctx.arc(x, y-6*s, 5*s, 0, Math.PI*2); ctx.fill();
+        // Hat
+        ctx.fillStyle = isA ? '#2A1A5A' : '#1A001A';
+        ctx.beginPath(); ctx.moveTo(x, y-22*s); ctx.lineTo(x-6*s, y-4*s); ctx.lineTo(x+6*s, y-4*s); ctx.fill();
+        // Star
+        ctx.fillStyle = '#FFD700'; ctx.beginPath(); ctx.arc(x, y-14*s, 1.5*s, 0, Math.PI*2); ctx.fill();
+        // Eyes
+        ctx.fillStyle = isA ? '#8844FF' : '#44FF44';
+        ctx.fillRect(x-2*s, y-7*s, 1*s, 1*s); ctx.fillRect(x+1*s, y-7*s, 1*s, 1*s);
+        // Staff + orb
+        ctx.fillStyle = '#8B6914'; ctx.fillRect(x+10*s, y-16*s, 2*s, 28*s);
+        ctx.fillStyle = isA ? '#4466DD' : '#44FF44'; ctx.globalAlpha = 0.7 + Math.sin(Date.now()*0.005)*0.2;
+        ctx.beginPath(); ctx.arc(x+11*s, y-18*s, 4*s, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (hero.heroClass === 'priest') {
+        // Robe
+        ctx.fillStyle = isA ? '#F0E8D0' : '#5A1A0A';
+        ctx.beginPath(); ctx.moveTo(x-9*s, y+16*s); ctx.lineTo(x+9*s, y+16*s); ctx.lineTo(x+5*s, y-2*s); ctx.lineTo(x-5*s, y-2*s); ctx.fill();
+        // Hood
+        ctx.fillStyle = isA ? '#E8E0D0' : '#4A1208';
+        ctx.fillRect(x-5*s, y-10*s, 10*s, 8*s);
+        ctx.beginPath(); ctx.moveTo(x, y-14*s); ctx.lineTo(x-5*s, y-4*s); ctx.lineTo(x+5*s, y-4*s); ctx.fill();
+        // Cross / bone staff
+        if (isA) {
+          ctx.fillStyle = '#FFD700'; ctx.fillRect(x-1*s, y, 2*s, 6*s); ctx.fillRect(x-3*s, y+2*s, 6*s, 2*s);
+          // Halo
+          ctx.strokeStyle = '#FFD70066'; ctx.lineWidth = 1.5*s;
+          ctx.beginPath(); ctx.arc(x, y-12*s, 7*s, 0, Math.PI*2); ctx.stroke();
+          // Heal glow
+          ctx.fillStyle = '#66DD6633'; ctx.beginPath(); ctx.arc(x-8*s, y+4*s, 4*s, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(x+8*s, y+4*s, 4*s, 0, Math.PI*2); ctx.fill();
+        } else {
+          ctx.fillStyle = '#D4C8A0'; ctx.fillRect(x+10*s, y-14*s, 2*s, 24*s);
+          ctx.beginPath(); ctx.arc(x+11*s, y-16*s, 3*s, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#FF220033'; ctx.beginPath(); ctx.arc(x, y+4*s, 14*s, 0, Math.PI*2); ctx.fill();
+        }
+      } else if (hero.heroClass === 'siegemaster') {
+        // Legs
+        ctx.fillStyle = isA ? '#5A6A7A' : '#1A1A20';
+        ctx.fillRect(x-7*s, y+8*s, 5*s, 10*s); ctx.fillRect(x+2*s, y+8*s, 5*s, 10*s);
+        // Body (extra wide)
+        ctx.fillStyle = isA ? '#6A7A8A' : '#1A1A1A';
+        ctx.fillRect(x-9*s, y-4*s, 18*s, 14*s);
+        // Rivets
+        ctx.fillStyle = isA ? '#8A9AAA' : '#4A4A50';
+        ctx.beginPath(); ctx.arc(x-6*s, y-2*s, 1*s, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x+6*s, y-2*s, 1*s, 0, Math.PI*2); ctx.fill();
+        // Helmet
+        ctx.fillStyle = isA ? '#5A6A7A' : '#1A1A1A';
+        ctx.fillRect(x-7*s, y-14*s, 14*s, 10*s);
+        ctx.fillStyle = '#FF6600'; ctx.fillRect(x-4*s, y-7*s, 3*s, 1*s); ctx.fillRect(x+1*s, y-7*s, 3*s, 1*s);
+        // Exhaust
+        if (!isA) { ctx.fillStyle = '#FF660066'; ctx.beginPath(); ctx.arc(x-4*s, y-10*s, 2*s, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x+4*s, y-10*s, 2*s, 0, Math.PI*2); ctx.fill(); }
+        // Wrench/arm
+        ctx.fillStyle = '#888888'; ctx.fillRect(x+10*s, y-2*s, 2*s, 8*s); ctx.fillRect(x+10*s, y-4*s, 5*s, 2*s);
+        // Bomb
+        ctx.fillStyle = '#2A2420'; ctx.beginPath(); ctx.arc(x-12*s, y+2*s, 4*s, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
 
-      // Faction outline
-      ctx.strokeStyle = isA ? '#4A8FE0' : '#E24B4A';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Class icon
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = `${Math.max(10, radius)}px serif`;
+      // ── Labels and bars ──
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(CLASS_ICONS[hero.heroClass] || '?', x, y);
-
       // Name
       ctx.fillStyle = isMine ? '#FFD700' : '#FFFFFF';
-      ctx.font = `bold ${Math.max(8, 9 * scaleX / 0.2)}px Cinzel, sans-serif`;
+      ctx.font = `bold ${Math.max(8, 9*s)}px Cinzel, sans-serif`;
       ctx.textBaseline = 'bottom';
-      ctx.fillText(hero.displayName || hero.heroClass, x, y - radius - 4);
-
-      // Level badge
-      ctx.fillStyle = '#C8960C';
-      ctx.font = `bold ${Math.max(7, 8 * scaleX / 0.2)}px sans-serif`;
-      ctx.textBaseline = 'top';
-      ctx.fillText('Lv' + hero.level, x, y + radius + 2);
-
+      ctx.fillText(hero.displayName || hero.heroClass, x, y - 18*s - 4);
+      // Level
+      ctx.fillStyle = '#C8960C'; ctx.font = `bold ${Math.max(7, 7*s)}px sans-serif`;
+      ctx.textBaseline = 'top'; ctx.fillText('Lv' + hero.level, x, y + 18*s);
       // HP bar
-      const pct = hero.hp / hero.maxHp;
-      const barW = radius * 2.5;
-      ctx.fillStyle = '#0A0A0A';
-      ctx.fillRect(x - barW/2, y + radius + 12, barW, 3);
-      ctx.fillStyle = pct > 0.5 ? '#44CC44' : pct > 0.25 ? '#CCAA22' : '#CC3322';
-      ctx.fillRect(x - barW/2, y + radius + 12, barW * pct, 3);
-
+      const hpPct = hero.hp / hero.maxHp;
+      const barW = 20*s;
+      ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, y+18*s+10, barW, 3);
+      ctx.fillStyle = hpPct > 0.5 ? '#44CC44' : hpPct > 0.25 ? '#CCAA22' : '#CC3322';
+      ctx.fillRect(x-barW/2, y+18*s+10, barW*hpPct, 3);
       // MP bar
       if (hero.maxMana > 0) {
         const mpPct = hero.mana / hero.maxMana;
-        ctx.fillStyle = '#0A0A0A';
-        ctx.fillRect(x - barW/2, y + radius + 16, barW, 2);
-        ctx.fillStyle = '#4488EE';
-        ctx.fillRect(x - barW/2, y + radius + 16, barW * mpPct, 2);
+        ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, y+18*s+14, barW, 2);
+        ctx.fillStyle = '#4488EE'; ctx.fillRect(x-barW/2, y+18*s+14, barW*mpPct, 2);
       }
-
-      // Kill streak indicator
+      // Kill streak
       if (hero.killStreak >= 3) {
-        ctx.fillStyle = '#FF6600';
-        ctx.font = 'bold 8px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText('\uD83D\uDD25' + hero.killStreak + 'x', x + radius + 8, y - 4);
+        ctx.fillStyle = '#FF6600'; ctx.font = 'bold 8px sans-serif';
+        ctx.textBaseline = 'bottom'; ctx.fillText('\uD83D\uDD25' + hero.killStreak + 'x', x + 16*s, y - 12*s);
       }
     });
 

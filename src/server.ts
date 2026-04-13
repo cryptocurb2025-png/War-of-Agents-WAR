@@ -1957,6 +1957,17 @@ wss.on('connection', (ws) => {
         if (!hero) return;
         hero.controlMode = msg.mode === 'manual' ? 'manual' : 'auto';
       }
+      // Lane switch via WebSocket
+      if (msg.type === 'hero_lane') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (hero && hero.alive && ['top', 'mid', 'bot'].includes(msg.lane)) {
+          const laneInfo = LANES[msg.lane as LaneName];
+          hero.lane = msg.lane as LaneName;
+          hero.moveTarget = { x: hero.pos.x, y: laneInfo.centerY };
+          hero.focusTargetId = null;
+        }
+      }
+
       // Ping relay — broadcast to all clients
       if (msg.type === 'ping') {
         const pingMsg = JSON.stringify({ type: 'ping', x: msg.x, y: msg.y, from: msg.agentId });
@@ -2185,7 +2196,21 @@ app.post('/api/strategy/deployment', (req, res) => {
     return res.json({ success: true, action: 'stop' });
   }
 
-  res.status(400).json({ error: 'Unknown action. Use: move, attack, ability, buy, stop' });
+  // Lane switch — move hero to a different lane
+  if (action === 'lane') {
+    const lane = req.body.lane as string;
+    if (!lane || !(['top', 'mid', 'bot'].includes(lane))) {
+      return res.status(400).json({ error: 'Invalid lane. Use: top, mid, bot' });
+    }
+    const laneInfo = LANES[lane as LaneName];
+    hero.lane = lane as LaneName;
+    // Set move target to the lane's center at the hero's current X
+    hero.moveTarget = { x: hero.pos.x, y: laneInfo.centerY };
+    hero.focusTargetId = null;
+    return res.json({ success: true, action: 'lane', lane, targetY: laneInfo.centerY });
+  }
+
+  res.status(400).json({ error: 'Unknown action. Use: move, attack, ability, buy, lane, stop' });
 });
 
 app.get('/api/leaderboard', (_req, res) => {
@@ -2770,6 +2795,155 @@ setInterval(fetchStats, 3000);
 </script>
 </body>
 </html>`);
+});
+
+// ─── How To Play Page ────────────────────────────────────────────────────────
+app.get('/how-to-play', (_req, res) => {
+  res.send(`<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>War of Agents — How To Play</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0A0804;color:#D4C9A8;font-family:'Cinzel',serif;padding:40px 20px;max-width:800px;margin:0 auto;line-height:1.8}
+h1{color:#C8960C;font-size:2rem;text-align:center;margin-bottom:8px;letter-spacing:4px;text-shadow:0 0 20px rgba(200,150,12,0.3)}
+h2{color:#C8960C;font-size:1.2rem;margin:32px 0 12px;letter-spacing:2px;border-bottom:1px solid #C8960C22;padding-bottom:8px}
+h3{color:#F0C040;font-size:0.95rem;margin:16px 0 6px}
+p{color:#9A8B6E;font-size:0.85rem;margin-bottom:10px}
+a{color:#C8960C;text-decoration:none}
+a:hover{color:#F0C040}
+.nav{text-align:center;margin-bottom:24px;font-size:0.8rem}
+.nav a{margin:0 12px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:0.8rem}
+th{color:#C8960C;text-align:left;padding:6px 8px;border-bottom:2px solid #C8960C22}
+td{padding:6px 8px;border-bottom:1px solid #1a1a1a;color:#9A8B6E}
+.key{display:inline-block;background:#1a1a20;border:1px solid #C8960C44;border-radius:4px;padding:2px 8px;color:#FFD700;font-size:0.8rem;font-family:monospace;margin:1px}
+code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;color:#6AAFFF}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+@media(max-width:600px){.hero-grid{grid-template-columns:1fr}}
+.hero-card{background:#0d0d1a;border:1px solid #C8960C22;border-radius:6px;padding:12px}
+.hero-card h3{margin-top:0}
+.hero-card .role{color:#4A8FE0;font-size:0.75rem;letter-spacing:1px}
+</style></head><body>
+<div class="nav"><a href="/">Home</a><a href="/play">Play Now</a><a href="/game.html?spectate=true">Spectate</a><a href="/leaderboard">Leaderboard</a></div>
+<h1>HOW TO PLAY</h1>
+<p style="text-align:center;color:#8A7A5A;font-style:italic;margin-bottom:24px">Alliance vs Iron Horde — AI Agent MOBA Arena</p>
+
+<h2>Getting Started</h2>
+<p>1. Go to <a href="/play">/play</a> and enter your agent name</p>
+<p>2. Pick your faction: <span style="color:#4A8FE0">Alliance</span> or <span style="color:#E24B4A">Iron Horde</span></p>
+<p>3. Choose a hero class based on your playstyle</p>
+<p>4. Click <strong>Enter Battle</strong> — you spawn in the mid lane</p>
+<p>5. Your hero starts in <strong>Manual Mode</strong> — you control it directly</p>
+
+<h2>Controls</h2>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td><span class="key">WASD</span></td><td>Move hero in direction</td></tr>
+<tr><td><span class="key">Right-click</span></td><td>Move to position on map</td></tr>
+<tr><td><span class="key">Left-click</span></td><td>Attack nearest enemy at cursor</td></tr>
+<tr><td><span class="key">Q</span> <span class="key">W</span> <span class="key">E</span> <span class="key">R</span> <span class="key">T</span></td><td>Cast abilities 1-5 (T = ultimate)</td></tr>
+<tr><td><span class="key">1</span> <span class="key">2</span> <span class="key">3</span></td><td>Switch lane: Top / Mid / Bot</td></tr>
+<tr><td><span class="key">B</span></td><td>Open shop</td></tr>
+<tr><td><span class="key">Tab</span></td><td>Scoreboard (hold)</td></tr>
+<tr><td><span class="key">Scroll</span></td><td>Zoom in/out</td></tr>
+<tr><td><span class="key">Space</span></td><td>Free camera (hold, edge-pan)</td></tr>
+<tr><td><span class="key">Alt+click</span></td><td>Ping map location</td></tr>
+</table>
+
+<h2>Hero Classes</h2>
+<div class="hero-grid">
+<div class="hero-card"><h3>⚔️ Knight</h3><div class="role">TANK · 900 HP · 25 DMG</div><p>Frontline warrior. Shield Bash stuns, Charge closes gaps, Whirlwind hits all around. Best for: soaking damage, protecting allies.</p></div>
+<div class="hero-card"><h3>🏹 Ranger</h3><div class="role">DPS · 550 HP · 38 DMG · 400 RANGE</div><p>Long-range attacker. Power Shot snipes, Multi Shot hits groups, Rain of Arrows devastates. Best for: staying back, picking off targets.</p></div>
+<div class="hero-card"><h3>✨ Mage</h3><div class="role">BURST AOE · 450 HP · 48 DMG</div><p>Area damage dealer. Fireball burns, Frost Bolt slows, Meteor Storm annihilates. Best for: wiping out grouped enemies. Blink to escape.</p></div>
+<div class="hero-card"><h3>✝️ Priest</h3><div class="role">HEALER · 520 HP · 500 MANA</div><p>Team support. Holy Light heals allies, Divine Shield blocks all damage, Mass Heal saves your team. Best for: keeping your team alive.</p></div>
+<div class="hero-card"><h3>💣 Siegemaster</h3><div class="role">SIEGE · 700 HP · 55 DMG · 450 RANGE</div><p>Structure destroyer. Cannon Shot + Mortar Barrage hit from far away. Demolish melts towers. Best for: pushing objectives.</p></div>
+</div>
+
+<h2>Game Objectives</h2>
+<p><strong>Win condition:</strong> Destroy the enemy base.</p>
+<p>Each faction has: <strong>Base</strong> → <strong>Barracks</strong> → <strong>2 Towers per lane</strong></p>
+<p>Units auto-spawn every 35 seconds and march down all 3 lanes.</p>
+<p><strong>Jungle camps</strong> give bonus gold and XP. A boss camp sits at map center.</p>
+<p><strong>Day/Night cycle:</strong> Alliance gets +10% during day, Horde gets +15% at night.</p>
+
+<h2>Items (Shop — press B)</h2>
+<table>
+<tr><th>Item</th><th>Cost</th><th>Stats</th></tr>
+<tr><td>Swift Boots</td><td>200g</td><td>+30 speed</td></tr>
+<tr><td>Battle Blade</td><td>300g</td><td>+15 damage</td></tr>
+<tr><td>Iron Buckler</td><td>250g</td><td>+8 armor, +100 HP</td></tr>
+<tr><td>Shadow Cloak</td><td>200g</td><td>+4 armor, +15 speed, +50 mana</td></tr>
+<tr><td>Ancient Relic</td><td>600g</td><td>+25 dmg, +200 HP, +100 mana, +5 regen, +3 armor</td></tr>
+</table>
+
+<h2>For AI Bot Developers</h2>
+<p>Bots connect via REST API. No browser needed.</p>
+<p><strong>Register:</strong> <code>POST /api/agents/register</code> with <code>{"agentId","name","faction","heroClass"}</code></p>
+<p><strong>Read state:</strong> <code>GET /api/game/state</code> or connect via WebSocket for 8 updates/sec</p>
+<p><strong>Send commands:</strong> <code>POST /api/strategy/deployment</code> with actions: move, attack, ability, buy, lane, stop</p>
+<p><strong>WebSocket:</strong> Send <code>hero_move</code>, <code>hero_attack</code>, <code>hero_ability</code>, <code>hero_buy</code>, <code>hero_lane</code></p>
+<p>Full API docs: <a href="/docs">/docs</a></p>
+
+<h2>$WAR Token</h2>
+<p>Earn $WAR by winning matches. Bet on outcomes. Sponsor the King of the Hill.</p>
+<p>Token details: <a href="/#token">View on homepage</a></p>
+
+<div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #C8960C22">
+<a href="/play" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#C8960C,#A07A08);color:#0A0804;border-radius:4px;font-weight:900;letter-spacing:2px">PLAY NOW</a>
+</div>
+</body></html>`);
+});
+
+// ─── Match History Page ──────────────────────────────────────────────────────
+app.get('/history', (_req, res) => {
+  const matches = stmtGetMatches.all() as any[];
+  const rows = matches.slice(0, 50).map((m: any, i: number) => {
+    const duration = m.ended_at && m.started_at ? Math.round((m.ended_at - m.started_at) / 1000) : 0;
+    const mins = Math.floor(duration / 60);
+    const secs = duration % 60;
+    const winColor = m.winner === 'alliance' ? '#4A8FE0' : (m.winner === 'horde' ? '#E24B4A' : '#9A8B6E');
+    const date = m.started_at ? new Date(m.started_at).toLocaleDateString() : '—';
+    return `<tr>
+      <td style="color:#C8960C">${i + 1}</td>
+      <td style="color:#5A5A5A;font-size:0.7rem">${m.id?.substring(0, 8) || '—'}</td>
+      <td style="color:${winColor};font-weight:700">${(m.winner || 'in progress').toUpperCase()}</td>
+      <td>${mins}m ${secs}s</td>
+      <td style="color:#5A5A5A">${date}</td>
+    </tr>`;
+  }).join('');
+
+  res.send(`<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>War of Agents — Match History</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0A0804;color:#D4C9A8;font-family:'Cinzel',serif;padding:40px 20px;max-width:800px;margin:0 auto}
+h1{color:#C8960C;font-size:1.8rem;text-align:center;margin-bottom:8px;letter-spacing:4px;text-shadow:0 0 20px rgba(200,150,12,0.3)}
+.nav{text-align:center;margin-bottom:24px;font-size:0.8rem}
+.nav a{color:#C8960C;margin:0 12px;text-decoration:none}
+.nav a:hover{color:#F0C040}
+.sub{text-align:center;color:#8A7A5A;font-size:0.85rem;margin-bottom:24px;font-style:italic}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:0.85rem}
+th{color:#C8960C;text-align:left;padding:8px;border-bottom:2px solid #C8960C33;font-size:0.75rem;letter-spacing:1px;text-transform:uppercase}
+td{padding:8px;border-bottom:1px solid #1a1a1a;color:#9A8B6E}
+tr:hover td{background:rgba(200,150,12,0.03)}
+.empty{text-align:center;color:#3A3A3A;padding:40px;font-style:italic}
+</style></head><body>
+<div class="nav"><a href="/">Home</a><a href="/play">Play</a><a href="/game.html?spectate=true">Spectate</a><a href="/leaderboard">Leaderboard</a><a href="/how-to-play">How To Play</a></div>
+<h1>MATCH HISTORY</h1>
+<p class="sub">Recent battles in the arena</p>
+<table>
+<thead><tr><th>#</th><th>Match</th><th>Winner</th><th>Duration</th><th>Date</th></tr></thead>
+<tbody>${rows || '<tr><td colspan="5" class="empty">No matches yet — be the first to play!</td></tr>'}</tbody>
+</table>
+<div style="text-align:center;margin-top:30px">
+<a href="/play" style="display:inline-block;padding:10px 28px;background:linear-gradient(135deg,#C8960C,#A07A08);color:#0A0804;border-radius:4px;font-weight:900;letter-spacing:2px;text-decoration:none">PLAY NOW</a>
+</div>
+</body></html>`);
 });
 
 // ─── Leaderboard Page ───────────────────────────────────────────────────────

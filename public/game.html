@@ -2161,6 +2161,15 @@ let controlMode = 'auto'; // default auto, switched to manual for browser player
 let lastSeenMatchId = null; // detect server-side match resets
 let targetRingAngle = 0;   // animated rotation for target ring
 let cameraFreeMode = false; // true = edge-pan instead of hero follow
+let _rangeIndicator = null; // { x, y, radius, alpha, faction }
+
+const ABILITY_RANGES = {
+  shield_bash: 200, charge: 500, whirlwind: 200, fortify: 0, battle_rally: 500,
+  power_shot: 600, multi_shot: 550, bear_trap: 350, eagle_eye: 800, rain_of_arrows: 600,
+  fireball: 550, frost_bolt: 500, arcane_blast: 450, blink: 600, meteor_storm: 700,
+  holy_light: 500, holy_smite: 500, divine_shield: 0, mass_heal: 550, resurrection: 350,
+  cannon_shot: 650, mortar_barrage: 750, fortification: 0, demolish: 250, siege_mode: 0,
+};
 
 // ─── Generate textures programmatically ─────────────────────────
 function pPreload() {
@@ -2985,6 +2994,22 @@ function pUpdate() {
       delete spritePool[id];
       if (hpBarPool[id]) { hpBarPool[id].bg.destroy(); hpBarPool[id].fill.destroy(); hpBarPool[id].lvl.destroy(); delete hpBarPool[id]; }
     }
+  }
+
+  // ─── ABILITY RANGE INDICATOR ────────────────────────────────
+  if (_rangeIndicator) {
+    const ri = _rangeIndicator;
+    const riHero = playerAgentId && gameState ? gameState.heroes.find(h => h.agentId === playerAgentId && h.alive) : null;
+    if (riHero) {
+      ri.x = riHero.x;
+      ri.y = riHero.y;
+    }
+    const riColor = ri.faction === 'alliance' ? 0x4A8FE0 : 0xE24B4A;
+    graphics.lineStyle(2, riColor, ri.alpha);
+    graphics.strokeCircle(ri.x, ri.y, ri.radius);
+    graphics.fillStyle(riColor, ri.alpha * 0.15);
+    graphics.fillCircle(ri.x, ri.y, ri.radius);
+    ri.alpha *= 0.97;
   }
 
   // ─── GREEN CIRCLE UNDER PLAYER HERO ─────────────────────────
@@ -4935,6 +4960,12 @@ if (playerAgentId) {
       if (!myH || !myH.abilities || !myH.abilities[idx]) return;
       const ability = myH.abilities[idx];
       if (ability.cd > 0) return; // on cooldown
+      // Show range indicator before casting
+      const range = ABILITY_RANGES[ability.id] || 300;
+      if (range > 0) {
+        _rangeIndicator = { x: myH.x, y: myH.y, radius: range, alpha: 0.25, faction: localStorage.getItem('woa_faction') || 'alliance' };
+        setTimeout(() => { _rangeIndicator = null; }, 400);
+      }
       // Send ability via WebSocket
       if (ws && ws.readyState === 1) {
         const msg = { type: 'hero_ability', agentId: playerAgentId, abilityId: ability.id };
@@ -4957,8 +4988,13 @@ if (playerAgentId) {
     if (laneMap[key]) {
       e.preventDefault();
       flashSlot('hk-' + key);
-      sendCmd({action:'lane', lane:laneMap[key]}).then(d => {
-        document.getElementById('pc-status').textContent = d.success ? 'Lane: ' + laneMap[key].toUpperCase() : (d.error || 'Failed');
+      const lane = laneMap[key];
+      // Send via both WS (fast) and HTTP (reliable fallback)
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'hero_lane', agentId: playerAgentId, lane }));
+      }
+      sendCmd({action:'lane', lane}).then(d => {
+        document.getElementById('pc-status').textContent = d.success ? 'LANE: ' + lane.toUpperCase() : (d.error || 'Failed');
       });
       return;
     }

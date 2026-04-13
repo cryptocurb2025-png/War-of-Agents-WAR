@@ -146,6 +146,7 @@ interface HeroEntity extends Entity {
   lastDamagedBy: string[];
   lane: LaneName;
   focusTargetId: string | null;
+  controlMode: 'auto' | 'manual';
 }
 
 // Combat events for frontend feedback (cleared each broadcast)
@@ -755,6 +756,7 @@ function createHero(faction: Faction, heroClass: HeroClass, agentId: string | nu
     lastDamagedBy: [],
     lane,
     focusTargetId: null,
+    controlMode: 'auto',
   };
 }
 
@@ -1297,7 +1299,7 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
   // tick speed so it feels responsive under WASD. The client sends a
   // destination via /api/strategy/deployment move; the tick loop walks there
   // smoothly at 20Hz so movement flows instead of stuttering across the map.
-  if (hero.moveTarget && !hero.focusTargetId) {
+  if (hero.controlMode !== 'manual' && hero.moveTarget && !hero.focusTargetId) {
     const d = dist(hero.pos, hero.moveTarget);
     if (d < 8) {
       hero.moveTarget = null; // arrived
@@ -1328,7 +1330,8 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
 
       if (d > desiredRange) {
         // Walk in. Players don't get lane clamping — full map movement.
-        hero.pos = moveToward(hero.pos, target.pos, hero.speed * 1.5, dt);
+        // Manual mode heroes position themselves — skip auto-chase.
+        if (hero.controlMode !== 'manual') hero.pos = moveToward(hero.pos, target.pos, hero.speed * 1.5, dt);
       } else if (pendingAb) {
         // In range — fire the queued ability
         const queuedId = hero.pendingAbilityId!;
@@ -1824,6 +1827,7 @@ function serializeState() {
       respawnIn: h.alive ? 0 : h.respawnTimer,
       lane: h.lane,
       focusTargetId: h.focusTargetId,
+      controlMode: h.controlMode,
     })),
     units: [...state.units.values()].map(u => ({
       id: u.id, faction: u.faction, unitType: u.unitType,
@@ -1885,6 +1889,21 @@ wss.on('connection', (ws) => {
       if (msg.type === 'chat' && msg.text) {
         const relay = JSON.stringify({ type: 'chat', name: String(msg.name || 'Anon').slice(0, 20), text: String(msg.text).slice(0, 120) });
         for (const c of clients) { if (c !== ws && c.readyState === WebSocket.OPEN) c.send(relay); }
+      }
+      // ─── Direct hero control (manual mode) ─────────────────────────────
+      if (msg.type === 'hero_move') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (!hero || !hero.alive) return;
+        if (hero.controlMode !== 'manual') return;
+        const x = Math.max(0, Math.min(MAP_W, Number(msg.x) || hero.pos.x));
+        const y = Math.max(0, Math.min(MAP_H, Number(msg.y) || hero.pos.y));
+        hero.pos.x = x;
+        hero.pos.y = y;
+      }
+      if (msg.type === 'set_control_mode') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (!hero) return;
+        hero.controlMode = msg.mode === 'manual' ? 'manual' : 'auto';
       }
     } catch {}
   });

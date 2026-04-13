@@ -1353,6 +1353,9 @@
     <span class="phase-icon" id="phase-icon">&#9788;</span>
     <span id="phase-badge" class="phase-badge phase-day">DAY</span>
   </div>
+  <div id="mode-toggle" style="display:none;cursor:pointer;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:1px;border:1px solid #C8960C44;color:#C8960C">
+    <span id="mode-label">AUTO</span>
+  </div>
 </div>
 
 <!-- ─── MAIN GAME AREA ───────────────────────────────── -->
@@ -2124,6 +2127,7 @@ let prevHpMap = {}; // track HP changes for damage numbers
 
 // ─── Click-to-Target System ─────────────────────────────────────────
 let currentTargetId = null; // entity ID of current attack target
+let controlMode = 'auto'; // 'auto' or 'manual' — toggled by player
 let lastSeenMatchId = null; // detect server-side match resets
 let targetRingAngle = 0;   // animated rotation for target ring
 
@@ -2406,6 +2410,15 @@ function pCreate() {
   this.input.mouse.disableContextMenu();
   this.input.on('pointerdown', (pointer) => {
     if (!gameState) return;
+
+    // Manual mode: left-click to move hero
+    if (playerAgentId && controlMode === 'manual' && pointer.leftButtonDown()) {
+      const worldX = pointer.worldX, worldY = pointer.worldY;
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'hero_move', agentId: playerAgentId, x: Math.round(worldX), y: Math.round(worldY) }));
+      }
+      return;
+    }
 
     // Spectators (no playerAgentId): left-click any hero to focus the camera
     if (!playerAgentId) {
@@ -3038,6 +3051,20 @@ function pUpdate() {
       if (sp._label) sp._label.destroy();
       delete spritePool[id];
       if (hpBarPool[id]) { hpBarPool[id].bg.destroy(); hpBarPool[id].fill.destroy(); hpBarPool[id].lvl.destroy(); delete hpBarPool[id]; }
+    }
+  }
+
+  // ─── GREEN CIRCLE UNDER PLAYER HERO ─────────────────────────
+  if (playerAgentId && gameState) {
+    const myHero = gameState.heroes.find(h => h.agentId === playerAgentId && h.alive);
+    if (myHero) {
+      graphics.lineStyle(2, 0x44CC66, controlMode === 'manual' ? 0.6 : 0.3);
+      graphics.strokeCircle(myHero.x, myHero.y + 40, 30);
+      if (controlMode === 'manual') {
+        const pulse = 0.3 + Math.sin(Date.now() * 0.005) * 0.15;
+        graphics.lineStyle(1, 0x44CC66, pulse);
+        graphics.strokeCircle(myHero.x, myHero.y + 40, 20);
+      }
     }
   }
 
@@ -4679,6 +4706,49 @@ let myOwnedItems = new Set();
 
 if (playerAgentId) {
   document.getElementById('player-controls').style.display = 'block';
+  document.getElementById('mode-toggle').style.display = 'block';
+
+  // ─── Control Mode Toggle ──────────────────────────────────
+  const modeToggle = document.getElementById('mode-toggle');
+  const modeLabel = document.getElementById('mode-label');
+  modeToggle.onclick = () => {
+    controlMode = controlMode === 'auto' ? 'manual' : 'auto';
+    modeLabel.textContent = controlMode.toUpperCase();
+    modeToggle.style.borderColor = controlMode === 'manual' ? '#44CC66' : '#C8960C44';
+    modeToggle.style.color = controlMode === 'manual' ? '#44CC66' : '#C8960C';
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ type: 'set_control_mode', agentId: playerAgentId, mode: controlMode }));
+    }
+  };
+
+  // ─── Manual Movement System (WebSocket-based) ─────────────
+  const moveSpeed = 8;
+  const moveFlags = { up: false, down: false, left: false, right: false };
+  let moveLoopId = null;
+
+  function startManualMoveLoop() {
+    if (moveLoopId) return;
+    moveLoopId = setInterval(() => {
+      if (controlMode !== 'manual') { stopManualMoveLoop(); return; }
+      const hero = getMyHero();
+      if (!hero || !hero.alive) return;
+      let dx = 0, dy = 0;
+      if (moveFlags.left || keysDown['a'] || keysDown['arrowleft']) dx -= moveSpeed;
+      if (moveFlags.right || keysDown['d'] || keysDown['arrowright']) dx += moveSpeed;
+      if (moveFlags.up || keysDown['w'] || keysDown['arrowup']) dy -= moveSpeed;
+      if (moveFlags.down || keysDown['s'] || keysDown['arrowdown']) dy += moveSpeed;
+      if (dx === 0 && dy === 0) return;
+      const newX = Math.max(0, Math.min(4800, hero.x + dx));
+      const newY = Math.max(0, Math.min(2400, hero.y + dy));
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'hero_move', agentId: playerAgentId, x: newX, y: newY }));
+      }
+    }, 50);
+  }
+
+  function stopManualMoveLoop() {
+    if (moveLoopId) { clearInterval(moveLoopId); moveLoopId = null; }
+  }
   const pcFaction = localStorage.getItem('woa_faction') || 'alliance';
   const pcClass = localStorage.getItem('woa_class') || 'knight';
   document.getElementById('pc-title').textContent = (pcClass + ' · ' + pcFaction).toUpperCase();
@@ -4767,8 +4837,12 @@ if (playerAgentId) {
     // WASD / Arrow movement (clears target focus)
     if (['a','d','w','s','arrowleft','arrowright','arrowup','arrowdown'].includes(key)) {
       e.preventDefault();
-      currentTargetId = null;
-      startMoveLoop();
+      if (controlMode === 'manual') {
+        startManualMoveLoop();
+      } else {
+        currentTargetId = null;
+        startMoveLoop();
+      }
       return;
     }
 
@@ -4882,6 +4956,10 @@ if (playerAgentId) {
   document.addEventListener('keyup', (e) => {
     keysDown[e.key.toLowerCase()] = false;
     stopMoveLoop();
+    // Stop manual move loop when all movement keys are released
+    if (controlMode === 'manual' && !keysDown['a'] && !keysDown['d'] && !keysDown['w'] && !keysDown['s'] && !keysDown['arrowleft'] && !keysDown['arrowright'] && !keysDown['arrowup'] && !keysDown['arrowdown']) {
+      stopManualMoveLoop();
+    }
   });
 
   // Click on ability/item slots

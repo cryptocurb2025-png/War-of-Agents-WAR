@@ -102,11 +102,11 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 .nav-links a { color: #9A8B6E; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
 .nav-links a:hover { color: #C8960C; }
 
-/* ── Hero Section — Battlefield ───────────────────────────────────────── */
+/* ── Hero Section — Warcraft Battlefield ──────────────────────────────── */
 #hero {
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
-  background: #050308;
+  background: #050508;
   position: relative; overflow: hidden;
   text-align: center; padding: 80px 0 40px; width: 100%;
   border-bottom: 3px solid;
@@ -118,46 +118,87 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
   50% { filter: brightness(1.03); }
 }
 
-/* Layer 1: Faction split + atmospheric fog */
+/* Layer 1: Faction glows bottom corners + fog */
 #hero::before {
   content: '';
   position: absolute; inset: 0;
   background:
-    /* Alliance blue radiation from left */
-    radial-gradient(ellipse 50% 80% at 5% 50%, rgba(74,143,224,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 60% at 15% 60%, rgba(74,143,224,0.1) 0%, transparent 50%),
-    /* Horde red/orange radiation from right */
-    radial-gradient(ellipse 50% 80% at 95% 50%, rgba(200,40,0,0.2) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 60% at 85% 40%, rgba(255,80,0,0.1) 0%, transparent 50%),
-    /* Atmospheric fog layers */
-    radial-gradient(ellipse 100% 40% at 50% 80%, rgba(40,30,20,0.5) 0%, transparent 70%),
-    radial-gradient(ellipse 120% 30% at 50% 40%, rgba(20,15,10,0.3) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 50% at 30% 70%, rgba(20,30,60,0.15) 0%, transparent 50%),
-    radial-gradient(ellipse 80% 50% at 70% 70%, rgba(60,20,10,0.15) 0%, transparent 50%),
+    /* Alliance blue glow — bottom-left */
+    radial-gradient(ellipse 60% 50% at 8% 92%, rgba(74,143,224,0.25) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 40% at 15% 85%, rgba(100,170,255,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 30% 30% at 5% 95%, rgba(60,130,220,0.18) 0%, transparent 45%),
+    /* Horde red glow — bottom-right */
+    radial-gradient(ellipse 60% 50% at 92% 92%, rgba(200,40,0,0.28) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 40% at 85% 85%, rgba(255,80,0,0.14) 0%, transparent 50%),
+    radial-gradient(ellipse 30% 30% at 95% 95%, rgba(180,30,0,0.2) 0%, transparent 45%),
+    /* Bottom fog layer — thick atmospheric haze */
+    linear-gradient(to top, rgba(18,14,10,0.95) 0%, rgba(18,14,10,0.7) 6%, rgba(18,14,10,0.4) 12%, rgba(10,8,6,0.15) 22%, transparent 35%),
+    /* Mid fog wisps */
+    radial-gradient(ellipse 140% 20% at 30% 78%, rgba(60,80,120,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 140% 20% at 70% 82%, rgba(120,50,30,0.08) 0%, transparent 60%),
     /* Center dark vignette */
-    radial-gradient(ellipse 80% 80% at 50% 50%, transparent 20%, rgba(0,0,0,0.5) 100%);
+    radial-gradient(ellipse 75% 75% at 50% 45%, transparent 15%, rgba(0,0,0,0.6) 100%);
   pointer-events: none;
 }
 
-/* Layer 2: Stone texture + battlefield ground plane */
+/* Layer 2: ground plane + stone texture */
 #hero::after {
   content: '';
   position: absolute; inset: 0;
   background:
-    /* Battlefield ground plane at bottom — dark earth */
-    linear-gradient(to top, rgba(15,10,5,0.9) 0%, rgba(15,10,5,0.6) 8%, transparent 20%),
-    /* Stone texture grid */
-    repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(200,150,12,0.008) 3px, rgba(200,150,12,0.008) 4px),
-    repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(200,150,12,0.006) 3px, rgba(200,150,12,0.006) 4px),
-    repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(0,0,0,0.015) 8px, rgba(0,0,0,0.015) 9px),
-    repeating-linear-gradient(-45deg, transparent, transparent 12px, rgba(200,150,12,0.01) 12px, rgba(200,150,12,0.01) 13px);
+    linear-gradient(to top, rgba(12,8,4,0.95) 0%, rgba(12,8,4,0.5) 5%, transparent 14%),
+    repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(200,150,12,0.006) 3px, rgba(200,150,12,0.006) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(200,150,12,0.005) 3px, rgba(200,150,12,0.005) 4px);
   pointer-events: none; z-index: 1;
+}
+
+/* Fortress silhouettes — positioned at bottom corners */
+.fortress-silhouette {
+  position: absolute; bottom: 0; z-index: 1; pointer-events: none;
+  opacity: 0.7;
+}
+.fortress-silhouette.alliance-fort { left: 0; }
+.fortress-silhouette.horde-fort { right: 0; }
+
+/* Lightning flash overlay */
+#lightning-flash {
+  position: absolute; inset: 0; z-index: 2;
+  background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(200,180,255,0.15) 0%, transparent 60%);
+  pointer-events: none; opacity: 0;
+}
+@keyframes lightningStrike {
+  0%   { opacity: 0; }
+  1%   { opacity: 1; }
+  3%   { opacity: 0.2; }
+  5%   { opacity: 0.7; }
+  8%   { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Star field layer — twinkling dots in top portion */
+#star-field {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+}
+
+/* Bottom fog drift layer */
+#fog-layer {
+  position: absolute; bottom: 0; left: -10%; width: 120%; height: 30%;
+  z-index: 2; pointer-events: none; opacity: 0.5;
+  background:
+    radial-gradient(ellipse 30% 80% at 20% 70%, rgba(60,80,120,0.2) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 80% at 50% 80%, rgba(40,35,25,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 80% at 80% 60%, rgba(120,50,30,0.15) 0%, transparent 60%);
+  animation: fogDrift 25s ease-in-out infinite;
+}
+@keyframes fogDrift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(5%); }
 }
 
 /* CSS ember particles */
 .ember {
   position: absolute; bottom: -10px; width: 4px; height: 4px;
-  border-radius: 50%; background: #C8960C; opacity: 0; z-index: 0;
+  border-radius: 50%; background: #C8960C; opacity: 0; z-index: 3;
   animation: emberRise 6s ease-out infinite;
   box-shadow: 0 0 6px rgba(200,150,12,0.6);
 }
@@ -171,7 +212,7 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
   50% { opacity: 0.5; transform: translateY(-40vh) scale(0.8); }
   100% { opacity: 0; transform: translateY(-90vh) scale(0.3); }
 }
-#particles-canvas { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+#particles-canvas { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .hero-content { position: relative; z-index: 3; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 .hero-factions {
   display: flex; align-items: center; justify-content: center; gap: clamp(40px, 10vw, 160px);
@@ -539,6 +580,93 @@ footer {
 
 <!-- HERO -->
 <section id="hero">
+  <!-- Star field canvas (top portion) -->
+  <canvas id="star-field"></canvas>
+  <!-- Lightning flash overlay -->
+  <div id="lightning-flash"></div>
+  <!-- Alliance fortress silhouette — bottom-left -->
+  <div class="fortress-silhouette alliance-fort">
+    <svg width="320" height="280" viewBox="0 0 320 280" xmlns="http://www.w3.org/2000/svg" style="display:block">
+      <defs>
+        <linearGradient id="af-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A3060"/><stop offset="100%" stop-color="#0A1830"/></linearGradient>
+        <linearGradient id="af-glow" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(74,143,224,0.15)"/><stop offset="100%" stop-color="transparent"/></linearGradient>
+      </defs>
+      <!-- Glow behind -->
+      <ellipse cx="160" cy="260" rx="200" ry="60" fill="url(#af-glow)"/>
+      <!-- Main keep -->
+      <rect x="100" y="100" width="80" height="180" fill="url(#af-wall)" rx="2"/>
+      <!-- Tall center tower -->
+      <rect x="120" y="40" width="40" height="240" fill="#1A3868" rx="2"/>
+      <polygon points="120,40 140,10 160,40" fill="#2248A0"/>
+      <!-- Left tower -->
+      <rect x="50" y="120" width="35" height="160" fill="url(#af-wall)" rx="2"/>
+      <polygon points="50,120 67,90 85,120" fill="#2248A0"/>
+      <!-- Right tower -->
+      <rect x="195" y="130" width="30" height="150" fill="url(#af-wall)" rx="2"/>
+      <polygon points="195,130 210,105 225,130" fill="#2248A0"/>
+      <!-- Far left watchtower -->
+      <rect x="10" y="170" width="22" height="110" fill="#0E2040" rx="1"/>
+      <polygon points="10,170 21,150 32,170" fill="#1A3060"/>
+      <!-- Crenellations on main keep -->
+      <rect x="100" y="95" width="10" height="12" fill="#2248A0"/><rect x="115" y="95" width="10" height="12" fill="#2248A0"/>
+      <rect x="130" y="95" width="10" height="12" fill="#2248A0"/><rect x="145" y="95" width="10" height="12" fill="#2248A0"/>
+      <rect x="160" y="95" width="10" height="12" fill="#2248A0"/>
+      <!-- Windows (glowing) -->
+      <rect x="130" y="70" width="8" height="12" rx="4" fill="#4A8FE0" opacity="0.6"/>
+      <rect x="142" y="70" width="8" height="12" rx="4" fill="#4A8FE0" opacity="0.4"/>
+      <rect x="112" y="140" width="6" height="10" rx="3" fill="#4A8FE0" opacity="0.3"/>
+      <rect x="155" y="140" width="6" height="10" rx="3" fill="#4A8FE0" opacity="0.3"/>
+      <rect x="60" y="160" width="5" height="8" rx="2" fill="#4A8FE0" opacity="0.25"/>
+      <!-- Banner -->
+      <line x1="140" y1="10" x2="140" y2="-5" stroke="#C8960C" stroke-width="1.5"/>
+      <polygon points="140,-5 158,2 140,9" fill="#2244AA" opacity="0.8"/>
+      <!-- Wall connecting -->
+      <rect x="85" y="200" width="15" height="80" fill="#0E2040"/>
+      <rect x="180" y="210" width="15" height="70" fill="#0E2040"/>
+    </svg>
+  </div>
+  <!-- Horde fortress silhouette — bottom-right -->
+  <div class="fortress-silhouette horde-fort">
+    <svg width="320" height="280" viewBox="0 0 320 280" xmlns="http://www.w3.org/2000/svg" style="display:block">
+      <defs>
+        <linearGradient id="hf-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A1A0A"/><stop offset="100%" stop-color="#2A0A04"/></linearGradient>
+        <linearGradient id="hf-glow" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(200,40,0,0.15)"/><stop offset="100%" stop-color="transparent"/></linearGradient>
+      </defs>
+      <!-- Glow behind -->
+      <ellipse cx="160" cy="260" rx="200" ry="60" fill="url(#hf-glow)"/>
+      <!-- Main war hall — jagged, brutal -->
+      <path d="M90 280 L90 120 L100 100 L110 120 L120 95 L140 115 L150 80 L160 115 L170 90 L180 110 L190 100 L200 120 L210 105 L220 120 L230 280Z" fill="url(#hf-wall)"/>
+      <!-- Left spike tower -->
+      <path d="M40 280 L40 150 L50 110 L55 130 L60 100 L65 125 L70 150 L70 280Z" fill="#3A1008"/>
+      <polygon points="50,110 60,70 70,110" fill="#5A2010"/>
+      <!-- Right spike tower -->
+      <path d="M250 280 L250 140 L260 100 L265 120 L270 90 L275 115 L280 140 L280 280Z" fill="#3A1008"/>
+      <polygon points="260,100 270,55 280,100" fill="#5A2010"/>
+      <!-- Far right outpost -->
+      <rect x="295" y="190" width="20" height="90" fill="#2A0A04"/>
+      <polygon points="295,190 305,165 315,190" fill="#4A1A0A"/>
+      <!-- Iron spikes along top -->
+      <line x1="110" y1="120" x2="110" y2="105" stroke="#8A6040" stroke-width="2" stroke-linecap="round"/>
+      <line x1="140" y1="115" x2="140" y2="98" stroke="#8A6040" stroke-width="2" stroke-linecap="round"/>
+      <line x1="170" y1="90" x2="170" y2="72" stroke="#8A6040" stroke-width="2" stroke-linecap="round"/>
+      <line x1="200" y1="120" x2="200" y2="103" stroke="#8A6040" stroke-width="2" stroke-linecap="round"/>
+      <!-- Glowing forge windows -->
+      <rect x="145" y="140" width="10" height="14" rx="2" fill="#FF4400" opacity="0.5"/>
+      <rect x="165" y="130" width="8" height="12" rx="2" fill="#FF6600" opacity="0.4"/>
+      <rect x="125" y="160" width="6" height="10" rx="2" fill="#FF4400" opacity="0.3"/>
+      <rect x="50" y="180" width="5" height="8" rx="2" fill="#FF4400" opacity="0.25"/>
+      <rect x="260" y="160" width="5" height="8" rx="2" fill="#FF4400" opacity="0.2"/>
+      <!-- Horde banner -->
+      <line x1="160" y1="80" x2="160" y2="50" stroke="#8A6040" stroke-width="2"/>
+      <polygon points="160,50 180,58 160,66" fill="#AA2211" opacity="0.8"/>
+      <!-- Skull above gate -->
+      <circle cx="160" cy="200" r="8" fill="#C0B088" opacity="0.3"/>
+      <circle cx="157" cy="198" r="2" fill="#FF2200" opacity="0.4"/>
+      <circle cx="163" cy="198" r="2" fill="#FF2200" opacity="0.4"/>
+    </svg>
+  </div>
+  <!-- Fog layer -->
+  <div id="fog-layer"></div>
   <!-- 80 CSS ember particles -->
   <div class="ember" style="left:2%;animation-delay:0s"></div>
   <div class="ember" style="left:5%;animation-delay:0.7s"></div>
@@ -1024,9 +1152,10 @@ ws.onmessage = (e) => {
 })();
 </script>
 
-<!-- PARTICLES JS -->
+<!-- BATTLEFIELD CANVAS: stars + embers + lightning -->
 <script>
 (function() {
+  // ── Ember particle canvas ──
   const canvas = document.getElementById('particles-canvas');
   const ctx = canvas.getContext('2d');
   let w, h, embers;
@@ -1034,14 +1163,6 @@ ws.onmessage = (e) => {
   function resize() {
     w = canvas.width = canvas.parentElement.clientWidth;
     h = canvas.height = canvas.parentElement.clientHeight;
-  }
-
-  function init() {
-    resize();
-    embers = [];
-    for (let i = 0; i < 60; i++) {
-      embers.push(spawnEmber());
-    }
   }
 
   function spawnEmber() {
@@ -1053,13 +1174,17 @@ ws.onmessage = (e) => {
       vx: (Math.random() - 0.5) * 0.8,
       vy: -Math.random() * 1.5 - 0.3,
       life: Math.random() * 200 + 100,
-      age: 0,
-      side: side,
-      sway: Math.random() * Math.PI * 2,
+      age: 0, side, sway: Math.random() * Math.PI * 2,
     };
   }
 
-  function draw() {
+  function initEmbers() {
+    resize();
+    embers = [];
+    for (let i = 0; i < 70; i++) embers.push(spawnEmber());
+  }
+
+  function drawEmbers() {
     ctx.clearRect(0, 0, w, h);
     for (let i = 0; i < embers.length; i++) {
       const e = embers[i];
@@ -1067,41 +1192,95 @@ ws.onmessage = (e) => {
       e.y += e.vy;
       e.sway += 0.02;
       e.age++;
-
-      const lifeRatio = 1 - e.age / e.life;
-      if (lifeRatio <= 0 || e.y < -20) {
-        embers[i] = spawnEmber();
-        continue;
-      }
-
-      const a = lifeRatio * 0.7;
+      const lr = 1 - e.age / e.life;
+      if (lr <= 0 || e.y < -20) { embers[i] = spawnEmber(); continue; }
+      const a = lr * 0.7;
       ctx.beginPath();
-      ctx.arc(e.x, e.y, e.r * lifeRatio, 0, Math.PI * 2);
-
-      if (e.side < 0.4) {
-        ctx.fillStyle = `rgba(120, 160, 255, ${a * 0.5})`;
-      } else if (e.side > 0.6) {
-        ctx.fillStyle = `rgba(255, ${Math.floor(100 + lifeRatio * 100)}, 0, ${a * 0.7})`;
-      } else {
-        ctx.fillStyle = `rgba(200, 150, 12, ${a * 0.6})`;
-      }
+      ctx.arc(e.x, e.y, e.r * lr, 0, Math.PI * 2);
+      if (e.side < 0.4) ctx.fillStyle = `rgba(120,160,255,${a*0.5})`;
+      else if (e.side > 0.6) ctx.fillStyle = `rgba(255,${Math.floor(100+lr*100)},0,${a*0.7})`;
+      else ctx.fillStyle = `rgba(200,150,12,${a*0.6})`;
       ctx.fill();
-
       if (e.r > 1.5) {
         ctx.beginPath();
-        ctx.arc(e.x, e.y, e.r * 3 * lifeRatio, 0, Math.PI * 2);
-        ctx.fillStyle = e.side > 0.6
-          ? `rgba(255, 60, 0, ${a * 0.08})`
-          : `rgba(100, 140, 255, ${a * 0.06})`;
+        ctx.arc(e.x, e.y, e.r * 3 * lr, 0, Math.PI * 2);
+        ctx.fillStyle = e.side > 0.6 ? `rgba(255,60,0,${a*0.08})` : `rgba(100,140,255,${a*0.06})`;
         ctx.fill();
       }
     }
-    requestAnimationFrame(draw);
+    requestAnimationFrame(drawEmbers);
   }
 
   window.addEventListener('resize', resize);
-  init();
-  draw();
+  initEmbers();
+  drawEmbers();
+
+  // ── Star field canvas (top portion twinkle) ──
+  const sc = document.getElementById('star-field');
+  if (sc) {
+    const sctx = sc.getContext('2d');
+    let sw, sh, stars = [];
+
+    function resizeStars() {
+      sw = sc.width = sc.parentElement.clientWidth;
+      sh = sc.height = sc.parentElement.clientHeight;
+    }
+
+    function initStars() {
+      resizeStars();
+      stars = [];
+      const count = Math.min(120, Math.floor((sw * sh) / 8000));
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * sw,
+          y: Math.random() * sh * 0.55, // top 55% only
+          r: Math.random() * 1.4 + 0.3,
+          base: Math.random() * 0.5 + 0.15,
+          phase: Math.random() * Math.PI * 2,
+          speed: Math.random() * 0.015 + 0.005,
+          color: Math.random() < 0.7 ? [220,220,240] : (Math.random() < 0.5 ? [180,200,255] : [255,220,180]),
+        });
+      }
+    }
+
+    function drawStars() {
+      sctx.clearRect(0, 0, sw, sh);
+      for (const s of stars) {
+        s.phase += s.speed;
+        const twinkle = s.base + Math.sin(s.phase) * 0.25;
+        const a = Math.max(0, Math.min(1, twinkle));
+        sctx.beginPath();
+        sctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        sctx.fillStyle = `rgba(${s.color[0]},${s.color[1]},${s.color[2]},${a})`;
+        sctx.fill();
+        // Subtle glow on brighter stars
+        if (s.r > 1 && a > 0.3) {
+          sctx.beginPath();
+          sctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+          sctx.fillStyle = `rgba(${s.color[0]},${s.color[1]},${s.color[2]},${a * 0.08})`;
+          sctx.fill();
+        }
+      }
+      requestAnimationFrame(drawStars);
+    }
+
+    window.addEventListener('resize', resizeStars);
+    initStars();
+    drawStars();
+  }
+
+  // ── Lightning flash every ~10 seconds ──
+  const flash = document.getElementById('lightning-flash');
+  if (flash) {
+    function triggerLightning() {
+      flash.style.animation = 'none';
+      flash.offsetHeight; // force reflow
+      flash.style.animation = 'lightningStrike 0.8s ease-out forwards';
+      // Random interval 8-14 seconds
+      setTimeout(triggerLightning, 8000 + Math.random() * 6000);
+    }
+    setTimeout(triggerLightning, 3000 + Math.random() * 5000);
+  }
 })();
 </script>
 

@@ -1418,6 +1418,7 @@
   <div id="stats-panel">
     <div id="stats-label">BATTLE STATS</div>
     <div class="stat-row"><span class="stat-label">Wave</span><span class="stat-val gold" id="st-wave">0</span></div>
+    <div class="stat-row"><span class="stat-label">Era</span><span class="stat-val gold" id="st-era">BRONZE</span></div>
     <div class="stats-divider"></div>
     <div class="stat-row"><span class="stat-label">Alliance Units</span><span class="stat-val blue" id="st-a-units">0</span></div>
     <div class="stat-row"><span class="stat-label">Horde Units</span><span class="stat-val red" id="st-h-units">0</span></div>
@@ -1446,6 +1447,12 @@
     <div class="hk-slot hk-item" id="hk-3" data-key="3" style="border-color:#E24B4A33"><div class="hk-key">3</div><div class="hk-name" id="hk-3-name" style="color:#E24B4A">BOT</div></div>
     <div style="width:4px"></div>
     <div class="hk-slot hk-item" id="hk-b" data-key="B" style="border-color:#F0C04044"><div class="hk-key">B</div><div class="hk-name" style="color:#F0C040">SHOP</div></div>
+    <div style="width:4px"></div>
+    <div class="hk-slot hk-item" data-key="V" style="border-color:#FF660044"><div class="hk-key">V</div><div class="hk-name" style="color:#FF6600">TURRET</div></div>
+    <div style="width:4px"></div>
+    <div class="hk-slot hk-item" data-key="F1" style="border-color:#44AA4433"><div class="hk-key" style="font-size:8px">F1</div><div class="hk-name" style="color:#44AA44;font-size:7px">MELEE</div></div>
+    <div class="hk-slot hk-item" data-key="F2" style="border-color:#4488CC33"><div class="hk-key" style="font-size:8px">F2</div><div class="hk-name" style="color:#4488CC;font-size:7px">RANGE</div></div>
+    <div class="hk-slot hk-item" data-key="F3" style="border-color:#CC884433"><div class="hk-key" style="font-size:8px">F3</div><div class="hk-name" style="color:#CC8844;font-size:7px">HEAVY</div></div>
   </div>
   <!-- Hero stats bar — stone plaque -->
   <div id="pc-stats-bar" style="position:fixed;bottom:240px;left:50%;transform:translateX(-50%);z-index:150;font-family:'Cinzel',serif;font-size:11px;color:#C8B890;background:#0d0d1aee;border:1px solid #C8960C44;border-radius:4px;padding:5px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.6)">
@@ -2033,6 +2040,11 @@ ws.onmessage = (e) => {
             triggerShake(8);
           }
         }
+        // Tier evolution announcement
+        if (h.tier && prevMap[h.id] && h.tier > (prevMap[h.id].tier || 1)) {
+          const tierName = h.tier === 2 ? 'CHAMPION' : 'WARLORD';
+          announceEvent(`${h.heroClass.toUpperCase()} evolved to ${tierName}!`, 'king');
+        }
       }
       // First blood announcement (via new event-announce system)
       if (!_firstBloodAnnounced && gameState.kills.length > 0) {
@@ -2072,6 +2084,11 @@ ws.onmessage = (e) => {
           }
         }
       }
+    }
+    // Era change announcement
+    if (gameState.era && prev && gameState.era > (prev.era || 1)) {
+      const _eraNames = ['', 'Bronze Age', 'Iron Age', 'Steel Age', 'War Age'];
+      announceEvent('ERA EVOLVED: ' + (_eraNames[gameState.era] || 'Unknown').toUpperCase(), 'tower');
     }
     // Process combat events for ability visuals
     if (gameState.combatEvents) {
@@ -3431,6 +3448,18 @@ function renderSprite(id, texKey, entity, t, isHero) {
   sp.setAlpha(1);
   sp.setAngle(0);
 
+  // Tier evolution glow — bigger/brighter at higher tiers
+  const tier = entity.tier || 1;
+  if (tier >= 2 && sp._glow) {
+    sp._glow.setScale(1.2 + (tier - 1) * 0.4);
+    sp._glow.setAlpha(0.2 + (tier - 1) * 0.15);
+  }
+  // Tier 3 golden ring
+  if (tier >= 3 && isHero && typeof graphics !== 'undefined') {
+    graphics.lineStyle(2, 0xFFD700, 0.4 + Math.sin(Date.now() * 0.003) * 0.15);
+    graphics.strokeCircle(entity.x, entity.y + 40, 35);
+  }
+
   // Fog of war: dim enemies outside vision range
   if (playerAgentId && gameState && gameState.fogOfWar && entity.faction !== (localStorage.getItem('woa_faction') || 'alliance')) {
     const myVision = gameState.fogOfWar[localStorage.getItem('woa_faction') || 'alliance'] || [];
@@ -3961,6 +3990,14 @@ function updateUI() {
   const aUnits = gs.units.filter(u=>u.alive&&u.faction==='alliance').length;
   const hUnits = gs.units.filter(u=>u.alive&&u.faction==='horde').length;
   document.getElementById('st-wave').textContent = gs.waveCount;
+  // Era display
+  const eraNames = ['', 'BRONZE', 'IRON', 'STEEL', 'WAR'];
+  const eraColors = ['', '#CD7F32', '#C0C0C0', '#4682B4', '#FFD700'];
+  const eraEl = document.getElementById('st-era');
+  if (eraEl && gs.era) {
+    eraEl.textContent = eraNames[gs.era] || 'BRONZE';
+    eraEl.style.color = eraColors[gs.era] || '#CD7F32';
+  }
   document.getElementById('st-a-units').textContent = aUnits;
   document.getElementById('st-h-units').textContent = hUnits;
   document.getElementById('st-a-kills').textContent = aKills;
@@ -5000,6 +5037,46 @@ if (playerAgentId) {
       return;
     }
 
+    // F1/F2/F3 = wave vote
+    if (key === 'f1' || key === 'f2' || key === 'f3') {
+      e.preventDefault();
+      const voteMap = {'f1': 'melee', 'f2': 'ranged', 'f3': 'heavy'};
+      const vote = voteMap[key];
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'wave_vote', agentId: playerAgentId, vote }));
+      }
+      document.getElementById('pc-status').textContent = 'NEXT WAVE: ' + vote.toUpperCase();
+      return;
+    }
+
+    // V = fire base turret at mouse position
+    if (key === 'v') {
+      e.preventDefault();
+      if (!phaserScene || !cam) return;
+      const pointer = phaserScene.input.activePointer;
+      const wx = Math.round(pointer.worldX), wy = Math.round(pointer.worldY);
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'turret_fire', agentId: playerAgentId, x: wx, y: wy }));
+      }
+      // Visual: turret projectile from base to target
+      const myFaction = localStorage.getItem('woa_faction') || 'alliance';
+      const baseX = myFaction === 'alliance' ? 150 : 4650;
+      const baseY = 1200;
+      if (phaserScene) {
+        const proj = phaserScene.add.circle(baseX, baseY, 8, 0xFF6600, 0.9).setDepth(200);
+        phaserScene.tweens.add({
+          targets: proj, x: wx, y: wy, duration: 600, ease: 'Cubic.easeIn',
+          onComplete: () => {
+            const boom = phaserScene.add.circle(wx, wy, 10, 0xFF4400, 0.8).setDepth(200);
+            phaserScene.tweens.add({ targets: boom, scaleX: 8, scaleY: 8, alpha: 0, duration: 500, onComplete: () => boom.destroy() });
+            proj.destroy();
+          }
+        });
+      }
+      document.getElementById('pc-status').textContent = 'TURRET FIRED!';
+      return;
+    }
+
     // B = toggle shop
     if (key === 'b') {
       e.preventDefault();
@@ -5300,6 +5377,20 @@ function updatePlayerControls() {
         if (cdOv) cdOv.remove();
       }
     });
+  }
+
+  // Turret cooldown display
+  if (gameState && gameState.turrets) {
+    const myFaction = localStorage.getItem('woa_faction') || 'alliance';
+    const turret = gameState.turrets[myFaction];
+    if (turret) {
+      const cdTicks = Math.max(0, turret.cooldown - (gameState.tick - turret.lastFired));
+      const cdSec = Math.ceil(cdTicks / 20);
+      const turretEl = document.getElementById('pc-status');
+      if (cdSec > 0 && turretEl && !turretEl.textContent.includes('ATTACK')) {
+        // Don't override attack status, just show turret CD if idle
+      }
+    }
   }
 
   // Update owned items

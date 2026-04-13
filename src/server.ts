@@ -136,6 +136,7 @@ interface HeroEntity extends Entity {
   deaths: number;
   assists: number;
   killStreak: number;
+  tier: number; // 1, 2, or 3
   abilities: Ability[];
   items: Item[];
   respawnTimer: number;
@@ -212,6 +213,12 @@ interface GameState {
   winnerAt: number | null;
   waveTimer: number;
   waveCount: number;
+  era: number; // 1=Bronze, 2=Iron, 3=Steel, 4=War
+  waveVotes: { alliance: string | null; horde: string | null };
+  turrets: {
+    alliance: { lastFired: number; cooldown: number };
+    horde: { lastFired: number; cooldown: number };
+  };
 }
 
 interface Projectile {
@@ -604,6 +611,12 @@ const state: GameState = {
   winnerAt: null,
   waveTimer: 0,
   waveCount: 0,
+  era: 1,
+  waveVotes: { alliance: null, horde: null },
+  turrets: {
+    alliance: { lastFired: 0, cooldown: 200 },
+    horde: { lastFired: 0, cooldown: 200 },
+  },
 };
 
 // ─── Structure Placement ─────────────────────────────────────────────────────
@@ -746,6 +759,7 @@ function createHero(faction: Faction, heroClass: HeroClass, agentId: string | nu
     gold: 300,
     kills: 0, deaths: 0, assists: 0,
     killStreak: 0,
+    tier: 1,
     abilities: createAbilities(heroClass),
     items: [],
     respawnTimer: 0,
@@ -761,23 +775,57 @@ function createHero(faction: Faction, heroClass: HeroClass, agentId: string | nu
 }
 
 // ─── Wave Spawning ───────────────────────────────────────────────────────────
+function getVotedUnits(faction: Faction): UnitDef[] {
+  const vote = state.waveVotes[faction];
+  if (faction === 'alliance') {
+    const footman = ALLIANCE_UNITS.find(u => u.type === 'footman')!;
+    const archer = ALLIANCE_UNITS.find(u => u.type === 'archer')!;
+    const gryphon = ALLIANCE_UNITS.find(u => u.type === 'gryphon')!;
+    const ballista = ALLIANCE_UNITS.find(u => u.type === 'ballista')!;
+    if (vote === 'melee') return [footman, footman, footman, footman, footman, archer, footman, footman];
+    if (vote === 'ranged') return [archer, archer, archer, archer, archer, footman, archer, archer];
+    if (vote === 'heavy') return [ballista, ballista, gryphon, ballista, gryphon, ballista, gryphon, ballista];
+    return null as any; // default
+  } else {
+    const ironwarrior = HORDE_UNITS.find(u => u.type === 'ironwarrior')!;
+    const shredder = HORDE_UNITS.find(u => u.type === 'shredder')!;
+    const warlock = HORDE_UNITS.find(u => u.type === 'warlock')!;
+    const colossus = HORDE_UNITS.find(u => u.type === 'colossus')!;
+    if (vote === 'melee') return [ironwarrior, ironwarrior, ironwarrior, ironwarrior, ironwarrior, shredder, ironwarrior, ironwarrior];
+    if (vote === 'ranged') return [warlock, warlock, warlock, warlock, warlock, shredder, warlock, warlock];
+    if (vote === 'heavy') return [colossus, colossus, shredder, colossus, shredder, colossus, shredder, colossus];
+    return null as any; // default
+  }
+}
+
 function spawnWave() {
   state.waveCount++;
   const scaling = 1 + state.waveCount * 0.03;
+
+  // Era progression
+  const newEra = state.waveCount >= 15 ? 4 : state.waveCount >= 10 ? 3 : state.waveCount >= 5 ? 2 : 1;
+  if (newEra > state.era) {
+    state.era = newEra;
+  }
+  const eraMultiplier = 1 + (state.era - 1) * 0.15; // +15% per era beyond Bronze
 
   // Alliance wave - distribute across all 3 lanes
   let allianceLaneIdx = 0;
   const aBarracks = [...state.structures.values()].find(s => s.faction === 'alliance' && s.structureType === 'barracks' && s.alive);
   if (aBarracks) {
-    for (const def of ALLIANCE_UNITS) {
-      for (let i = 0; i < 2; i++) {
+    const votedUnits = getVotedUnits('alliance');
+    const unitList = votedUnits || ALLIANCE_UNITS;
+    const perUnit = votedUnits ? 1 : 2; // voted lists already have quantity baked in
+    for (const def of unitList) {
+      for (let i = 0; i < perUnit; i++) {
         const lane = LANE_NAMES[allianceLaneIdx % 3];
         const laneY = LANES[lane].centerY;
+        const totalScaling = scaling * eraMultiplier;
         const u: UnitEntity = {
           id: nextId('unit'), type: 'unit', faction: 'alliance',
           pos: { x: aBarracks.pos.x + 50 + Math.random() * 40, y: laneY - 30 + Math.random() * 60 },
-          hp: Math.floor(def.hp * scaling), maxHp: Math.floor(def.hp * scaling),
-          damage: Math.floor(def.damage * scaling), armor: def.armor,
+          hp: Math.floor(def.hp * totalScaling), maxHp: Math.floor(def.hp * totalScaling),
+          damage: Math.floor(def.damage * totalScaling), armor: def.armor,
           speed: def.speed, range: def.range,
           target: null, alive: true,
           attackCd: 20, currentAttackCd: 0,
@@ -788,21 +836,26 @@ function spawnWave() {
         allianceLaneIdx++;
       }
     }
+    state.waveVotes.alliance = null; // Reset vote after spawning
   }
 
   // Horde wave - distribute across all 3 lanes
   let hordeLaneIdx = 0;
   const hBarracks = [...state.structures.values()].find(s => s.faction === 'horde' && s.structureType === 'barracks' && s.alive);
   if (hBarracks) {
-    for (const def of HORDE_UNITS) {
-      for (let i = 0; i < 2; i++) {
+    const votedUnits = getVotedUnits('horde');
+    const unitList = votedUnits || HORDE_UNITS;
+    const perUnit = votedUnits ? 1 : 2;
+    for (const def of unitList) {
+      for (let i = 0; i < perUnit; i++) {
         const lane = LANE_NAMES[hordeLaneIdx % 3];
         const laneY = LANES[lane].centerY;
+        const totalScaling = scaling * eraMultiplier;
         const u: UnitEntity = {
           id: nextId('unit'), type: 'unit', faction: 'horde',
           pos: { x: hBarracks.pos.x - 50 - Math.random() * 40, y: laneY - 30 + Math.random() * 60 },
-          hp: Math.floor(def.hp * scaling), maxHp: Math.floor(def.hp * scaling),
-          damage: Math.floor(def.damage * scaling), armor: def.armor,
+          hp: Math.floor(def.hp * totalScaling), maxHp: Math.floor(def.hp * totalScaling),
+          damage: Math.floor(def.damage * totalScaling), armor: def.armor,
           speed: def.speed, range: def.range,
           target: null, alive: true,
           attackCd: 20, currentAttackCd: 0,
@@ -813,6 +866,7 @@ function spawnWave() {
         hordeLaneIdx++;
       }
     }
+    state.waveVotes.horde = null; // Reset vote after spawning
   }
 }
 
@@ -1036,6 +1090,30 @@ function onKill(killerId: string, victim: Entity) {
   }
 }
 
+function applyEvolution(hero: HeroEntity) {
+  // Tier 2 at level 5
+  if (hero.level === 5) {
+    hero.tier = 2;
+    hero.maxHp = Math.round(hero.maxHp * 1.4);
+    hero.hp = hero.maxHp;
+    hero.damage = Math.round(hero.damage * 1.3);
+    hero.armor += 5;
+    hero.maxMana = Math.round(hero.maxMana * 1.2);
+    hero.mana = hero.maxMana;
+  }
+  // Tier 3 at level 10
+  if (hero.level === 10) {
+    hero.tier = 3;
+    hero.maxHp = Math.round(hero.maxHp * 1.3);
+    hero.hp = hero.maxHp;
+    hero.damage = Math.round(hero.damage * 1.25);
+    hero.armor += 8;
+    hero.speed += 15;
+    hero.maxMana = Math.round(hero.maxMana * 1.3);
+    hero.mana = hero.maxMana;
+  }
+}
+
 function checkLevelUp(hero: HeroEntity) {
   while (hero.xp >= hero.xpToNext) {
     hero.xp -= hero.xpToNext;
@@ -1047,6 +1125,9 @@ function checkLevelUp(hero: HeroEntity) {
     hero.mana = Math.min(hero.mana + 20, hero.maxMana);
     hero.damage += 3;
     hero.armor += 1;
+
+    // Hero evolution at tier thresholds
+    applyEvolution(hero);
 
     // Upgrade a random ability tier
     const upgradeable = hero.abilities.filter(a => a.tier < a.maxTier);
@@ -1819,6 +1900,12 @@ function serializeState() {
     matchId: currentMatchId,
     postgameDelayMs: POSTGAME_DELAY_MS,
     waveCount: state.waveCount,
+    era: state.era,
+    waveVotes: state.waveVotes,
+    turrets: {
+      alliance: { lastFired: state.turrets.alliance.lastFired, cooldown: state.turrets.alliance.cooldown },
+      horde: { lastFired: state.turrets.horde.lastFired, cooldown: state.turrets.horde.cooldown },
+    },
     slots: {
       alliance: { used: countPlayerHeroes('alliance'), max: MAX_PLAYERS_PER_FACTION },
       horde: { used: countPlayerHeroes('horde'), max: MAX_PLAYERS_PER_FACTION },
@@ -1831,6 +1918,7 @@ function serializeState() {
       mana: Math.round(h.mana), maxMana: h.maxMana,
       level: h.level, gold: h.gold,
       xp: h.xp, xpToNext: h.xpToNext,
+      tier: h.tier,
       kills: h.kills, deaths: h.deaths, assists: h.assists,
       killStreak: h.killStreak, alive: h.alive,
       damage: h.damage, armor: h.armor,
@@ -1965,6 +2053,49 @@ wss.on('connection', (ws) => {
           hero.lane = msg.lane as LaneName;
           hero.moveTarget = { x: hero.pos.x, y: laneInfo.centerY };
           hero.focusTargetId = null;
+        }
+      }
+
+      // Wave vote — choose unit composition for next wave
+      if (msg.type === 'wave_vote') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (!hero || !hero.alive) return;
+        const vote = msg.vote; // 'melee', 'ranged', 'heavy'
+        if (!['melee', 'ranged', 'heavy'].includes(vote)) return;
+        state.waveVotes[hero.faction] = vote;
+      }
+
+      // Base turret fire — AoE damage near your base
+      if (msg.type === 'turret_fire') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (!hero || !hero.alive) return;
+        const turret = state.turrets[hero.faction];
+        if (state.tick - turret.lastFired < turret.cooldown) return; // on cooldown
+        turret.lastFired = state.tick;
+
+        // Find nearest enemy to target position
+        const tx = Number(msg.x) || 0, ty = Number(msg.y) || 0;
+        // Turret range: only fire near your base (within 1500 units)
+        const baseX = hero.faction === 'alliance' ? 150 : MAP_W - 150;
+        if (Math.abs(tx - baseX) > 1500) return; // out of turret range
+
+        // Deal damage to all enemies in 150-unit radius of target
+        const TURRET_DAMAGE = 200 + state.era * 50;
+        const TURRET_RADIUS = 150;
+        for (const u of state.units.values()) {
+          if (u.faction === hero.faction || !u.alive) continue;
+          const d = Math.sqrt((u.pos.x - tx) ** 2 + (u.pos.y - ty) ** 2);
+          if (d < TURRET_RADIUS) {
+            u.hp -= TURRET_DAMAGE;
+            if (u.hp <= 0) u.alive = false;
+          }
+        }
+        for (const h of state.heroes.values()) {
+          if (h.faction === hero.faction || !h.alive) continue;
+          const d = Math.sqrt((h.pos.x - tx) ** 2 + (h.pos.y - ty) ** 2);
+          if (d < TURRET_RADIUS) {
+            h.hp -= TURRET_DAMAGE * 0.5; // half damage to heroes
+          }
         }
       }
 
@@ -2433,6 +2564,12 @@ function resetGame() {
   state.time = 0;
   state.waveTimer = 0;
   state.waveCount = 0;
+  state.era = 1;
+  state.waveVotes = { alliance: null, horde: null };
+  state.turrets = {
+    alliance: { lastFired: 0, cooldown: 200 },
+    horde: { lastFired: 0, cooldown: 200 },
+  };
   state.dayNightTimer = 0;
   state.phase = 'day';
 

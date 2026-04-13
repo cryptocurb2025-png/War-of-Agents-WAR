@@ -5872,6 +5872,17 @@ function updatePlayerControls() {
   // Floating damage numbers
   const _dmgFloats = []; // {x, y, text, color, age}
 
+  // Screen shake
+  let _shakeX = 0, _shakeY = 0, _shakeTimer = 0;
+  function triggerEntityShake(amount) { _shakeTimer = 4; _shakeX = amount; _shakeY = amount; }
+
+  // Damage flash
+  const _dmgFlash = {}; // entityId -> frames remaining
+
+  // Level-up effects
+  const _prevLevels = {};
+  const _levelUpFX = []; // {x, y, age}
+
   function renderEntities() {
     const canvas = document.getElementById('entity-canvas');
     if (!canvas || !gameState) return;
@@ -5890,6 +5901,12 @@ function updatePlayerControls() {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, w, h);
 
+    // Apply screen shake
+    if (_shakeTimer > 0) {
+      _shakeTimer--;
+      ctx.translate((Math.random()-0.5)*_shakeX*2, (Math.random()-0.5)*_shakeY*2);
+    }
+
     if (!gameState.heroes) return;
 
     // Scale: map coordinates (4800x2400) → canvas pixels
@@ -5904,11 +5921,21 @@ function updatePlayerControls() {
       if (prev !== undefined && e.hp < prev) {
         const dmg = prev - e.hp;
         _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, text: '-' + dmg, color: '#FF4444', age: 0 });
+        _dmgFlash[e.id] = 4; // flash for 4 frames
+        if (playerAgentId && e.agentId === playerAgentId) triggerEntityShake(3);
       } else if (prev !== undefined && e.hp > prev && e.alive) {
         const heal = e.hp - prev;
         _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, text: '+' + heal, color: '#44FF44', age: 0 });
       }
       window._prevEntityHP[e.id] = e.hp;
+    }
+
+    // Track level-ups for visual effects
+    for (const h of gameState.heroes) {
+      if (_prevLevels[h.id] && h.level > _prevLevels[h.id]) {
+        _levelUpFX.push({ x: h.x * scaleX, y: h.y * scaleY, age: 0 });
+      }
+      _prevLevels[h.id] = h.level;
     }
 
     // ─── Draw structures ────────────────────────────────────
@@ -6017,6 +6044,11 @@ function updatePlayerControls() {
         ctx.beginPath(); ctx.arc(x, y, 28*s, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(x, y, 22*s, 0, Math.PI * 2); ctx.stroke();
+        // Attack range circle (very subtle)
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        const rangeRadius = (hero.range || 300) * scaleX;
+        ctx.beginPath(); ctx.arc(x, y, rangeRadius, 0, Math.PI * 2); ctx.stroke();
       }
 
       // ── Draw character sprite based on class ──
@@ -6129,6 +6161,27 @@ function updatePlayerControls() {
       }
       ctx.restore();
 
+      // Damage flash overlay
+      if (_dmgFlash[hero.id] > 0) {
+        _dmgFlash[hero.id]--;
+        ctx.fillStyle = 'rgba(255,0,0,0.3)';
+        ctx.fillRect(x - 12*s, y - 18*s, 24*s, 36*s);
+      }
+
+      // Highlight enemies in player's attack range
+      if (playerAgentId && !isMine && gameState) {
+        const myHero = gameState.heroes.find(h => h.agentId === playerAgentId);
+        if (myHero && myHero.alive) {
+          const dx = hero.x - myHero.x, dy = hero.y - myHero.y;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if (d <= (myHero.range || 300)) {
+            ctx.strokeStyle = 'rgba(255,60,60,0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(x, y, 14*s, 0, Math.PI * 2); ctx.stroke();
+          }
+        }
+      }
+
       // ── Labels and bars (compact, no overlap) ──
       ctx.textAlign = 'center';
       // Name (max 10 chars, small font)
@@ -6205,6 +6258,23 @@ function updatePlayerControls() {
       ctx.globalAlpha = 1;
     }
     while (_dmgFloats.length > 60) _dmgFloats.shift();
+
+    // Level-up burst effects
+    for (let i = _levelUpFX.length - 1; i >= 0; i--) {
+      const lf = _levelUpFX[i];
+      lf.age++;
+      if (lf.age > 30) { _levelUpFX.splice(i, 1); continue; }
+      const p = lf.age / 30;
+      ctx.strokeStyle = `rgba(255,215,0,${1-p})`;
+      ctx.lineWidth = 3 - p*2;
+      ctx.beginPath(); ctx.arc(lf.x, lf.y, 10 + p * 40, 0, Math.PI*2); ctx.stroke();
+      ctx.fillStyle = `rgba(255,215,0,${1-p})`;
+      ctx.font = 'bold 14px Cinzel, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('LEVEL UP!', lf.x, lf.y - 20 - lf.age);
+    }
+
+    ctx.setTransform(1,0,0,1,0,0); // reset transform after shake
   }
 
   // ─── Hero tooltip on hover ────────────────────────────────

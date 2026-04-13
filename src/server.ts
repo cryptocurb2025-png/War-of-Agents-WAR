@@ -1453,6 +1453,39 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
     }
   }
 
+  // Auto-target nearest enemy in range if no focus target (DOTA-style auto-attack)
+  if (!hero.focusTargetId && hero.currentAttackCd <= 0) {
+    let nearest: Entity | null = null;
+    let nearDist = hero.range + 50; // slight buffer beyond attack range
+    // Check enemy heroes
+    for (const h of state.heroes.values()) {
+      if (!h.alive || h.faction === hero.faction) continue;
+      const d = dist(hero.pos, h.pos);
+      if (d < nearDist) { nearDist = d; nearest = h; }
+    }
+    // Check enemy units
+    for (const u of state.units.values()) {
+      if (!u.alive || u.faction === hero.faction) continue;
+      const d = dist(hero.pos, u.pos);
+      if (d < nearDist) { nearDist = d; nearest = u; }
+    }
+    // Check enemy structures
+    for (const s of state.structures.values()) {
+      if (!s.alive || s.faction === hero.faction) continue;
+      const d = dist(hero.pos, s.pos);
+      if (d < nearDist) { nearDist = d; nearest = s; }
+    }
+    if (nearest && nearDist <= hero.range) {
+      applyDamage(nearest, hero.damage, hero.id);
+      hero.currentAttackCd = hero.attackCd;
+      state.projectiles.push({
+        id: nextId('proj'), from: { ...hero.pos }, to: { ...nearest.pos },
+        progress: 0, speed: 0.1, damage: 0, sourceId: hero.id, targetId: nearest.id,
+        faction: hero.faction, color: hero.faction === 'alliance' ? '#aaccff' : '#ffaa88',
+      });
+    }
+  }
+
   if (hero.currentAttackCd > 0) hero.currentAttackCd--;
   checkLevelUp(hero);
 }

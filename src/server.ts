@@ -76,7 +76,7 @@ const LANES: Record<LaneName, { centerY: number; minY: number; maxY: number }> =
   mid: { centerY: 1200, minY: 1040, maxY: 1360 },
   bot: { centerY: 1900, minY: 1800, maxY: 2000 },
 };
-const LANE_NAMES: LaneName[] = ['mid', 'mid', 'mid']; // Single lane for now
+const LANE_NAMES: LaneName[] = ['top', 'mid', 'bot']; // Units spawn across all 3 lanes
 const VISION_RADIUS = 400;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -802,8 +802,8 @@ function spawnWave() {
   state.waveCount++;
   const scaling = 1 + state.waveCount * 0.03;
 
-  // Era progression
-  const newEra = state.waveCount >= 15 ? 4 : state.waveCount >= 10 ? 3 : state.waveCount >= 5 ? 2 : 1;
+  // Era progression: Bronze → Silver → Gold → Platinum → Diamond
+  const newEra = state.waveCount >= 20 ? 5 : state.waveCount >= 15 ? 4 : state.waveCount >= 10 ? 3 : state.waveCount >= 5 ? 2 : 1;
   if (newEra > state.era) {
     state.era = newEra;
   }

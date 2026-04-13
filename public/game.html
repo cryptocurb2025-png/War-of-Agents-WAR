@@ -2107,7 +2107,7 @@ ws.onmessage = (e) => {
     }
     // Era change announcement
     if (gameState.era && prev && gameState.era > (prev.era || 1)) {
-      const _eraNames = ['', 'Bronze Age', 'Iron Age', 'Steel Age', 'War Age'];
+      const _eraNames = ['', 'Bronze Age', 'Silver Age', 'Gold Age', 'Platinum Age', 'Diamond Age'];
       announceEvent('ERA EVOLVED: ' + (_eraNames[gameState.era] || 'Unknown').toUpperCase(), 'tower');
     }
     // Process combat events for ability visuals
@@ -2170,7 +2170,7 @@ function calcZoom(canvasW, canvasH) {
 const config = {
   type: Phaser.CANVAS,
   parent: 'game-container',
-  backgroundColor: '#1a3a10',
+  backgroundColor: '#0d0d1a',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
   render: { antialias: false, pixelArt: true },
   banner: false,
@@ -2464,7 +2464,7 @@ function pPreload() {
 function pCreate() {
   phaserScene = this;
   cam = this.cameras.main;
-  cam.setBackgroundColor('#080808');
+  cam.setBackgroundColor('#0d0d1a');
   cam.setBounds(0, 0, MAP_W, MAP_H);
 
   // Zoom: fit FULL map into view (both width AND height)
@@ -2746,9 +2746,11 @@ function pUpdate() {
   // Draw base terrain even before WebSocket connects — single seamless fill
   graphics.fillStyle(0x2A6A1A, 1);
   graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
-  // Lane road
+  // Lane roads (all 3)
   graphics.fillStyle(0x5A4A2A, 1);
-  graphics.fillRect(-200, 1040, MAP_W + 400, 320);
+  graphics.fillRect(-200, 400, MAP_W + 400, 200);  // top
+  graphics.fillRect(-200, 1040, MAP_W + 400, 320); // mid
+  graphics.fillRect(-200, 1800, MAP_W + 400, 200); // bot
 
   if (!gameState) return; // rest needs game state
 
@@ -2758,7 +2760,8 @@ function pUpdate() {
 
   // ─── ERA-BASED TERRAIN SYSTEM ──────────────────────────────────────
   const era = gs.era || 1;
-  const laneY = 1040, laneH = 320;
+  // 3 lanes matching server: top(400-600), mid(1040-1360), bot(1800-2000)
+  const ALL_LANES = [{y:400,h:200},{y:1040,h:320},{y:1800,h:200}];
 
   // === GROUND BASE ===
   // Alliance side: lush green that gets darker with era
@@ -2790,52 +2793,39 @@ function pUpdate() {
     }
   }
 
-  // === LANE ROADS — evolve with era ===
-  // Road color evolves: dirt → cobblestone → paved → war-scarred
+  // === LANE ROADS (all 3 lanes) — evolve with era ===
   const roadColors = [0x5A4A2A, 0x5A5040, 0x606058, 0x4A4040];
   const roadColor = roadColors[Math.min(era-1, 3)];
-  graphics.fillStyle(roadColor, 1);
-  graphics.fillRect(-200, laneY, MAP_W + 400, laneH);
-
-  // Road edge lines
-  graphics.lineStyle(2, era >= 3 ? 0x808070 : 0x4A3A1A, 0.5);
-  graphics.lineBetween(-200, laneY, MAP_W + 200, laneY);
-  graphics.lineBetween(-200, laneY + laneH, MAP_W + 200, laneY + laneH);
-
-  // Road surface detail
-  if (era >= 2) {
-    // Cobblestone pattern
-    graphics.lineStyle(1, 0x4A4A3A, 0.12);
-    for (let rx = 0; rx < MAP_W; rx += 40) {
-      graphics.lineBetween(rx, laneY + 10, rx, laneY + laneH - 10);
-    }
-    for (let ry = laneY + 30; ry < laneY + laneH; ry += 40) {
-      graphics.lineBetween(0, ry, MAP_W, ry);
+  for (const lane of ALL_LANES) {
+    graphics.fillStyle(roadColor, 1);
+    graphics.fillRect(-200, lane.y, MAP_W + 400, lane.h);
+    // Road edge lines
+    graphics.lineStyle(2, era >= 3 ? 0x808070 : 0x4A3A1A, 0.4);
+    graphics.lineBetween(-200, lane.y, MAP_W + 200, lane.y);
+    graphics.lineBetween(-200, lane.y + lane.h, MAP_W + 200, lane.y + lane.h);
+    // Cobblestone in later eras
+    if (era >= 2) {
+      graphics.lineStyle(1, 0x4A4A3A, 0.08);
+      for (let rx = 0; rx < MAP_W; rx += 50) {
+        graphics.lineBetween(rx, lane.y + 5, rx, lane.y + lane.h - 5);
+      }
     }
   }
 
-  // === TORCH POSTS along lane edges ===
-  const torchSpacing = era >= 3 ? 300 : 400;
-  for (let tx = 200; tx < MAP_W - 200; tx += torchSpacing) {
-    // Top edge torches
-    const torchY1 = laneY - 15;
-    graphics.fillStyle(0x3A2A10, 0.9);
-    graphics.fillRect(tx - 2, torchY1, 4, 20);
-    // Flame (animated)
+  // === TORCH POSTS along mid lane edges (biggest lane) ===
+  const midLane = ALL_LANES[1]; // mid
+  for (let tx = 300; tx < MAP_W - 300; tx += 500) {
     const flicker = Math.sin(t * 0.1 + tx * 0.01) * 3;
-    graphics.fillStyle(0xFF8800, 0.5 + Math.sin(t * 0.15 + tx) * 0.15);
-    graphics.fillCircle(tx, torchY1 - 4 + flicker, 5);
-    graphics.fillStyle(0xFFCC44, 0.3);
-    graphics.fillCircle(tx, torchY1 - 6 + flicker, 3);
-
-    // Bottom edge torches
-    const torchY2 = laneY + laneH - 5;
-    graphics.fillStyle(0x3A2A10, 0.9);
-    graphics.fillRect(tx + 20 - 2, torchY2, 4, 20);
-    graphics.fillStyle(0xFF8800, 0.5 + Math.sin(t * 0.12 + tx + 50) * 0.15);
-    graphics.fillCircle(tx + 20, torchY2 - 4 + Math.sin(t * 0.1 + tx + 50) * 3, 5);
-    graphics.fillStyle(0xFFCC44, 0.3);
-    graphics.fillCircle(tx + 20, torchY2 - 6 + Math.sin(t * 0.1 + tx + 50) * 3, 3);
+    // Top edge
+    graphics.fillStyle(0x3A2A10, 0.8);
+    graphics.fillRect(tx - 2, midLane.y - 15, 4, 18);
+    graphics.fillStyle(0xFF8800, 0.4 + Math.sin(t * 0.15 + tx) * 0.1);
+    graphics.fillCircle(tx, midLane.y - 19 + flicker, 4);
+    // Bottom edge
+    graphics.fillStyle(0x3A2A10, 0.8);
+    graphics.fillRect(tx + 20 - 2, midLane.y + midLane.h - 3, 4, 18);
+    graphics.fillStyle(0xFF8800, 0.4 + Math.sin(t * 0.12 + tx + 50) * 0.1);
+    graphics.fillCircle(tx + 20, midLane.y + midLane.h - 7 + Math.sin(t * 0.1 + tx + 50) * 3, 4);
   }
 
   // === FACTION BANNERS at tower positions ===
@@ -3446,8 +3436,8 @@ function renderSprite(id, texKey, entity, t, isHero) {
   const isA = entity.faction === 'alliance';
   const bob = Math.sin(t * 0.08 + (entity.x || 0) * 0.01) * 3;
 
-  // HARD CLAMP — all units in mid lane
-  const clampedY = Math.max(1040, Math.min(1360, entity.y));
+  // Use actual entity Y position (units now spawn across all 3 lanes)
+  const clampedY = entity.y;
 
   // Create or reuse sprite
   let sp = spritePool[id];
@@ -4035,8 +4025,8 @@ function updateUI() {
   const hUnits = gs.units.filter(u=>u.alive&&u.faction==='horde').length;
   document.getElementById('st-wave').textContent = gs.waveCount;
   // Era display
-  const eraNames = ['', 'BRONZE', 'IRON', 'STEEL', 'WAR'];
-  const eraColors = ['', '#CD7F32', '#C0C0C0', '#4682B4', '#FFD700'];
+  const eraNames = ['', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
+  const eraColors = ['', '#CD7F32', '#C0C0C0', '#FFD700', '#88CCDD', '#44DDFF'];
   const eraEl = document.getElementById('st-era');
   if (eraEl && gs.era) {
     eraEl.textContent = eraNames[gs.era] || 'BRONZE';

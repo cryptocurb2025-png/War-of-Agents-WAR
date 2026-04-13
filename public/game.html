@@ -597,17 +597,26 @@
      WARCRAFT-THEMED BOTTOM PANEL
      ═══════════════════════════════════════════════════════ */
 
-  /* ─── BOTTOM PANEL — must fully cover canvas below ─── */
+  /* ─── BOTTOM PANEL — nuclear anti-green fix ─── */
   #bottom-panel {
     height: 190px;
-    background: #0d0d1a !important;
+    background-color: #0d0d1a !important;
+    background-image: none !important;
     border-top: 3px solid;
     border-image: linear-gradient(90deg, #8B6914, #F0C040, #C8960C, #F0C040, #8B6914) 1;
     display: flex;
     flex-shrink: 0;
     z-index: 100;
     position: relative;
-    box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+    isolation: isolate; /* creates new stacking context */
+  }
+  /* Solid opaque cover behind all bottom panel content */
+  #bottom-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #0d0d1a;
+    z-index: -1;
   }
 
   /* ─── MINIMAP — stone-framed scrying orb ─────────────── */
@@ -1430,12 +1439,12 @@
     <div class="hk-slot" id="hk-r" data-key="R"><div class="hk-key">R</div><div class="hk-name" id="hk-r-name">-</div><div class="hk-cd" id="hk-r-cd"></div></div>
     <div class="hk-slot ult" id="hk-t" data-key="T"><div class="hk-key">T</div><div class="hk-name" id="hk-t-name">-</div><div class="hk-cd" id="hk-t-cd"></div></div>
     <div style="width:8px"></div>
-    <!-- Item slots 1-5 -->
-    <div class="hk-slot hk-item" id="hk-1" data-key="1"><div class="hk-key">1</div><div class="hk-name" id="hk-1-name">Boots</div></div>
-    <div class="hk-slot hk-item" id="hk-2" data-key="2"><div class="hk-key">2</div><div class="hk-name" id="hk-2-name">Sword</div></div>
-    <div class="hk-slot hk-item" id="hk-3" data-key="3"><div class="hk-key">3</div><div class="hk-name" id="hk-3-name">Shield</div></div>
-    <div class="hk-slot hk-item" id="hk-4" data-key="4"><div class="hk-key">4</div><div class="hk-name" id="hk-4-name">Cloak</div></div>
-    <div class="hk-slot hk-item" id="hk-5" data-key="5"><div class="hk-key">5</div><div class="hk-name" id="hk-5-name">Relic</div></div>
+    <!-- Lane switch slots -->
+    <div class="hk-slot hk-item" id="hk-1" data-key="1" style="border-color:#4A8FE033"><div class="hk-key">1</div><div class="hk-name" id="hk-1-name" style="color:#4A8FE0">TOP</div></div>
+    <div class="hk-slot hk-item" id="hk-2" data-key="2" style="border-color:#C8960C33"><div class="hk-key">2</div><div class="hk-name" id="hk-2-name" style="color:#C8960C">MID</div></div>
+    <div class="hk-slot hk-item" id="hk-3" data-key="3" style="border-color:#E24B4A33"><div class="hk-key">3</div><div class="hk-name" id="hk-3-name" style="color:#E24B4A">BOT</div></div>
+    <div style="width:4px"></div>
+    <div class="hk-slot hk-item" id="hk-b" data-key="B" style="border-color:#F0C04044"><div class="hk-key">B</div><div class="hk-name" style="color:#F0C040">SHOP</div></div>
   </div>
   <!-- Hero stats bar — stone plaque -->
   <div id="pc-stats-bar" style="position:fixed;bottom:240px;left:50%;transform:translateX(-50%);z-index:150;font-family:'Cinzel',serif;font-size:11px;color:#C8B890;background:#0d0d1aee;border:1px solid #C8960C44;border-radius:4px;padding:5px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.6)">
@@ -2687,12 +2696,12 @@ function pUpdate() {
 
   const halfW = MAP_W / 2;
 
-  // Draw base terrain even before WebSocket connects — unified green
+  // Draw base terrain even before WebSocket connects — extended edges
   graphics.fillStyle(0x2A6A1A, 1);
-  graphics.fillRect(0, 0, MAP_W, MAP_H);
+  graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
   // Lane road
   graphics.fillStyle(0x5A4A2A, 1);
-  graphics.fillRect(0, 1040, MAP_W, 320);
+  graphics.fillRect(-200, 1040, MAP_W + 400, 320);
 
   if (!gameState) return; // rest needs game state
 
@@ -2706,9 +2715,9 @@ function pUpdate() {
   const LANES = [{ name: 'mid', y: 1040, h: 320 }];
   const laneY = 1040, laneH = 320;
 
-  // Full map grass
+  // Full map grass (extended 200px on all sides to cover camera edges)
   graphics.fillStyle(grassBase, 1);
-  graphics.fillRect(0, 0, MAP_W, MAP_H);
+  graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
 
   // Lighter grass patches spread across full map
   graphics.fillStyle(isNight ? 0x1e3812 : 0x357A25, 0.2);
@@ -2766,10 +2775,10 @@ function pUpdate() {
     graphics.fillCircle(tr.x - 5, tr.y - 8, 12);
   }
 
-  // ─── LANE ROAD — uniform dirt color across full width ──────
+  // ─── LANE ROAD — uniform dirt color, extended edges ─────
   for (const lane of LANES) {
     graphics.fillStyle(isNight ? 0x3a3018 : 0x5A4A2A, 1);
-    graphics.fillRect(0, lane.y, MAP_W, lane.h);
+    graphics.fillRect(-200, lane.y, MAP_W + 400, lane.h);
     // Road seam lines
     graphics.lineStyle(1, isNight ? 0x2a2010 : 0x5A4A2A, 0.25);
     for (let ry = lane.y + 20; ry < lane.y + lane.h; ry += 40) graphics.lineBetween(0, ry, MAP_W, ry);
@@ -4943,20 +4952,13 @@ if (playerAgentId) {
     }
 
     // 1-5 = buy items
-    const itemIdx = ['1','2','3','4','5'].indexOf(key);
-    if (itemIdx >= 0) {
+    // 1/2/3 = lane switching
+    const laneMap = {'1':'top','2':'mid','3':'bot'};
+    if (laneMap[key]) {
       e.preventDefault();
       flashSlot('hk-' + key);
-      const item = ITEMS[itemIdx];
-      sendCmd({action:'buy', itemId:item.id}).then(d => {
-        if (d.success) {
-          myOwnedItems.add(item.id);
-          document.getElementById('pc-status').textContent = 'Bought ' + item.name + '!';
-          const slot = document.getElementById('hk-' + item.key);
-          if (slot) slot.classList.add('owned');
-        } else {
-          document.getElementById('pc-status').textContent = d.error || 'Failed';
-        }
+      sendCmd({action:'lane', lane:laneMap[key]}).then(d => {
+        document.getElementById('pc-status').textContent = d.success ? 'Lane: ' + laneMap[key].toUpperCase() : (d.error || 'Failed');
       });
       return;
     }

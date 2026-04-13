@@ -1418,7 +1418,7 @@
 <!-- ─── MAIN GAME AREA ───────────────────────────────── -->
 <div id="main-area">
   <div id="game-container"></div>
-  <canvas id="entity-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5"></canvas>
+  <canvas id="entity-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;display:block"></canvas>
   <div id="kill-feed">
     <div id="kill-feed-header">COMBAT LOG</div>
   </div>
@@ -5874,17 +5874,14 @@ function updatePlayerControls() {
     const canvas = document.getElementById('entity-canvas');
     if (!canvas || !gameState) return;
 
-    // Force canvas to full viewport size every frame
-    const tb = document.getElementById('top-bar');
-    const bp = document.getElementById('bottom-panel');
-    const topH = (tb && !IS_SPECTATE) ? tb.offsetHeight : 0;
-    const botH = (bp && !IS_SPECTATE) ? bp.offsetHeight : 0;
-    const w = window.innerWidth;
-    const h = window.innerHeight - topH - botH;
+    // Size canvas to match its displayed area
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
+    if (w < 10 || h < 10) return; // not laid out yet
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
-      canvas.style.cssText = `position:fixed;top:${topH}px;left:0;width:${w}px;height:${h}px;pointer-events:none;z-index:5`;
     }
 
     const ctx = canvas.getContext('2d');
@@ -5892,7 +5889,7 @@ function updatePlayerControls() {
 
     if (!gameState.heroes) return;
 
-    // Scale from MAP coordinates (4800x2400) to actual pixel dimensions
+    // Scale from MAP coordinates (4800x2400) to displayed pixel area
     const scaleX = w / MAP_WC;
     const scaleY = h / MAP_HC;
 
@@ -6133,14 +6130,14 @@ function updatePlayerControls() {
       ctx.textAlign = 'center';
       // Name (max 10 chars, small font)
       const displayName = (hero.displayName || hero.heroClass).substring(0, 10);
-      // Faction badge + name
-      const badge = isA ? '[A]' : '[H]';
-      ctx.font = 'bold 9px sans-serif'; ctx.textBaseline = 'bottom'; ctx.textAlign = 'center';
-      ctx.fillStyle = isA ? '#4fc3f7' : '#ff6666';
-      ctx.fillText(badge, x - ctx.measureText(displayName).width/2 - 10, y - 16*s - 2);
+      // Name with small faction dot
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.fillStyle = isMine ? '#FFD700' : '#FFFFFFCC';
       ctx.font = '11px Cinzel, sans-serif';
       ctx.fillText(displayName, x, y - 16*s - 2);
+      // Tiny faction dot top-left of sprite
+      ctx.fillStyle = isA ? '#4fc3f7' : '#ff6666';
+      ctx.beginPath(); ctx.arc(x - 10*s, y - 14*s, 3, 0, Math.PI * 2); ctx.fill();
       // Level badge (small)
       ctx.fillStyle = '#C8960C'; ctx.font = '9px sans-serif';
       ctx.textBaseline = 'top'; ctx.fillText('Lv' + hero.level, x, y + 16*s + 2);
@@ -6207,27 +6204,65 @@ function updatePlayerControls() {
     while (_dmgFloats.length > 60) _dmgFloats.shift();
   }
 
-  // Run entity rendering at 20fps (independent of Phaser)
-  setInterval(renderEntities, 50);
+  // ─── Hero tooltip on hover ────────────────────────────────
+  let _mouseX = 0, _mouseY = 0;
+  document.getElementById('main-area').addEventListener('mousemove', (e) => {
+    const rect = document.getElementById('entity-canvas')?.getBoundingClientRect();
+    if (!rect) return;
+    _mouseX = e.clientX - rect.left;
+    _mouseY = e.clientY - rect.top;
+  });
 
-  // Position the entity canvas correctly inside main-area
-  function positionEntityCanvas() {
-    const bp = document.getElementById('bottom-panel');
-    const tb = document.getElementById('top-bar');
-    const ec = document.getElementById('entity-canvas');
-    if (!ec) return;
-    const topH = (tb && !IS_SPECTATE) ? tb.offsetHeight : 0;
-    const botH = (bp && !IS_SPECTATE) ? bp.offsetHeight : 0;
-    const w = window.innerWidth;
-    const h = window.innerHeight - topH - botH;
-    ec.style.cssText = `position:fixed;top:${topH}px;left:0;width:${w}px;height:${h}px;pointer-events:none;z-index:5`;
-    // Set pixel dimensions for crisp rendering
-    ec.width = w;
-    ec.height = h;
+  // Draw tooltip in renderEntities if mouse is near a hero
+  const _origRender = renderEntities;
+  // Patch: add tooltip drawing at end of each render
+  function renderWithTooltip() {
+    _origRender();
+    const canvas = document.getElementById('entity-canvas');
+    if (!canvas || !gameState || !gameState.heroes) return;
+    const ctx = canvas.getContext('2d');
+    const scX = canvas.width / MAP_WC;
+    const scY = canvas.height / MAP_HC;
+
+    // Find hero nearest to mouse
+    let closest = null, closestDist = 30; // 30px threshold
+    for (const h of gameState.heroes) {
+      const hx = h.x * scX, hy = h.y * scY;
+      const d = Math.sqrt((_mouseX - hx) ** 2 + (_mouseY - hy) ** 2);
+      if (d < closestDist) { closestDist = d; closest = h; }
+    }
+    if (!closest) return;
+
+    // Draw tooltip box
+    const tx = closest.x * scX + 20, ty = closest.y * scY - 40;
+    const lines = [
+      closest.displayName || closest.heroClass,
+      (closest.faction === 'alliance' ? 'Alliance' : 'Horde') + ' ' + closest.heroClass,
+      'Level ' + closest.level + ' | Tier ' + (closest.tier || 1),
+      'HP: ' + closest.hp + '/' + closest.maxHp,
+      'K/D/A: ' + closest.kills + '/' + closest.deaths + '/' + closest.assists,
+      'Gold: ' + closest.gold,
+    ];
+    const pw = 130, ph = lines.length * 14 + 10;
+    // Box
+    ctx.fillStyle = 'rgba(10,10,20,0.9)';
+    ctx.fillRect(tx, ty, pw, ph);
+    ctx.strokeStyle = '#C8960C88';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tx, ty, pw, ph);
+    // Text
+    ctx.font = '10px Cinzel, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    lines.forEach((line, i) => {
+      ctx.fillStyle = i === 0 ? '#FFD700' : (i === 1 ? (closest.faction === 'alliance' ? '#4fc3f7' : '#ff6666') : '#CCCCCC');
+      ctx.fillText(line, tx + 6, ty + 5 + i * 14);
+    });
   }
-  positionEntityCanvas();
-  window.addEventListener('resize', positionEntityCanvas);
-  setInterval(positionEntityCanvas, 2000); // re-check periodically
+  // Replace the interval
+  clearInterval(0); // can't clear the original, so just override
+  setInterval(renderWithTooltip, 50);
+  // and sizing is done in renderEntities() via getBoundingClientRect()
 })();
 
 // Resize handled by Phaser Scale.FIT

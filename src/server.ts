@@ -1299,7 +1299,21 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
   // tick speed so it feels responsive under WASD. The client sends a
   // destination via /api/strategy/deployment move; the tick loop walks there
   // smoothly at 20Hz so movement flows instead of stuttering across the map.
-  if (hero.controlMode !== 'manual' && hero.moveTarget && !hero.focusTargetId) {
+  if (hero.controlMode === 'manual') {
+    // Smooth movement toward moveTarget for manual-mode heroes
+    if (hero.moveTarget) {
+      const dx = hero.moveTarget.x - hero.pos.x;
+      const dy = hero.moveTarget.y - hero.pos.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d > 5) {
+        const step = Math.min(hero.speed * 3.5 * dt, d);
+        hero.pos.x += (dx / d) * step;
+        hero.pos.y += (dy / d) * step;
+      } else {
+        hero.moveTarget = null; // Arrived
+      }
+    }
+  } else if (hero.moveTarget && !hero.focusTargetId) {
     const d = dist(hero.pos, hero.moveTarget);
     if (d < 8) {
       hero.moveTarget = null; // arrived
@@ -1330,8 +1344,8 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
 
       if (d > desiredRange) {
         // Walk in. Players don't get lane clamping — full map movement.
-        // Manual mode heroes position themselves — skip auto-chase.
-        if (hero.controlMode !== 'manual') hero.pos = moveToward(hero.pos, target.pos, hero.speed * 1.5, dt);
+        // Manual mode heroes chase focus targets too (smooth walk-in).
+        hero.pos = moveToward(hero.pos, target.pos, hero.speed * 1.5, dt);
       } else if (pendingAb) {
         // In range — fire the queued ability
         const queuedId = hero.pendingAbilityId!;
@@ -1828,6 +1842,7 @@ function serializeState() {
       lane: h.lane,
       focusTargetId: h.focusTargetId,
       controlMode: h.controlMode,
+      moveTarget: h.moveTarget ? { x: Math.round(h.moveTarget.x), y: Math.round(h.moveTarget.y) } : null,
     })),
     units: [...state.units.values()].map(u => ({
       id: u.id, faction: u.faction, unitType: u.unitType,
@@ -1897,8 +1912,12 @@ wss.on('connection', (ws) => {
         if (hero.controlMode !== 'manual') return;
         const x = Math.max(0, Math.min(MAP_W, Number(msg.x) || hero.pos.x));
         const y = Math.max(0, Math.min(MAP_H, Number(msg.y) || hero.pos.y));
-        hero.pos.x = x;
-        hero.pos.y = y;
+        hero.moveTarget = { x, y };  // Server will move hero toward this each tick
+      }
+      if (msg.type === 'hero_attack') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (!hero || !hero.alive) return;
+        hero.focusTargetId = msg.targetId || null;
       }
       if (msg.type === 'set_control_mode') {
         const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);

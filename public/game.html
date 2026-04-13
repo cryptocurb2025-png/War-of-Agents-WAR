@@ -2141,6 +2141,7 @@ let currentTargetId = null; // entity ID of current attack target
 let controlMode = 'auto'; // 'auto' or 'manual' — toggled by player
 let lastSeenMatchId = null; // detect server-side match resets
 let targetRingAngle = 0;   // animated rotation for target ring
+let cameraFreeMode = false; // true = edge-pan instead of hero follow
 
 // ─── Generate textures programmatically ─────────────────────────
 function pPreload() {
@@ -2431,11 +2432,59 @@ function pCreate() {
   this.input.on('pointerdown', (pointer) => {
     if (!gameState) return;
 
-    // Manual mode: left-click to move hero
-    if (playerAgentId && controlMode === 'manual' && pointer.leftButtonDown()) {
-      const worldX = pointer.worldX, worldY = pointer.worldY;
+    // Right-click = move to position (Dota-style)
+    if (playerAgentId && pointer.rightButtonDown()) {
+      e = pointer.event; if (e && e.preventDefault) e.preventDefault();
+      const wx = Math.round(pointer.worldX), wy = Math.round(pointer.worldY);
       if (ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'hero_move', agentId: playerAgentId, x: Math.round(worldX), y: Math.round(worldY) }));
+        ws.send(JSON.stringify({ type: 'hero_move', agentId: playerAgentId, x: wx, y: wy }));
+      }
+      // Show move indicator
+      if (phaserScene) {
+        const marker = phaserScene.add.circle(wx, wy, 8, 0x44CC66, 0.6).setDepth(50);
+        phaserScene.tweens.add({ targets: marker, alpha: 0, scale: 2, duration: 500, onComplete: () => marker.destroy() });
+      }
+      return;
+    }
+
+    // Left-click = attack nearest enemy at clicked position (Dota-style)
+    if (playerAgentId && pointer.leftButtonDown()) {
+      const wx = pointer.worldX, wy = pointer.worldY;
+      if (gameState) {
+        let best = null, bestDist = 120;
+        const myFaction = localStorage.getItem('woa_faction') || 'alliance';
+        for (const h of gameState.heroes) {
+          if (!h.alive || h.faction === myFaction) continue;
+          const d = Math.sqrt((h.x-wx)**2 + (h.y-wy)**2);
+          if (d < bestDist) { bestDist = d; best = h; }
+        }
+        if (!best) {
+          for (const u of gameState.units) {
+            if (!u.alive || u.faction === myFaction) continue;
+            const d = Math.sqrt((u.x-wx)**2 + (u.y-wy)**2);
+            if (d < bestDist) { bestDist = d; best = u; }
+          }
+        }
+        if (!best) {
+          for (const s of gameState.structures) {
+            if (!s.alive || s.faction === myFaction) continue;
+            const d = Math.sqrt((s.x-wx)**2 + (s.y-wy)**2);
+            if (d < bestDist) { bestDist = d; best = s; }
+          }
+        }
+        if (best) {
+          // Send attack command via WebSocket
+          if (ws && ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: 'hero_attack', agentId: playerAgentId, targetId: best.id }));
+          }
+          currentTargetId = best.id;
+          // Show attack indicator
+          if (phaserScene) {
+            const ring = phaserScene.add.circle(best.x, best.y, 20, 0xFF4444, 0).setDepth(50);
+            ring.setStrokeStyle(2, 0xFF4444, 0.8);
+            phaserScene.tweens.add({ targets: ring, alpha: 0, scale: 1.5, duration: 400, onComplete: () => ring.destroy() });
+          }
+        }
       }
       return;
     }
@@ -2458,60 +2507,15 @@ function pCreate() {
       }
       return;
     }
+  });
 
-    if (pointer.rightButtonDown()) {
-      // Convert screen coords to world coords
-      const worldX = pointer.worldX;
-      const worldY = pointer.worldY;
-
-      // Find closest enemy entity under cursor (within 60px)
-      const myHero = gameState.heroes.find(h => h.agentId === playerAgentId);
-      if (!myHero) return;
-
-      let bestEntity = null;
-      let bestDist = 60; // click radius threshold
-
-      // Check enemy heroes
-      for (const h of gameState.heroes) {
-        if (!h.alive || h.faction === myHero.faction) continue;
-        const dx = h.x - worldX, dy = h.y - worldY;
-        const d = Math.sqrt(dx*dx + dy*dy);
-        if (d < bestDist) { bestDist = d; bestEntity = h; }
-      }
-      // Check enemy units
-      for (const u of gameState.units) {
-        if (!u.alive || u.faction === myHero.faction) continue;
-        const dx = u.x - worldX, dy = u.y - worldY;
-        const d = Math.sqrt(dx*dx + dy*dy);
-        if (d < bestDist) { bestDist = d; bestEntity = u; }
-      }
-      // Check enemy structures
-      for (const s of gameState.structures) {
-        if (!s.alive || s.faction === myHero.faction) continue;
-        const dx = s.x - worldX, dy = s.y - worldY;
-        const d = Math.sqrt(dx*dx + dy*dy);
-        if (d < bestDist) { bestDist = d; bestEntity = s; }
-      }
-
-      if (bestEntity) {
-        // Send attack command to server
-        currentTargetId = bestEntity.id;
-        sendCmd({ action: 'attack', targetId: bestEntity.id }).then(d => {
-          if (d.success) {
-            document.getElementById('pc-status').textContent = 'ATTACKING ' + (d.targetName || 'enemy').toUpperCase();
-          }
-        });
-        // Play target sound
-        initAudio();
-        playTone(800, 0.06, 0.08, 'sine');
-        playTone(1200, 0.06, 0.06, 'sine');
-      } else {
-        // Right-click on ground = move (clear target)
-        currentTargetId = null;
-        sendCmd({ action: 'move', targetX: worldX, targetY: worldY });
-        document.getElementById('pc-status').textContent = 'MOVING';
-      }
-    }
+  // Scroll wheel zoom
+  this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+    if (!cam) return;
+    const zoomDelta = deltaY > 0 ? -0.02 : 0.02;
+    const minZoom = calcZoom(phaserScene.scale.width, phaserScene.scale.height);
+    const maxZoom = 1.0;
+    cam.zoom = Math.max(minZoom, Math.min(maxZoom, cam.zoom + zoomDelta));
   });
 }
 
@@ -2586,27 +2590,42 @@ function pUpdate() {
   // Decay the shake
   if (_shakeIntensity > 0) _shakeIntensity = Math.max(0, _shakeIntensity - 0.6);
 
+  // ─── Edge-of-screen pan (Dota-style free camera) ───────────────
+  if (keysDown[' ']) cameraFreeMode = true;
+
   // ─── Camera: follow the player hero if we have one ─────────────
   // Spectator view stays wide; player view zooms in and locks to the hero.
   if (cam && gameState && playerAgentId) {
     const myH = gameState.heroes.find(h => h.agentId === playerAgentId);
     if (myH && myH.alive) {
-      // Zoom to see ~3200x1600 around the hero (wide enough to see the action)
-      const targetZoom = Math.min(phaserScene.scale.width / 3200, phaserScene.scale.height / 1600);
-      const currentZoom = cam.zoom;
-      const lerpZoom = currentZoom + (targetZoom - currentZoom) * 0.05;
-      cam.setZoom(lerpZoom);
-      // Smooth follow
-      const targetX = myH.x;
-      const targetY = myH.y;
-      const currentX = cam.scrollX + cam.width / cam.zoom / 2;
-      const currentY = cam.scrollY + cam.height / cam.zoom / 2;
-      const newX = currentX + (targetX - currentX) * 0.15;
-      const newY = currentY + (targetY - currentY) * 0.15;
-      // Apply screen shake offset
-      const shakeX = _shakeIntensity > 0 ? (Math.random() - 0.5) * _shakeIntensity * 4 : 0;
-      const shakeY = _shakeIntensity > 0 ? (Math.random() - 0.5) * _shakeIntensity * 4 : 0;
-      cam.centerOn(newX + shakeX, newY + shakeY);
+      if (cameraFreeMode) {
+        // Edge-of-screen pan instead of following hero
+        const px = phaserScene.input.activePointer.x;
+        const py = phaserScene.input.activePointer.y;
+        const edgeSize = 40;
+        const panSpeed = 10 / cam.zoom;
+        if (px < edgeSize) cam.scrollX -= panSpeed;
+        if (px > phaserScene.scale.width - edgeSize) cam.scrollX += panSpeed;
+        if (py < edgeSize) cam.scrollY -= panSpeed;
+        if (py > phaserScene.scale.height - edgeSize) cam.scrollY += panSpeed;
+      } else {
+        // Zoom to see ~3200x1600 around the hero (wide enough to see the action)
+        const targetZoom = Math.min(phaserScene.scale.width / 3200, phaserScene.scale.height / 1600);
+        const currentZoom = cam.zoom;
+        const lerpZoom = currentZoom + (targetZoom - currentZoom) * 0.05;
+        cam.setZoom(lerpZoom);
+        // Smooth follow
+        const targetX = myH.x;
+        const targetY = myH.y;
+        const currentX = cam.scrollX + cam.width / cam.zoom / 2;
+        const currentY = cam.scrollY + cam.height / cam.zoom / 2;
+        const newX = currentX + (targetX - currentX) * 0.15;
+        const newY = currentY + (targetY - currentY) * 0.15;
+        // Apply screen shake offset
+        const shakeX = _shakeIntensity > 0 ? (Math.random() - 0.5) * _shakeIntensity * 4 : 0;
+        const shakeY = _shakeIntensity > 0 ? (Math.random() - 0.5) * _shakeIntensity * 4 : 0;
+        cam.centerOn(newX + shakeX, newY + shakeY);
+      }
     } else {
       // Player's hero not found or dead — show wide view while waiting
       const wz = calcZoom(phaserScene.scale.width, phaserScene.scale.height);
@@ -2944,6 +2963,19 @@ function pUpdate() {
         graphics.lineStyle(1, 0x44CC66, pulse);
         graphics.strokeCircle(myHero.x, myHero.y + 40, 20);
       }
+    }
+  }
+
+  // ─── MOVE TARGET INDICATOR ─────────────────────────────────
+  if (playerAgentId && gameState) {
+    const myH = gameState.heroes.find(h => h.agentId === playerAgentId);
+    if (myH && myH.moveTarget) {
+      const mt = myH.moveTarget;
+      graphics.lineStyle(1, 0x44CC66, 0.4);
+      graphics.strokeCircle(mt.x, mt.y, 10);
+      // Dashed line from hero to target
+      graphics.lineStyle(1, 0x44CC66, 0.15);
+      graphics.lineBetween(myH.x, myH.y, mt.x, mt.y);
     }
   }
 
@@ -4514,14 +4546,13 @@ if (musicEnabled) {
 
     const pid = (new URLSearchParams(window.location.search)).get('player') || localStorage.getItem('woa_agentId');
 
-    // Player mode: click to move
+    // Player mode: click on minimap = jump camera to that position
     if (pid) {
-      const tx = Math.max(100, Math.min(4700, worldX));
-      const ty = Math.max(100, Math.min(2300, worldY));
-      fetch('/api/strategy/deployment', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({agentId: pid, action: 'move', targetX: tx, targetY: ty})
-      }).catch(() => {});
+      if (cam) {
+        cam.centerOn(worldX, worldY);
+        cameraFreeMode = true;
+        setTimeout(() => { cameraFreeMode = false; }, 2000);
+      }
     } else if (gameState && gameState.heroes) {
       // Spectator mode: click a hero on the minimap to lock the main camera to them
       let nearestHero = null, nearestDist = 350;
@@ -4724,15 +4755,29 @@ if (playerAgentId) {
     const key = e.key.toLowerCase();
     keysDown[key] = true;
 
-    // WASD / Arrow movement (clears target focus)
+    // WASD / Arrow movement — send single move command in direction
     if (['a','d','w','s','arrowleft','arrowright','arrowup','arrowdown'].includes(key)) {
       e.preventDefault();
-      if (controlMode === 'manual') {
-        startManualMoveLoop();
-      } else {
-        currentTargetId = null;
-        startMoveLoop();
+      if (controlMode === 'manual' || controlMode === 'auto') {
+        // WASD: move 200px in the direction from current hero position
+        const myH = getMyHero();
+        if (myH) {
+          let dx = 0, dy = 0;
+          if (key === 'a' || key === 'arrowleft') dx = -200;
+          if (key === 'd' || key === 'arrowright') dx = 200;
+          if (key === 'w' || key === 'arrowup') dy = -200;
+          if (key === 's' || key === 'arrowdown') dy = 200;
+          const nx = Math.max(0, Math.min(4800, myH.x + dx));
+          const ny = Math.max(0, Math.min(2400, myH.y + dy));
+          if (ws && ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: 'hero_move', agentId: playerAgentId, x: nx, y: ny }));
+          }
+        }
+        return;
       }
+      // Fallback: existing startMoveLoop behavior
+      currentTargetId = null;
+      startMoveLoop();
       return;
     }
 
@@ -4844,7 +4889,10 @@ if (playerAgentId) {
   });
 
   document.addEventListener('keyup', (e) => {
-    keysDown[e.key.toLowerCase()] = false;
+    const key = e.key.toLowerCase();
+    keysDown[key] = false;
+    // Space released = return camera to hero follow
+    if (key === ' ') cameraFreeMode = false;
     stopMoveLoop();
     // Stop manual move loop when all movement keys are released
     if (controlMode === 'manual' && !keysDown['a'] && !keysDown['d'] && !keysDown['w'] && !keysDown['s'] && !keysDown['arrowleft'] && !keysDown['arrowright'] && !keysDown['arrowup'] && !keysDown['arrowdown']) {

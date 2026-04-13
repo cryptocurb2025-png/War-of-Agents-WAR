@@ -882,10 +882,10 @@
   #chat-panel {
     position: fixed;
     bottom: 196px;
-    left: 8px;
-    width: 280px;
-    background: rgba(10,8,6,0.88);
-    border: 1px solid #c8941a;
+    left: 170px; /* to the right of the betting panel */
+    width: 240px;
+    background: rgba(13,13,26,0.92);
+    border: 1px solid #c8941a33;
     border-radius: 6px;
     z-index: 140;
     display: flex;
@@ -1030,16 +1030,18 @@
   #betting-panel {
     position: fixed;
     top: 50px;
-    left: 10px;
-    width: 200px;
-    background: #0A0804ee;
-    border: 1px solid #5A4A2A;
-    border-radius: 6px;
-    padding: 10px;
+    left: 8px;
+    width: 155px;
+    background: #0d0d1a;
+    border-right: 1px solid #C8960C33;
+    border-radius: 4px;
+    padding: 8px;
     z-index: 30;
     font-family: 'Cinzel', serif;
-    font-size: 11px;
+    font-size: 10px;
     color: #AAA080;
+    overflow: hidden;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.3);
   }
   #betting-panel .bet-title {
     color: #C8960C;

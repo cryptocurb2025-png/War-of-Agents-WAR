@@ -2561,8 +2561,8 @@ function pUpdate() {
   if (cam && gameState && playerAgentId) {
     const myH = gameState.heroes.find(h => h.agentId === playerAgentId);
     if (myH && myH.alive) {
-      // Zoom in enough to see ~1600x800 around the hero (MOBA-ish feel)
-      const targetZoom = Math.min(phaserScene.scale.width / 1600, phaserScene.scale.height / 800);
+      // Zoom to see ~3200x1600 around the hero (wide enough to see the action)
+      const targetZoom = Math.min(phaserScene.scale.width / 3200, phaserScene.scale.height / 1600);
       const currentZoom = cam.zoom;
       const lerpZoom = currentZoom + (targetZoom - currentZoom) * 0.05;
       cam.setZoom(lerpZoom);
@@ -2587,7 +2587,7 @@ function pUpdate() {
         const wideZoom = calcZoom(phaserScene.scale.width, phaserScene.scale.height);
         cam.setZoom(wideZoom);
       } else {
-        const targetZoom = Math.min(phaserScene.scale.width / 1800, phaserScene.scale.height / 900);
+        const targetZoom = Math.min(phaserScene.scale.width / 3200, phaserScene.scale.height / 1600);
         const lerpZoom = cam.zoom + (targetZoom - cam.zoom) * 0.04;
         cam.setZoom(lerpZoom);
         const currentX = cam.scrollX + cam.width / cam.zoom / 2;
@@ -5025,8 +5025,13 @@ if (playerAgentId) {
         <button id="ghost-spectate" style="padding:10px 22px;background:transparent;color:#9A8B6E;border:1px solid rgba(154,139,110,0.4);border-radius:4px;font-family:Cinzel,serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:0.78rem;cursor:pointer">Just Spectate</button>
       </div>`;
     document.body.appendChild(el);
-    document.getElementById('ghost-rejoin').onclick = rejoinMatch;
+    document.getElementById('ghost-rejoin').onclick = () => {
+      // Go to registration page to properly re-enter
+      window.location.href = '/play';
+    };
     document.getElementById('ghost-spectate').onclick = () => {
+      // Clear stored agent so we don't get the ghost banner again
+      localStorage.removeItem('woa_agentId');
       window.location.href = '/game.html';
     };
     return el;

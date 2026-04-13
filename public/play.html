@@ -1124,12 +1124,22 @@ a { color: #C8960C; text-decoration: none; }
     hideQueueOverlay();
   };
 
-  // Auto-reconnect if we have stored data
+  // Auto-reconnect: only if we have stored data AND the player param says so
+  // Don't auto-redirect — let the user see the registration form and choose to re-enter
   if (agentId && playerFaction && playerClass) {
-    playerName = localStorage.getItem('woa_playerName') || 'Warrior';
-    selectedFaction = playerFaction;
-    selectedHero = playerClass;
-    showBattleHud();
+    // Pre-fill the form with stored values instead of auto-redirecting
+    const nameInput = document.getElementById('playerName');
+    if (nameInput) nameInput.value = localStorage.getItem('woa_playerName') || '';
+    // Pre-select faction
+    if (playerFaction) {
+      const fBtn = document.querySelector('.faction-btn.' + playerFaction);
+      if (fBtn) { fBtn.click(); }
+    }
+    // Pre-select hero
+    if (playerClass) {
+      const hBtn = document.querySelector(`.hero-btn[data-class="${playerClass}"]`);
+      if (hBtn) { hBtn.click(); }
+    }
   }
 
   // ── Battle HUD ─────────────────────────────────────────────

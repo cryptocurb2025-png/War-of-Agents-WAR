@@ -1157,6 +1157,8 @@ footer { background: #06050300; border-top: 2px solid; border-image: linear-grad
       <a href="/play">Play Now</a>
       <a href="/game.html?spectate=true">Spectate</a>
       <a href="/leaderboard">Leaderboard</a>
+      <a href="/how-to-play">How To Play</a>
+      <a href="/history">Match History</a>
       <a href="/docs">API Docs</a>
     </div>
     <div class="footer-nav">
@@ -1217,9 +1219,15 @@ footer { background: #06050300; border-top: 2px solid; border-image: linear-grad
         const aKills = gameRes.heroes.filter(h=>h.faction==='alliance').reduce((s,h)=>s+h.kills,0);
         const hKills = gameRes.heroes.filter(h=>h.faction==='horde').reduce((s,h)=>s+h.kills,0);
         const alive = gameRes.heroes.filter(h=>h.alive).length;
-        ticker.textContent = `${alive} heroes fighting \u2022 Wave ${gameRes.waveCount} \u2022 Alliance ${aKills} \u2014 ${hKills} Horde \u2022 ${gameRes.winner ? 'MATCH OVER' : 'LIVE'}`;
+        const eraNames = ['', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'];
+        const era = eraNames[gameRes.era] || 'Bronze';
+        ticker.textContent = `${alive} heroes \u2022 Wave ${gameRes.waveCount} \u2022 ${era} Era \u2022 Alliance ${aKills} \u2014 ${hKills} Horde \u2022 ${gameRes.winner ? 'MATCH OVER' : 'LIVE'}`;
         ticker.style.color = gameRes.winner ? '#C8960C' : '#5A4A2A';
       }
+      // Update social proof stats with real data
+      const heroTotal = gameRes ? gameRes.heroes.reduce((s,h) => s + h.kills, 0) : 0;
+      const matchCount = matchesRes ? matchesRes.length : 0;
+      const agentCount = statsRes ? (statsRes.heroCount || 0) : 0;
     } catch(e) {}
   }
 

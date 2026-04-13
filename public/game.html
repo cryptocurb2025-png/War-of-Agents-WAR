@@ -3218,6 +3218,86 @@ function pUpdate() {
     }
   }
 
+  // ═══ CASTLE SILHOUETTES ═══
+  // Alliance castle (far left, x=50-250)
+  graphics.fillStyle(0x1A3060, 0.9);
+  // Main keep
+  graphics.fillRect(80, MAP_H/2 - 120, 80, 240);
+  // Tall tower
+  graphics.fillRect(110, MAP_H/2 - 180, 30, 360);
+  // Tower roof
+  graphics.fillTriangle(110, MAP_H/2 - 180, 125, MAP_H/2 - 220, 140, MAP_H/2 - 180);
+  // Left tower
+  graphics.fillRect(50, MAP_H/2 - 100, 25, 200);
+  graphics.fillTriangle(50, MAP_H/2 - 100, 62, MAP_H/2 - 130, 75, MAP_H/2 - 100);
+  // Right tower
+  graphics.fillRect(170, MAP_H/2 - 90, 25, 180);
+  // Crenellations on main keep
+  for (let cx = 80; cx < 160; cx += 12) {
+    graphics.fillRect(cx, MAP_H/2 - 126, 8, 8);
+  }
+  // Gate
+  graphics.fillStyle(0x0A1A30, 1);
+  graphics.fillRect(108, MAP_H/2 + 80, 24, 40);
+  // Windows (glowing blue)
+  graphics.fillStyle(0x4A8FE0, 0.4);
+  graphics.fillRect(120, MAP_H/2 - 140, 6, 10);
+  graphics.fillRect(120, MAP_H/2 - 100, 6, 10);
+  graphics.fillRect(90, MAP_H/2 - 60, 5, 8);
+  graphics.fillRect(145, MAP_H/2 - 60, 5, 8);
+  // Alliance banner
+  const bWave1 = Math.sin(t * 0.06) * 3;
+  graphics.fillStyle(0x2244AA, 0.7);
+  graphics.fillTriangle(125, MAP_H/2 - 220, 145 + bWave1, MAP_H/2 - 212, 125, MAP_H/2 - 204);
+
+  // Iron Horde fortress (far right, x=MAP_W-250 to MAP_W-50)
+  const hx = MAP_W - 160;
+  graphics.fillStyle(0x3A1A0A, 0.9);
+  // Main hall (jagged top)
+  graphics.fillRect(hx - 50, MAP_H/2 - 100, 100, 220);
+  // Spikes on top
+  graphics.fillTriangle(hx - 50, MAP_H/2 - 100, hx - 40, MAP_H/2 - 100, hx - 45, MAP_H/2 - 130);
+  graphics.fillTriangle(hx - 20, MAP_H/2 - 100, hx - 10, MAP_H/2 - 100, hx - 15, MAP_H/2 - 140);
+  graphics.fillTriangle(hx + 10, MAP_H/2 - 100, hx + 20, MAP_H/2 - 100, hx + 15, MAP_H/2 - 135);
+  graphics.fillTriangle(hx + 40, MAP_H/2 - 100, hx + 50, MAP_H/2 - 100, hx + 45, MAP_H/2 - 125);
+  // Side towers
+  graphics.fillRect(hx - 80, MAP_H/2 - 80, 30, 180);
+  graphics.fillRect(hx + 50, MAP_H/2 - 90, 30, 190);
+  // Spike on towers
+  graphics.fillTriangle(hx - 80, MAP_H/2 - 80, hx - 65, MAP_H/2 - 120, hx - 50, MAP_H/2 - 80);
+  graphics.fillTriangle(hx + 50, MAP_H/2 - 90, hx + 65, MAP_H/2 - 130, hx + 80, MAP_H/2 - 90);
+  // Iron gate
+  graphics.fillStyle(0x1A0A04, 1);
+  graphics.fillRect(hx - 12, MAP_H/2 + 80, 24, 40);
+  // Forge windows (glowing orange)
+  graphics.fillStyle(0xFF6600, 0.4);
+  graphics.fillRect(hx - 8, MAP_H/2 - 60, 6, 10);
+  graphics.fillRect(hx + 5, MAP_H/2 - 60, 6, 10);
+  graphics.fillRect(hx - 35, MAP_H/2 - 40, 5, 8);
+  graphics.fillRect(hx + 35, MAP_H/2 - 40, 5, 8);
+  // Horde banner
+  const bWave2 = Math.sin(t * 0.06 + 2) * 3;
+  graphics.fillStyle(0xAA2211, 0.7);
+  graphics.fillTriangle(hx - 15, MAP_H/2 - 140, hx + 5 + bWave2, MAP_H/2 - 132, hx - 15, MAP_H/2 - 124);
+
+  // ═══ FRONTLINE INDICATOR ═══
+  // Show which side is winning based on average unit X positions
+  if (gs.units.length > 0) {
+    const aUnitsX = gs.units.filter(u => u.alive && u.faction === 'alliance');
+    const hUnitsX = gs.units.filter(u => u.alive && u.faction === 'horde');
+    const avgA = aUnitsX.length > 0 ? aUnitsX.reduce((s,u) => s + u.x, 0) / aUnitsX.length : MAP_W * 0.3;
+    const avgH = hUnitsX.length > 0 ? hUnitsX.reduce((s,u) => s + u.x, 0) / hUnitsX.length : MAP_W * 0.7;
+    const frontline = (avgA + avgH) / 2;
+    // Draw frontline marker
+    graphics.lineStyle(2, 0xC8960C, 0.15);
+    graphics.lineBetween(frontline, 0, frontline, MAP_H);
+    // Small indicators at lane crossings
+    for (const lane of ALL_LANES) {
+      graphics.fillStyle(0xC8960C, 0.25);
+      graphics.fillCircle(frontline, lane.y + lane.h / 2, 6);
+    }
+  }
+
   // ─── STRUCTURES (drawn with graphics each frame) ──────────
   for (const s of gs.structures) {
     if (!s.alive) { graphics.fillStyle(0x333333, 0.3); graphics.fillRect(s.x - 15, s.y - 10, 30, 20); continue; }
@@ -3281,7 +3361,7 @@ function pUpdate() {
       // Death animation
       const sp = spritePool[id];
       if (sp.alpha > 0) {
-        phaserScene.tweens.add({ targets: sp, alpha: 0, angle: 360, scaleX: 0.2, scaleY: 0.2, duration: 400, onComplete: () => { sp.destroy(); } });
+        phaserScene.tweens.add({ targets: sp, alpha: 0, angle: 90, scaleX: 0.3, scaleY: 0.1, y: sp.y + 10, duration: 600, onComplete: () => { sp.destroy(); } });
         // Death sparks
         for (let i = 0; i < 6; i++) {
           const spark = phaserScene.add.circle(sp.x, sp.y, 3, sp.getData('isAlliance') ? 0x4A8FE0 : 0xE24B4A).setDepth(50);
@@ -3459,6 +3539,12 @@ function pUpdate() {
           stroke: '#000', strokeThickness: 2,
         }).setOrigin(0.5).setDepth(90);
         phaserScene.tweens.add({ targets: txt, y: entity.y - 80, alpha: 0, duration: 1000, onComplete: () => txt.destroy() });
+        // Spawn impact effect at damaged entity position
+        abilityEffects.push({
+          type: 'impact', x: entity.x, y: entity.y,
+          color: entity.faction === 'alliance' ? 0xE24B4A : 0x4A8FE0,
+          size: 8, age: 0, maxAge: 15
+        });
       }
     }
   }
@@ -3587,6 +3673,25 @@ function pUpdate() {
         graphics.lineStyle(1, 0xFFD700, alpha * 0.4);
         graphics.lineBetween(fx.x, fx.y, fx.x + Math.cos(angle) * radius, fx.y + Math.sin(angle) * radius);
       }
+    } else if (fx.type === 'projectile') {
+      // Animated projectile traveling from source to target
+      const px = fx.sx + (fx.tx - fx.sx) * prog;
+      const py = fx.sy + (fx.ty - fx.sy) * prog;
+      graphics.fillStyle(fx.color, 1 - prog * 0.5);
+      graphics.fillCircle(px, py, fx.size * (1 - prog * 0.3));
+      // Trail
+      for (let t2 = 1; t2 <= 3; t2++) {
+        const tp = Math.max(0, prog - t2 * 0.05);
+        const tpx = fx.sx + (fx.tx - fx.sx) * tp;
+        const tpy = fx.sy + (fx.ty - fx.sy) * tp;
+        graphics.fillStyle(fx.color, (1 - prog) * 0.2);
+        graphics.fillCircle(tpx, tpy, fx.size * 0.5);
+      }
+    } else if (fx.type === 'impact') {
+      // Expanding impact ring at damage location
+      const r = fx.size * (1 + prog * 2);
+      graphics.fillStyle(fx.color, (1 - prog) * 0.5);
+      graphics.fillCircle(fx.x, fx.y, r);
     }
 
     return fx.age < fx.maxAge;

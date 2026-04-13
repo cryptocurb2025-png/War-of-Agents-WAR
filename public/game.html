@@ -98,7 +98,7 @@
     min-height: 300px;
   }
 
-  #game-container canvas { display: block; }
+  #game-container canvas { display: block; width: 100% !important; height: 100% !important; }
 
   /* ─── KING OF THE HILL BANNER (top center) — carved stone plaque ── */
   #king-banner {
@@ -1959,7 +1959,13 @@ ws.onmessage = (e) => {
   if (msg.type === 'state') {
     const prev = gameState;
     gameState = msg.data;
-    if (!prev) console.log('First gameState received — heroes:', gameState.heroes?.length, 'units:', gameState.units?.length, 'structures:', gameState.structures?.length);
+    if (!prev) {
+      console.log('[GAMESTATE] First state — heroes:', gameState.heroes?.length, 'units:', gameState.units?.length, 'structures:', gameState.structures?.length);
+      if (gameState.heroes?.length) console.log('[GAMESTATE] Hero positions:', gameState.heroes.slice(0,3).map(h => `${h.heroClass}@(${h.x},${h.y}) alive:${h.alive}`));
+      if (gameState.units?.length) console.log('[GAMESTATE] Unit positions:', gameState.units.slice(0,3).map(u => `${u.unitType}@(${u.x},${u.y}) alive:${u.alive}`));
+      if (gameState.structures?.length) console.log('[GAMESTATE] Structures:', gameState.structures.slice(0,3).map(s => `${s.type}@(${s.x},${s.y}) ${s.faction}`));
+      console.log('[GAMESTATE] Camera zoom:', cam?.zoom?.toFixed(4), 'center:', cam?.scrollX, cam?.scrollY);
+    }
     if (prev) {
       const prevMap = {};
       for (const h of prev.heroes) prevMap[h.id] = h;
@@ -2067,55 +2073,85 @@ function sfxAbilityHit() { playTone(350, 0.1, 0.07, 'square'); playTone(500, 0.0
 function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTone(1000, 0.12, 0.05, 'sine'), 80); setTimeout(() => playTone(1200, 0.1, 0.04, 'sine'), 160); }
 
 // ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────
+
+// Force game-container to have explicit pixel dimensions before Phaser init
+const _gc = document.getElementById('game-container');
+if (_gc) {
+  if (IS_SPECTATE) {
+    _gc.style.width = '100vw';
+    _gc.style.height = '100vh';
+  } else {
+    _gc.style.width = window.innerWidth + 'px';
+    _gc.style.height = (window.innerHeight - BOT_H - TOP_H) + 'px';
+  }
+}
+
 function getGameDimensions() {
   const gc = document.getElementById('game-container');
-  if (IS_SPECTATE) {
-    // In spectate/iframe mode: use full viewport (all chrome hidden)
-    const w = gc ? gc.clientWidth : window.innerWidth;
-    const h = gc ? gc.clientHeight : window.innerHeight;
-    return { w: Math.max(w, 400), h: Math.max(h, 300) };
-  }
-  return {
-    w: Math.max(window.innerWidth, 400),
-    h: Math.max(window.innerHeight - BOT_H - TOP_H, 300)
-  };
+  const w = gc ? gc.offsetWidth : window.innerWidth;
+  const h = gc ? gc.offsetHeight : (IS_SPECTATE ? window.innerHeight : window.innerHeight - BOT_H - TOP_H);
+  return { w: Math.max(w, 400), h: Math.max(h, 300) };
 }
+
+// Calculate zoom to fit FULL map (both width AND height)
+function calcZoom(canvasW, canvasH) {
+  return Math.min(canvasW / MAP_W, canvasH / MAP_H);
+}
+
 const dims = getGameDimensions();
-console.log('Phaser init dims:', dims.w, 'x', dims.h, 'spectate:', IS_SPECTATE);
+console.log('[PHASER INIT] container:', dims.w, 'x', dims.h, 'MAP:', MAP_W, 'x', MAP_H, 'zoom:', calcZoom(dims.w, dims.h).toFixed(4));
 
 const config = {
   type: Phaser.CANVAS,
   parent: 'game-container',
   width: dims.w,
   height: dims.h,
-  backgroundColor: '#0a1a0a',
+  backgroundColor: '#080808',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
   render: { antialias: false, pixelArt: true },
   banner: false,
+  scale: {
+    mode: Phaser.Scale.NONE,
+    autoCenter: Phaser.Scale.NO_CENTER,
+  },
 };
 
 const game = new Phaser.Game(config);
 
-// Handle resize — also recalculate camera zoom
+// Force canvas to fill container via CSS
+requestAnimationFrame(() => {
+  const canvas = document.querySelector('#game-container canvas');
+  if (canvas) {
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+  }
+});
+
+// Handle resize — recalculate everything
 function resizeGame() {
+  const gc = document.getElementById('game-container');
+  if (!gc) return;
+  if (!IS_SPECTATE) {
+    gc.style.width = window.innerWidth + 'px';
+    gc.style.height = (window.innerHeight - BOT_H - TOP_H) + 'px';
+  }
   const d = getGameDimensions();
   if (game && game.scale) {
     game.scale.resize(d.w, d.h);
-    // Recalculate camera zoom to fit full map (spectator wide view)
     if (cam) {
-      const wideZoom = d.w / MAP_W;
-      cam.setZoom(wideZoom);
+      cam.setZoom(calcZoom(d.w, d.h));
       cam.centerOn(MAP_W / 2, MAP_H / 2);
     }
-    console.log('Phaser resized to:', d.w, 'x', d.h, 'zoom:', cam ? cam.zoom : 'n/a');
+    // Force canvas CSS
+    const canvas = document.querySelector('#game-container canvas');
+    if (canvas) { canvas.style.width = '100%'; canvas.style.height = '100%'; }
+    console.log('[RESIZE] to:', d.w, 'x', d.h, 'zoom:', cam ? cam.zoom.toFixed(4) : 'n/a');
   }
 }
 window.addEventListener('resize', resizeGame);
 
-// In spectate/iframe mode, kick a resize after DOM settles so Phaser fills the container
-if (IS_SPECTATE) {
-  requestAnimationFrame(() => { resizeGame(); requestAnimationFrame(resizeGame); });
-}
+// Kick resize after DOM settles
+requestAnimationFrame(() => { resizeGame(); requestAnimationFrame(resizeGame); });
 let cam, graphics;
 // Sprite pools keyed by entity id
 const spritePool = {};
@@ -2388,11 +2424,12 @@ function pCreate() {
   cam = this.cameras.main;
   cam.setBackgroundColor('#0a1a0a');
   cam.setBounds(0, 0, MAP_W, MAP_H);
-  console.log('Phaser create: canvas', this.scale.width, 'x', this.scale.height, '| container:', document.getElementById('game-container')?.clientWidth, 'x', document.getElementById('game-container')?.clientHeight);
 
-  // Zoom: fit full 4800-wide map into view
-  cam.setZoom(this.scale.width / MAP_W);
-  cam.centerOn(2400, 1200);
+  // Zoom: fit FULL map into view (both width AND height)
+  const z = calcZoom(this.scale.width, this.scale.height);
+  cam.setZoom(z);
+  cam.centerOn(MAP_W / 2, MAP_H / 2);
+  console.log('[PHASER CREATE] canvas:', this.scale.width, 'x', this.scale.height, 'zoom:', z.toFixed(4), 'visible world:', Math.round(this.scale.width/z), 'x', Math.round(this.scale.height/z));
 
   // Dynamic layer for everything
   graphics = this.add.graphics();
@@ -2594,7 +2631,7 @@ function pUpdate() {
       const target = gameState.heroes.find(h => h.id === spectatorFollowId && h.alive);
       if (!target) {
         spectatorFollowId = null;
-        const wideZoom = phaserScene.scale.width / MAP_W;
+        const wideZoom = calcZoom(phaserScene.scale.width, phaserScene.scale.height);
         cam.setZoom(wideZoom);
       } else {
         const targetZoom = Math.min(phaserScene.scale.width / 1800, phaserScene.scale.height / 900);
@@ -2607,7 +2644,7 @@ function pUpdate() {
         cam.centerOn(newX, newY);
       }
     } else {
-      const wideZoom = phaserScene.scale.width / MAP_W;
+      const wideZoom = calcZoom(phaserScene.scale.width, phaserScene.scale.height);
       if (Math.abs(cam.zoom - wideZoom) > 0.001) {
         cam.setZoom(wideZoom);
         cam.centerOn(MAP_W / 2, MAP_H / 2);

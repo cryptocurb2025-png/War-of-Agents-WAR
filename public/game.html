@@ -1646,6 +1646,11 @@
 // ═══════════════════════════════════════════════════════════════
 // WAR OF AGENTS — Phaser 3 Sprite-Based Renderer
 // ═══════════════════════════════════════════════════════════════
+
+// Spectate mode flag — must be defined before anything else uses it
+const _urlParams = new URLSearchParams(window.location.search);
+const IS_SPECTATE = _urlParams.get('spectate') === 'true';
+
 const MAP_W = 4800, MAP_H = 2400;
 const TOP_H = 40, BOT_H = 190;
 let gameState = null;
@@ -1951,6 +1956,7 @@ ws.onmessage = (e) => {
   if (msg.type === 'state') {
     const prev = gameState;
     gameState = msg.data;
+    if (!prev) console.log('First gameState received — heroes:', gameState.heroes?.length, 'units:', gameState.units?.length, 'structures:', gameState.structures?.length);
     if (prev) {
       const prevMap = {};
       for (const h of prev.heroes) prevMap[h.id] = h;
@@ -2058,16 +2064,49 @@ function sfxAbilityHit() { playTone(350, 0.1, 0.07, 'square'); playTone(500, 0.0
 function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTone(1000, 0.12, 0.05, 'sine'), 80); setTimeout(() => playTone(1200, 0.1, 0.04, 'sine'), 160); }
 
 // ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────
+function getGameDimensions() {
+  const gc = document.getElementById('game-container');
+  if (IS_SPECTATE) {
+    // In spectate/iframe mode: use full viewport (all chrome hidden)
+    const w = gc ? gc.clientWidth : window.innerWidth;
+    const h = gc ? gc.clientHeight : window.innerHeight;
+    return { w: Math.max(w, 400), h: Math.max(h, 300) };
+  }
+  return {
+    w: Math.max(window.innerWidth, 400),
+    h: Math.max(window.innerHeight - BOT_H - TOP_H, 300)
+  };
+}
+const dims = getGameDimensions();
+console.log('Phaser init dims:', dims.w, 'x', dims.h, 'spectate:', IS_SPECTATE);
+
 const config = {
-  type: Phaser.AUTO,
+  type: Phaser.CANVAS,
   parent: 'game-container',
-  width: window.innerWidth,
-  height: window.innerHeight - BOT_H - TOP_H,
-  backgroundColor: '#2A5A1A',
+  width: dims.w,
+  height: dims.h,
+  backgroundColor: '#0a1a0a',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
+  render: { antialias: false, pixelArt: true },
+  banner: false,
 };
 
 const game = new Phaser.Game(config);
+
+// Handle resize
+function resizeGame() {
+  const d = getGameDimensions();
+  if (game && game.scale) {
+    game.scale.resize(d.w, d.h);
+    console.log('Phaser resized to:', d.w, 'x', d.h);
+  }
+}
+window.addEventListener('resize', resizeGame);
+
+// In spectate/iframe mode, kick a resize after DOM settles so Phaser fills the container
+if (IS_SPECTATE) {
+  requestAnimationFrame(() => { resizeGame(); requestAnimationFrame(resizeGame); });
+}
 let cam, graphics;
 // Sprite pools keyed by entity id
 const spritePool = {};
@@ -2335,10 +2374,11 @@ function pPreload() {
 }
 
 function pCreate() {
-  console.log('Phaser: create started, canvas:', this.scale.width, 'x', this.scale.height);
   phaserScene = this;
   cam = this.cameras.main;
+  cam.setBackgroundColor('#0a1a0a');
   cam.setBounds(0, 0, MAP_W, MAP_H);
+  console.log('Phaser create: canvas', this.scale.width, 'x', this.scale.height, '| container:', document.getElementById('game-container')?.clientWidth, 'x', document.getElementById('game-container')?.clientHeight);
 
   // Zoom: fit full 4800-wide map into view
   cam.setZoom(this.scale.width / MAP_W);
@@ -4587,20 +4627,27 @@ if (musicEnabled) {
   });
 })();
 
-// ─── Spectate mode: ?spectate=true disables all login/modals/bets ──
-const urlParams = new URLSearchParams(window.location.search);
-const IS_SPECTATE = urlParams.get('spectate') === 'true';
+// ─── Player URL params (IS_SPECTATE already defined at top of script) ──
+const urlParams = _urlParams;
 
-// In spectate mode: hide betting panel, player controls bar, and never show ghost banner
+// In spectate mode: hide all UI chrome for clean battlefield view
+// Run synchronously — these elements exist above this script tag
 if (IS_SPECTATE) {
-  document.addEventListener('DOMContentLoaded', () => {
-    const bp = document.getElementById('betting-panel');
-    if (bp) bp.style.display = 'none';
-    const pc = document.getElementById('player-controls');
-    if (pc) pc.style.display = 'none';
-    const tb = document.getElementById('top-bar');
-    if (tb) tb.style.cursor = 'default';
-  });
+  (function() {
+    const hide = id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+    hide('betting-panel');
+    hide('player-controls');
+    hide('chat-panel');
+    hide('king-banner');
+    hide('bottom-panel');
+    hide('top-bar');
+    hide('kill-feed');
+    // Give game-container full viewport
+    const ma = document.getElementById('main-area');
+    if (ma) { ma.style.height = '100vh'; ma.style.flex = 'none'; }
+    const gc = document.getElementById('game-container');
+    if (gc) { gc.style.width = '100vw'; gc.style.height = '100vh'; }
+  })();
 }
 
 // ─── Player Controls — Dota-style keyboard system ─────────────────

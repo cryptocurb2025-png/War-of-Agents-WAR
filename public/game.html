@@ -96,9 +96,10 @@
     position: relative;
     overflow: hidden;
     min-height: 300px;
+    width: 100%;
   }
 
-  #game-container canvas { display: block; width: 100% !important; height: 100% !important; }
+  #game-container canvas { display: block; }
 
   /* ─── KING OF THE HILL BANNER (top center) — carved stone plaque ── */
   #king-banner {
@@ -2074,84 +2075,28 @@ function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTon
 
 // ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────
 
-// Force game-container to have explicit pixel dimensions before Phaser init
-const _gc = document.getElementById('game-container');
-if (_gc) {
-  if (IS_SPECTATE) {
-    _gc.style.width = '100vw';
-    _gc.style.height = '100vh';
-  } else {
-    _gc.style.width = window.innerWidth + 'px';
-    _gc.style.height = (window.innerHeight - BOT_H - TOP_H) + 'px';
-  }
-}
-
-function getGameDimensions() {
-  const gc = document.getElementById('game-container');
-  const w = gc ? gc.offsetWidth : window.innerWidth;
-  const h = gc ? gc.offsetHeight : (IS_SPECTATE ? window.innerHeight : window.innerHeight - BOT_H - TOP_H);
-  return { w: Math.max(w, 400), h: Math.max(h, 300) };
-}
-
 // Calculate zoom to fit FULL map (both width AND height)
 function calcZoom(canvasW, canvasH) {
   return Math.min(canvasW / MAP_W, canvasH / MAP_H);
 }
 
-const dims = getGameDimensions();
-console.log('[PHASER INIT] container:', dims.w, 'x', dims.h, 'MAP:', MAP_W, 'x', MAP_H, 'zoom:', calcZoom(dims.w, dims.h).toFixed(4));
-
 const config = {
   type: Phaser.CANVAS,
   parent: 'game-container',
-  width: dims.w,
-  height: dims.h,
   backgroundColor: '#080808',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
   render: { antialias: false, pixelArt: true },
   banner: false,
   scale: {
-    mode: Phaser.Scale.NONE,
+    mode: Phaser.Scale.RESIZE,    // Phaser auto-tracks container size
     autoCenter: Phaser.Scale.NO_CENTER,
+    width: '100%',
+    height: '100%',
   },
 };
 
+console.log('[PHASER INIT] using Scale.RESIZE mode, MAP:', MAP_W, 'x', MAP_H);
 const game = new Phaser.Game(config);
-
-// Force canvas to fill container via CSS
-requestAnimationFrame(() => {
-  const canvas = document.querySelector('#game-container canvas');
-  if (canvas) {
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-  }
-});
-
-// Handle resize — recalculate everything
-function resizeGame() {
-  const gc = document.getElementById('game-container');
-  if (!gc) return;
-  if (!IS_SPECTATE) {
-    gc.style.width = window.innerWidth + 'px';
-    gc.style.height = (window.innerHeight - BOT_H - TOP_H) + 'px';
-  }
-  const d = getGameDimensions();
-  if (game && game.scale) {
-    game.scale.resize(d.w, d.h);
-    if (cam) {
-      cam.setZoom(calcZoom(d.w, d.h));
-      cam.centerOn(MAP_W / 2, MAP_H / 2);
-    }
-    // Force canvas CSS
-    const canvas = document.querySelector('#game-container canvas');
-    if (canvas) { canvas.style.width = '100%'; canvas.style.height = '100%'; }
-    console.log('[RESIZE] to:', d.w, 'x', d.h, 'zoom:', cam ? cam.zoom.toFixed(4) : 'n/a');
-  }
-}
-window.addEventListener('resize', resizeGame);
-
-// Kick resize after DOM settles
-requestAnimationFrame(() => { resizeGame(); requestAnimationFrame(resizeGame); });
 let cam, graphics;
 // Sprite pools keyed by entity id
 const spritePool = {};
@@ -2422,7 +2367,7 @@ function pPreload() {
 function pCreate() {
   phaserScene = this;
   cam = this.cameras.main;
-  cam.setBackgroundColor('#0a1a0a');
+  cam.setBackgroundColor('#080808');
   cam.setBounds(0, 0, MAP_W, MAP_H);
 
   // Zoom: fit FULL map into view (both width AND height)
@@ -2430,6 +2375,14 @@ function pCreate() {
   cam.setZoom(z);
   cam.centerOn(MAP_W / 2, MAP_H / 2);
   console.log('[PHASER CREATE] canvas:', this.scale.width, 'x', this.scale.height, 'zoom:', z.toFixed(4), 'visible world:', Math.round(this.scale.width/z), 'x', Math.round(this.scale.height/z));
+
+  // Re-zoom when Phaser detects container resize (Scale.RESIZE mode)
+  this.scale.on('resize', (gameSize) => {
+    const w = gameSize.width, h = gameSize.height;
+    cam.setZoom(calcZoom(w, h));
+    cam.centerOn(MAP_W / 2, MAP_H / 2);
+    console.log('[SCALE RESIZE] to:', w, 'x', h, 'zoom:', cam.zoom.toFixed(4));
+  });
 
   // Dynamic layer for everything
   graphics = this.add.graphics();

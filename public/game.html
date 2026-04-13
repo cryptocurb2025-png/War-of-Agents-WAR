@@ -878,44 +878,54 @@
     margin: 2px 0;
   }
 
-  /* ─── SPECTATOR CHAT ────────────────────────────────── */
+  /* ─── CHAT — compact bottom-left, no overlap ────────── */
   #chat-panel {
     position: fixed;
-    bottom: 200px;
+    bottom: 196px; /* sits just above bottom panel */
     left: 8px;
-    width: 240px;
-    background: #0A0804ee;
-    border: 1px solid #5A4A2A;
+    width: 220px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #C8960C33;
     border-radius: 6px;
-    z-index: 50;
+    z-index: 140;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.6);
   }
   #chat-header {
     font-size: 9px; color: #C8960C; letter-spacing: 0.12em; text-transform: uppercase;
-    padding: 4px 8px; border-bottom: 1px solid #5A4A2A44; cursor: pointer; user-select: none;
+    padding: 4px 8px; border-bottom: 1px solid #C8960C22; cursor: pointer; user-select: none;
+    display: flex; justify-content: space-between; align-items: center;
   }
   #chat-header:hover { color: #F0C040; }
+  #chat-header .chat-minimize { font-size: 12px; color: #5A4A2A; cursor: pointer; }
+  #chat-header .chat-minimize:hover { color: #C8960C; }
   #chat-panel.collapsed #chat-messages,
   #chat-panel.collapsed #chat-input-row { display: none; }
+  #chat-panel.collapsed { width: 120px; }
   #chat-messages {
-    height: 140px; overflow-y: auto; padding: 4px 8px; font-size: 11px; color: #AAA080;
+    max-height: 120px; overflow-y: auto; padding: 4px 8px; font-size: 10px; color: #8A7D66;
+    scrollbar-width: thin; scrollbar-color: #C8960C33 transparent;
   }
-  #chat-messages div { margin-bottom: 3px; line-height: 1.3; }
-  #chat-messages .chat-name { color: #C8960C; font-weight: 700; }
-  #chat-input-row { display: flex; border-top: 1px solid #5A4A2A44; }
+  #chat-messages div { margin-bottom: 3px; line-height: 1.3; word-break: break-word; }
+  #chat-messages .chat-name { font-weight: 700; font-size: 10px; }
+  #chat-messages .chat-name.alliance { color: #4A8FE0; }
+  #chat-messages .chat-name.horde { color: #E24B4A; }
+  #chat-messages .chat-name.mine { color: #FFD700; }
+  #chat-messages .chat-system { color: #C8960C; font-style: italic; font-size: 9px; }
+  #chat-input-row { display: flex; border-top: 1px solid #C8960C22; }
   #chat-input {
-    flex: 1; background: #0A0804; border: none; color: #d4c08a; padding: 5px 8px;
-    font-family: 'Cinzel', serif; font-size: 11px; outline: none;
+    flex: 1; background: rgba(0,0,0,0.5); border: none; color: #d4c08a; padding: 5px 8px;
+    font-family: 'Cinzel', serif; font-size: 10px; outline: none;
   }
+  #chat-input::placeholder { color: #3A3A3A; }
   #chat-send {
-    background: linear-gradient(135deg, #5A4A2A, #8B6914); color: #F0C040; border: none;
-    padding: 5px 10px; font-family: 'Cinzel', serif; font-size: 10px; cursor: pointer;
+    background: #C8960C22; color: #C8960C; border: none; border-left: 1px solid #C8960C22;
+    padding: 5px 10px; font-family: 'Cinzel', serif; font-size: 9px; cursor: pointer;
     font-weight: 700; letter-spacing: 0.05em;
   }
-  #chat-send:hover { background: linear-gradient(135deg, #8B6914, #C8960C); }
+  #chat-send:hover { background: #C8960C44; color: #F0C040; }
 
   /* ─── MOBILE RESPONSIVE ─────────────────────────────── */
   @media (max-width: 768px) {
@@ -1527,7 +1537,7 @@
 
 <!-- ─── SPECTATOR CHAT ──────────────────────────────── -->
 <div id="chat-panel">
-  <div id="chat-header">CHAT</div>
+  <div id="chat-header"><span>CHAT</span><span class="chat-minimize" onclick="document.getElementById('chat-panel').classList.toggle('collapsed')">&#9660;</span></div>
   <div id="chat-messages"></div>
   <div id="chat-input-row">
     <input id="chat-input" type="text" placeholder="Type message..." maxlength="120" autocomplete="off">
@@ -1911,13 +1921,23 @@ function updateBettingPanel() {
   }
 }
 
-function addChatMsg(name, text) {
+function addChatMsg(name, text, faction) {
   const div = document.getElementById('chat-messages');
   const msg = document.createElement('div');
-  msg.innerHTML = `<span class="chat-name">${name}:</span> ${text}`;
+  // Determine name color class
+  const myName = localStorage.getItem('woa_playerName') || '';
+  const nameClass = name === myName ? 'mine' : (faction === 'alliance' ? 'alliance' : (faction === 'horde' ? 'horde' : ''));
+  msg.innerHTML = `<span class="chat-name ${nameClass}">${name}:</span> ${text}`;
   div.appendChild(msg);
   div.scrollTop = div.scrollHeight;
   while (div.children.length > 50) div.removeChild(div.firstChild);
+}
+function addSystemChat(text) {
+  const div = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+  msg.innerHTML = `<span class="chat-system">${text}</span>`;
+  div.appendChild(msg);
+  div.scrollTop = div.scrollHeight;
 }
 
 // ─── Ability Effect System ──────────────────────────────────────
@@ -2670,23 +2690,23 @@ function pUpdate() {
         if (px > phaserScene.scale.width - edgeSize) cam.scrollX += panSpeed;
         if (py < edgeSize) cam.scrollY -= panSpeed;
         if (py > phaserScene.scale.height - edgeSize) cam.scrollY += panSpeed;
-      } else {
-        // Zoom to see ~3200x1600 around the hero (wide enough to see the action)
-        const targetZoom = Math.min(phaserScene.scale.width / 3200, phaserScene.scale.height / 1600);
-        const currentZoom = cam.zoom;
-        const lerpZoom = currentZoom + (targetZoom - currentZoom) * 0.05;
-        cam.setZoom(lerpZoom);
-        // Smooth follow
-        const targetX = myH.x;
-        const targetY = myH.y;
-        const currentX = cam.scrollX + cam.width / cam.zoom / 2;
-        const currentY = cam.scrollY + cam.height / cam.zoom / 2;
-        const newX = currentX + (targetX - currentX) * 0.15;
-        const newY = currentY + (targetY - currentY) * 0.15;
-        // Apply screen shake offset
+      } else if (controlMode === 'manual') {
+        // MANUAL mode: zoom in and follow hero tightly
+        const targetZoom = Math.min(phaserScene.scale.width / 2400, phaserScene.scale.height / 1200);
+        cam.setZoom(cam.zoom + (targetZoom - cam.zoom) * 0.08);
+        // Aggressive follow (0.25 lerp = fast snap to hero)
+        const cx = cam.scrollX + cam.width / cam.zoom / 2;
+        const cy = cam.scrollY + cam.height / cam.zoom / 2;
+        const nx = cx + (myH.x - cx) * 0.25;
+        const ny = cy + (myH.y - cy) * 0.25;
         const shakeX = _shakeIntensity > 0 ? (Math.random() - 0.5) * _shakeIntensity * 4 : 0;
         const shakeY = _shakeIntensity > 0 ? (Math.random() - 0.5) * _shakeIntensity * 4 : 0;
-        cam.centerOn(newX + shakeX, newY + shakeY);
+        cam.centerOn(nx + shakeX, ny + shakeY);
+      } else {
+        // AUTO mode: show wider battlefield view centered on hero
+        const wz = calcZoom(phaserScene.scale.width, phaserScene.scale.height);
+        cam.setZoom(cam.zoom + (wz - cam.zoom) * 0.05);
+        cam.centerOn(MAP_W / 2, MAP_H / 2);
       }
     } else {
       // Player's hero not found or dead — show wide view while waiting
@@ -2723,11 +2743,9 @@ function pUpdate() {
 
   const halfW = MAP_W / 2;
 
-  // Draw base terrain even before WebSocket connects — extended edges
+  // Draw base terrain even before WebSocket connects — single seamless fill
   graphics.fillStyle(0x2A6A1A, 1);
-  graphics.fillRect(-200, -200, halfW + 200, MAP_H + 400);
-  graphics.fillStyle(0x2A6A1A, 1);
-  graphics.fillRect(halfW, -200, halfW + 200, MAP_H + 400);
+  graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
   // Lane road
   graphics.fillStyle(0x5A4A2A, 1);
   graphics.fillRect(-200, 1040, MAP_W + 400, 320);
@@ -2744,21 +2762,11 @@ function pUpdate() {
 
   // === GROUND BASE ===
   // Alliance side: lush green that gets darker with era
-  const allianceGreen = era >= 3 ? 0x1E5A12 : (era >= 2 ? 0x246818 : 0x2A6A1A);
-  // Horde side: starts similar, gets more scorched with era
-  const hordeGround = era >= 3 ? 0x2A4A10 : (era >= 2 ? 0x285A14 : 0x2A6A1A);
+  const groundColor = era >= 3 ? 0x1E5A12 : (era >= 2 ? 0x246818 : 0x2A6A1A);
 
-  // Extended fill (covers camera edges)
-  graphics.fillStyle(allianceGreen, 1);
-  graphics.fillRect(-200, -200, halfW + 200, MAP_H + 400);
-  graphics.fillStyle(hordeGround, 1);
-  graphics.fillRect(halfW, -200, halfW + 200, MAP_H + 400);
-
-  // === BATTLEFIELD CENTER — war-torn no-man's land ===
-  // Gets more destroyed as match progresses
-  const centerW = 200 + era * 60; // wider destruction zone in later eras
-  graphics.fillStyle(era >= 3 ? 0x2A2A1A : 0x3A4A2A, 1);
-  graphics.fillRect(halfW - centerW/2, -200, centerW, MAP_H + 400);
+  // Single unified ground fill — no seam, no split, no dark center strip
+  graphics.fillStyle(groundColor, 1);
+  graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
 
   // Scorched earth spots at center (more with era)
   if (era >= 2) {
@@ -2908,15 +2916,7 @@ function pUpdate() {
     graphics.strokeCircle(p.x + ripple, p.y, p.r * 0.7);
   }
 
-  // === SUBTLE FACTION TINTING ===
-  graphics.fillStyle(0x4A8FE0, 0.012);
-  graphics.fillRect(-200, -200, halfW + 200, MAP_H + 400);
-  graphics.fillStyle(0xCC4422, 0.012);
-  graphics.fillRect(halfW, -200, halfW + 200, MAP_H + 400);
-
-  // === CENTER DIVIDER — gold line ===
-  graphics.lineStyle(1, 0xC8960C, 0.06 + Math.sin(t * 0.02) * 0.02);
-  graphics.lineBetween(halfW, -200, halfW, MAP_H + 200);
+  // (Faction tinting and center divider removed — seamless map)
 
   // === BACKGROUND MOUNTAINS (top and bottom edges) ===
   // Top mountains (distant, parallax feel)

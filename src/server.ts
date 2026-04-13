@@ -3100,6 +3100,18 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 <tr><td><span class="key">Alt+click</span></td><td>Ping map location</td></tr>
 <tr><td><span class="key">V</span></td><td>Fire base turret at cursor (10s cooldown)</td></tr>
 <tr><td><span class="key">F1</span> <span class="key">F2</span> <span class="key">F3</span></td><td>Vote next wave: Melee / Ranged / Heavy</td></tr>
+<tr><td><span class="key">Space</span></td><td>Activate ULTIMATE ability (unique per hero class)</td></tr>
+</table>
+
+<h2>Ultimate Abilities</h2>
+<p>Each hero has a powerful ultimate activated by <span class="key">SPACEBAR</span>. Long cooldown, high impact:</p>
+<table>
+<tr><th>Class</th><th>Ultimate</th><th>Effect</th><th>Cooldown</th></tr>
+<tr><td>Knight</td><td style="color:#FFD700">Holy Judgment</td><td>500 damage to ALL enemies</td><td>60s</td></tr>
+<tr><td>Ranger</td><td style="color:#44CC44">Rain of Arrows</td><td>100 damage to all enemies</td><td>50s</td></tr>
+<tr><td>Mage</td><td style="color:#4488FF">Blizzard Storm</td><td>100 damage to all enemies</td><td>70s</td></tr>
+<tr><td>Priest</td><td style="color:#F0E8D0">Divine Resurrection</td><td>Revive all dead allies + full heal</td><td>90s</td></tr>
+<tr><td>Siegemaster</td><td style="color:#FF6600">Orbital Bombardment</td><td>300 damage to 5 random enemies</td><td>55s</td></tr>
 </table>
 
 <h2>Hero Classes</h2>

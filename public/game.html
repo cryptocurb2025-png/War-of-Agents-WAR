@@ -5358,76 +5358,46 @@ if (playerAgentId) {
     const key = e.key.toLowerCase();
     keysDown[key] = true;
 
-    // WASD / Arrow movement — send single move command in direction
+    // WASD / Arrow movement — continuous movement while keys held
     if (['a','d','w','s','arrowleft','arrowright','arrowup','arrowdown'].includes(key)) {
       e.preventDefault();
-      if (controlMode === 'manual' || controlMode === 'auto') {
-        // WASD: move 200px in the direction from current hero position
-        const myH = getMyHero();
-        if (myH) {
+      if (!window._wasdInterval) {
+        window._wasdInterval = setInterval(() => {
+          const myH = getMyHero();
+          if (!myH || !myH.alive) return;
           let dx = 0, dy = 0;
-          if (key === 'a' || key === 'arrowleft') dx = -200;
-          if (key === 'd' || key === 'arrowright') dx = 200;
-          if (key === 'w' || key === 'arrowup') dy = -200;
-          if (key === 's' || key === 'arrowdown') dy = 200;
-          const nx = Math.max(0, Math.min(4800, myH.x + dx));
-          const ny = Math.max(0, Math.min(2400, myH.y + dy));
+          if (keysDown['a'] || keysDown['arrowleft']) dx -= 1;
+          if (keysDown['d'] || keysDown['arrowright']) dx += 1;
+          if (keysDown['w'] || keysDown['arrowup']) dy -= 1;
+          if (keysDown['s'] || keysDown['arrowdown']) dy += 1;
+          if (dx === 0 && dy === 0) return;
+          // Normalize diagonal movement
+          const len = Math.sqrt(dx*dx + dy*dy);
+          dx /= len; dy /= len;
+          // Move 150px in direction (server will smooth it)
+          const nx = Math.max(50, Math.min(4750, myH.x + dx * 150));
+          const ny = Math.max(50, Math.min(2350, myH.y + dy * 150));
           if (ws && ws.readyState === 1) {
-            ws.send(JSON.stringify({ type: 'hero_move', agentId: playerAgentId, x: nx, y: ny }));
+            ws.send(JSON.stringify({ type: 'hero_move', agentId: playerAgentId, x: Math.round(nx), y: Math.round(ny) }));
           }
-        }
-        return;
+        }, 100); // 10 updates per second
       }
-      // Fallback: existing startMoveLoop behavior
-      currentTargetId = null;
-      startMoveLoop();
       return;
     }
 
-    // SPACE = attack nearest enemy (prefer hero, then unit, then structure)
+    // SPACEBAR = Ultimate ability
     if (key === ' ') {
       e.preventDefault();
-      const myHero = getMyHero();
-      if (!myHero) return;
-
-      if (currentTargetId) {
-        sendCmd({ action: 'attack', targetId: currentTargetId }).then(d => {
-          document.getElementById('pc-status').textContent = d.success ? 'ATTACKING' : (d.error || 'No target');
-        });
-        return;
-      }
-
-      // Find nearest enemy — prefer heroes > units > structures
-      let nearest = null, nearestDist = Infinity, nearestKind = null;
-      const check = (list, kind) => {
-        for (const e of list) {
-          if (!e.alive || e.faction === myHero.faction) continue;
-          const dx = e.x - myHero.x, dy = e.y - myHero.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < nearestDist) { nearestDist = d; nearest = e; nearestKind = kind; }
+      if (playerAgentId && ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'hero_ultimate', agentId: playerAgentId }));
+        // Visual: dramatic screen flash
+        const myH = getMyHero();
+        if (myH) {
+          const isA = myH.faction === 'alliance';
+          window._ultimateFlash = { age: 0, color: isA ? 'rgba(255,215,0,0.3)' : 'rgba(200,0,0,0.3)' };
+          // Announce in chat
+          addSystemChat((myH.displayName || myH.heroClass) + ' unleashes their ULTIMATE!');
         }
-      };
-      if (gameState) {
-        check(gameState.heroes, 'hero');
-        if (!nearest || nearestDist > 800) check(gameState.units, 'unit');
-        if (!nearest) check(gameState.structures, 'struct');
-      }
-
-      if (nearest) {
-        currentTargetId = nearest.id;
-        sendCmd({ action: 'attack', targetId: nearest.id }).then(d => {
-          if (d.success) {
-            document.getElementById('pc-status').textContent = 'ATTACKING ' + (d.targetName || nearestKind).toUpperCase();
-            initAudio(); playTone(800, 0.06, 0.08, 'sine');
-          }
-        });
-      } else {
-        // No enemies visible — push the lane toward enemy base
-        const faction = localStorage.getItem('woa_faction') || 'alliance';
-        const tx = faction === 'alliance' ? 4600 : 200;
-        sendCmd({action:'move', targetX:tx, targetY: myHero.y || 1200}).then(d => {
-          document.getElementById('pc-status').textContent = 'PUSHING LANE';
-        });
       }
       return;
     }
@@ -5459,6 +5429,18 @@ if (playerAgentId) {
         const msg = { type: 'hero_ability', agentId: playerAgentId, abilityId: ability.id };
         if (currentTargetId) msg.targetId = currentTargetId;
         ws.send(JSON.stringify(msg));
+      }
+      // Visual effect on entity canvas
+      const myH2 = getMyHero();
+      if (myH2) {
+        const colors = ['#4A8FE0', '#44CC44', '#AA44FF', '#FFD700', '#FF6600'];
+        const types = ['expand_ring', 'targeted', 'aura', 'ground', 'projectile'];
+        _abilityFX.push({
+          x: myH2.x, y: myH2.y,
+          type: types[idx] || 'expand_ring',
+          color: colors[idx] || '#4A8FE0',
+          age: 0, maxAge: 20
+        });
       }
       // Visual feedback - flash the key slot
       const slotEl = document.getElementById('hk-' + key);
@@ -5573,6 +5555,10 @@ if (playerAgentId) {
   document.addEventListener('keyup', (e) => {
     const key = e.key.toLowerCase();
     keysDown[key] = false;
+    // Stop WASD movement when all movement keys released
+    if (!keysDown['a'] && !keysDown['d'] && !keysDown['w'] && !keysDown['s'] && !keysDown['arrowleft'] && !keysDown['arrowright'] && !keysDown['arrowup'] && !keysDown['arrowdown']) {
+      if (window._wasdInterval) { clearInterval(window._wasdInterval); window._wasdInterval = null; }
+    }
     // Space released = return camera to hero follow
     if (key === ' ') cameraFreeMode = false;
     // Tab released = hide scoreboard
@@ -5871,6 +5857,7 @@ function updatePlayerControls() {
 
   // Floating damage numbers
   const _dmgFloats = []; // {x, y, text, color, age}
+  const _abilityFX = []; // {x, y, type, color, age, maxAge}
 
   // Screen shake
   let _shakeX = 0, _shakeY = 0, _shakeTimer = 0;
@@ -6272,6 +6259,46 @@ function updatePlayerControls() {
       ctx.font = 'bold 14px Cinzel, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('LEVEL UP!', lf.x, lf.y - 20 - lf.age);
+    }
+
+    // Ultimate flash effect
+    if (window._ultimateFlash) {
+      const uf = window._ultimateFlash;
+      uf.age++;
+      if (uf.age > 15) { window._ultimateFlash = null; }
+      else {
+        ctx.fillStyle = uf.color;
+        ctx.globalAlpha = 1 - uf.age/15;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Ability visual effects
+    for (let i = _abilityFX.length - 1; i >= 0; i--) {
+      const fx = _abilityFX[i];
+      fx.age++;
+      if (fx.age > fx.maxAge) { _abilityFX.splice(i, 1); continue; }
+      const p = fx.age / fx.maxAge;
+      const sx = fx.x * scaleX, sy = fx.y * scaleY;
+      ctx.globalAlpha = 1 - p;
+      if (fx.type === 'expand_ring') {
+        ctx.strokeStyle = fx.color; ctx.lineWidth = 3 - p*2;
+        ctx.beginPath(); ctx.arc(sx, sy, 10 + p*50, 0, Math.PI*2); ctx.stroke();
+      } else if (fx.type === 'targeted') {
+        ctx.fillStyle = fx.color;
+        ctx.beginPath(); ctx.arc(sx + 30*(1-p), sy, 5, 0, Math.PI*2); ctx.fill();
+      } else if (fx.type === 'aura') {
+        ctx.fillStyle = fx.color; ctx.globalAlpha = (1-p) * 0.2;
+        ctx.beginPath(); ctx.arc(sx, sy, 20 + p*30, 0, Math.PI*2); ctx.fill();
+      } else if (fx.type === 'ground') {
+        ctx.fillStyle = fx.color; ctx.globalAlpha = (1-p) * 0.3;
+        ctx.fillRect(sx - 20 - p*20, sy + 10, 40 + p*40, 6);
+      } else if (fx.type === 'projectile') {
+        ctx.fillStyle = fx.color;
+        ctx.beginPath(); ctx.arc(sx + p*80, sy, 4, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
 
     ctx.setTransform(1,0,0,1,0,0); // reset transform after shake

@@ -414,6 +414,7 @@ function createAbilities(heroClass: HeroClass): Ability[] {
       { id: 'whirlwind', name: 'Whirlwind', cooldown: 70, currentCd: 0, damage: 60, range: 200, tier: 1, maxTier: 5, manaCost: 30, aoe: 200, effect: 'spin' },
       { id: 'fortify', name: 'Fortify', cooldown: 150, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 40, aoe: 0, effect: 'armor_buff' },
       { id: 'rally', name: 'Battle Rally', cooldown: 220, currentCd: 0, damage: 0, range: 500, tier: 1, maxTier: 5, manaCost: 60, aoe: 500, effect: 'team_buff' },
+      { id: 'holy_judgment', name: 'Holy Judgment', cooldown: 1200, currentCd: 0, damage: 500, range: 0, tier: 1, maxTier: 1, manaCost: 100, aoe: 9999, effect: 'ultimate_aoe' },
     ],
     ranger: [
       { id: 'power_shot', name: 'Power Shot', cooldown: 35, currentCd: 0, damage: 80, range: 600, tier: 1, maxTier: 5, manaCost: 15, aoe: 0 },
@@ -421,6 +422,7 @@ function createAbilities(heroClass: HeroClass): Ability[] {
       { id: 'trap', name: 'Bear Trap', cooldown: 100, currentCd: 0, damage: 35, range: 350, tier: 1, maxTier: 5, manaCost: 20, aoe: 80, effect: 'slow' },
       { id: 'eagle_eye', name: 'Eagle Eye', cooldown: 110, currentCd: 0, damage: 130, range: 800, tier: 1, maxTier: 5, manaCost: 35, aoe: 0, effect: 'crit' },
       { id: 'rain_arrows', name: 'Rain of Arrows', cooldown: 180, currentCd: 0, damage: 70, range: 600, tier: 1, maxTier: 5, manaCost: 55, aoe: 280 },
+      { id: 'rain_of_arrows', name: 'Rain of Arrows', cooldown: 1000, currentCd: 0, damage: 100, range: 0, tier: 1, maxTier: 1, manaCost: 80, aoe: 9999, effect: 'ultimate_dot' },
     ],
     mage: [
       { id: 'fireball', name: 'Fireball', cooldown: 40, currentCd: 0, damage: 95, range: 550, tier: 1, maxTier: 5, manaCost: 20, aoe: 120, effect: 'burn' },
@@ -428,6 +430,7 @@ function createAbilities(heroClass: HeroClass): Ability[] {
       { id: 'arcane_blast', name: 'Arcane Blast', cooldown: 50, currentCd: 0, damage: 110, range: 450, tier: 1, maxTier: 5, manaCost: 30, aoe: 150 },
       { id: 'blink', name: 'Blink', cooldown: 80, currentCd: 0, damage: 0, range: 600, tier: 1, maxTier: 5, manaCost: 25, aoe: 0, effect: 'teleport' },
       { id: 'meteor', name: 'Meteor Storm', cooldown: 220, currentCd: 0, damage: 220, range: 700, tier: 1, maxTier: 5, manaCost: 80, aoe: 320 },
+      { id: 'blizzard_storm', name: 'Blizzard Storm', cooldown: 1400, currentCd: 0, damage: 100, range: 0, tier: 1, maxTier: 1, manaCost: 120, aoe: 9999, effect: 'ultimate_slow' },
     ],
     priest: [
       { id: 'heal', name: 'Holy Light', cooldown: 35, currentCd: 0, damage: -90, range: 500, tier: 1, maxTier: 5, manaCost: 20, aoe: 0, effect: 'heal' },
@@ -435,6 +438,7 @@ function createAbilities(heroClass: HeroClass): Ability[] {
       { id: 'shield_aura', name: 'Divine Shield', cooldown: 110, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 35, aoe: 0, effect: 'invuln' },
       { id: 'mass_heal', name: 'Mass Heal', cooldown: 150, currentCd: 0, damage: -150, range: 550, tier: 1, maxTier: 5, manaCost: 60, aoe: 380, effect: 'heal' },
       { id: 'resurrection', name: 'Resurrection', cooldown: 300, currentCd: 0, damage: 0, range: 350, tier: 1, maxTier: 5, manaCost: 100, aoe: 0, effect: 'revive' },
+      { id: 'divine_resurrection', name: 'Divine Resurrection', cooldown: 1800, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 1, manaCost: 150, aoe: 9999, effect: 'ultimate_revive' },
     ],
     siegemaster: [
       { id: 'cannon', name: 'Cannon Shot', cooldown: 50, currentCd: 0, damage: 100, range: 650, tier: 1, maxTier: 5, manaCost: 20, aoe: 130 },
@@ -442,6 +446,7 @@ function createAbilities(heroClass: HeroClass): Ability[] {
       { id: 'fortification', name: 'Fortification', cooldown: 110, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 30, aoe: 0, effect: 'tower_buff' },
       { id: 'demolish', name: 'Demolish', cooldown: 70, currentCd: 0, damage: 150, range: 250, tier: 1, maxTier: 5, manaCost: 25, aoe: 0, effect: 'structure_dmg' },
       { id: 'siege_mode', name: 'Siege Mode', cooldown: 230, currentCd: 0, damage: 0, range: 0, tier: 1, maxTier: 5, manaCost: 50, aoe: 0, effect: 'transform' },
+      { id: 'orbital_bombardment', name: 'Orbital Bombardment', cooldown: 1100, currentCd: 0, damage: 300, range: 0, tier: 1, maxTier: 1, manaCost: 90, aoe: 400, effect: 'ultimate_multi' },
     ],
   };
   return base[heroClass];
@@ -2054,6 +2059,59 @@ wss.on('connection', (ws) => {
         // If targeting an entity, focus on it
         if (msg.targetId) {
           hero.focusTargetId = msg.targetId;
+        }
+      }
+      if (msg.type === 'hero_ultimate') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (!hero || !hero.alive) return;
+        // Ultimate is always the last ability (index 5)
+        const ult = hero.abilities[hero.abilities.length - 1];
+        if (!ult || ult.currentCd > 0) return;
+        if (hero.mana < ult.manaCost) return;
+        hero.mana -= ult.manaCost;
+        ult.currentCd = ult.cooldown;
+
+        // Apply ultimate effects based on hero class
+        const enemies = [...state.heroes.values(), ...state.units.values()]
+          .filter(e => e.alive && e.faction !== hero.faction);
+        const allies = [...state.heroes.values()]
+          .filter(h => h.alive && h.faction === hero.faction);
+
+        if (ult.effect === 'ultimate_aoe') {
+          // Holy Judgment: damage all enemies
+          for (const e of enemies) {
+            applyDamage(e, ult.damage, hero.id);
+          }
+        } else if (ult.effect === 'ultimate_dot') {
+          // Rain of Arrows: damage all enemies
+          for (const e of enemies) {
+            applyDamage(e, ult.damage, hero.id);
+          }
+        } else if (ult.effect === 'ultimate_slow') {
+          // Blizzard Storm: damage + slow enemies (speed reduction not implemented, just damage)
+          for (const e of enemies) {
+            applyDamage(e, ult.damage, hero.id);
+          }
+        } else if (ult.effect === 'ultimate_revive') {
+          // Divine Resurrection: revive all dead allies + heal all living allies
+          for (const a of [...state.heroes.values()].filter(h => h.faction === hero.faction)) {
+            if (!a.alive) {
+              a.alive = true;
+              a.hp = a.maxHp;
+              a.mana = a.maxMana;
+              a.respawnTimer = 0;
+              a.pos = { x: hero.pos.x + (Math.random()-0.5)*100, y: hero.pos.y + (Math.random()-0.5)*100 };
+            } else {
+              a.hp = a.maxHp;
+              a.mana = a.maxMana;
+            }
+          }
+        } else if (ult.effect === 'ultimate_multi') {
+          // Orbital Bombardment: 5 random hits on enemy positions
+          const targets = enemies.sort(() => Math.random() - 0.5).slice(0, 5);
+          for (const t of targets) {
+            applyDamage(t, ult.damage, hero.id);
+          }
         }
       }
       if (msg.type === 'hero_buy') {

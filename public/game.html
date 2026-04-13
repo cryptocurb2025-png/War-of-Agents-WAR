@@ -1418,6 +1418,7 @@
 <!-- ─── MAIN GAME AREA ───────────────────────────────── -->
 <div id="main-area">
   <div id="game-container"></div>
+  <canvas id="entity-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5"></canvas>
   <div id="kill-feed">
     <div id="kill-feed-header">COMBAT LOG</div>
   </div>
@@ -5850,6 +5851,210 @@ function updatePlayerControls() {
     });
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// ENTITY CANVAS — plain HTML canvas overlay, bypasses Phaser entirely
+// Draws heroes, units, structures as simple shapes at correct positions
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const MAP_WC = 4800, MAP_HC = 2400;
+  const CLASS_COLORS = {
+    knight: '#D4B840', ranger: '#2A6A2A', mage: '#6A3AAA', priest: '#F0E8D0', siegemaster: '#6A7A8A'
+  };
+  const CLASS_ICONS = {
+    knight: '\u2694', ranger: '\uD83C\uDFF9', mage: '\u2728', priest: '\u2720', siegemaster: '\uD83D\uDCA3'
+  };
+
+  function renderEntities() {
+    const canvas = document.getElementById('entity-canvas');
+    if (!canvas || !gameState) return;
+
+    // Match canvas pixel size to display size (prevents blurry rendering)
+    const rect = canvas.getBoundingClientRect();
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!gameState.heroes) return;
+
+    // Scale from MAP coordinates (4800x2400) to canvas pixel coordinates
+    const scaleX = canvas.width / MAP_WC;
+    const scaleY = canvas.height / MAP_HC;
+
+    // ─── Draw structures ────────────────────────────────────
+    if (gameState.structures) {
+      gameState.structures.forEach(s => {
+        if (!s.alive) return;
+        const x = s.x * scaleX, y = s.y * scaleY;
+        const isA = s.faction === 'alliance';
+        const size = s.structureType === 'base' ? 18 : s.structureType === 'barracks' ? 14 : 10;
+
+        // Structure body
+        ctx.fillStyle = isA ? '#1A3388' : '#882211';
+        ctx.fillRect(x - size, y - size, size * 2, size * 2);
+        // Border
+        ctx.strokeStyle = isA ? '#4A8FE0' : '#E24B4A';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - size, y - size, size * 2, size * 2);
+
+        // HP bar
+        if (s.maxHp) {
+          const pct = Math.max(0, s.hp / s.maxHp);
+          const barW = size * 2.5;
+          ctx.fillStyle = '#111';
+          ctx.fillRect(x - barW/2, y - size - 8, barW, 4);
+          ctx.fillStyle = pct > 0.5 ? '#44AA44' : pct > 0.25 ? '#CCAA22' : '#CC3322';
+          ctx.fillRect(x - barW/2, y - size - 8, barW * pct, 4);
+        }
+
+        // Label
+        ctx.fillStyle = '#C8960C88';
+        ctx.font = '8px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(s.structureType?.toUpperCase() || '', x, y + size + 10);
+      });
+    }
+
+    // ─── Draw units ─────────────────────────────────────────
+    if (gameState.units) {
+      gameState.units.forEach(u => {
+        if (!u.alive) return;
+        const x = u.x * scaleX, y = u.y * scaleY;
+        const isA = u.faction === 'alliance';
+
+        ctx.fillStyle = isA ? '#6AAFFF' : '#FF7A7A';
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.arc(x, y, 4 * Math.max(scaleX, 0.15), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+    }
+
+    // ─── Draw heroes ────────────────────────────────────────
+    gameState.heroes.forEach(hero => {
+      if (!hero.alive) return;
+      const x = hero.x * scaleX, y = hero.y * scaleY;
+      const isA = hero.faction === 'alliance';
+      const isMine = playerAgentId && hero.agentId === playerAgentId;
+      const radius = 10 * Math.max(scaleX, 0.2);
+
+      // Player hero glow
+      if (isMine) {
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 1.8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Hero circle
+      const hColor = CLASS_COLORS[hero.heroClass] || (isA ? '#4A8FE0' : '#E24B4A');
+      ctx.fillStyle = hColor;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Faction outline
+      ctx.strokeStyle = isA ? '#4A8FE0' : '#E24B4A';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Class icon
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `${Math.max(10, radius)}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(CLASS_ICONS[hero.heroClass] || '?', x, y);
+
+      // Name
+      ctx.fillStyle = isMine ? '#FFD700' : '#FFFFFF';
+      ctx.font = `bold ${Math.max(8, 9 * scaleX / 0.2)}px Cinzel, sans-serif`;
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(hero.displayName || hero.heroClass, x, y - radius - 4);
+
+      // Level badge
+      ctx.fillStyle = '#C8960C';
+      ctx.font = `bold ${Math.max(7, 8 * scaleX / 0.2)}px sans-serif`;
+      ctx.textBaseline = 'top';
+      ctx.fillText('Lv' + hero.level, x, y + radius + 2);
+
+      // HP bar
+      const pct = hero.hp / hero.maxHp;
+      const barW = radius * 2.5;
+      ctx.fillStyle = '#0A0A0A';
+      ctx.fillRect(x - barW/2, y + radius + 12, barW, 3);
+      ctx.fillStyle = pct > 0.5 ? '#44CC44' : pct > 0.25 ? '#CCAA22' : '#CC3322';
+      ctx.fillRect(x - barW/2, y + radius + 12, barW * pct, 3);
+
+      // MP bar
+      if (hero.maxMana > 0) {
+        const mpPct = hero.mana / hero.maxMana;
+        ctx.fillStyle = '#0A0A0A';
+        ctx.fillRect(x - barW/2, y + radius + 16, barW, 2);
+        ctx.fillStyle = '#4488EE';
+        ctx.fillRect(x - barW/2, y + radius + 16, barW * mpPct, 2);
+      }
+
+      // Kill streak indicator
+      if (hero.killStreak >= 3) {
+        ctx.fillStyle = '#FF6600';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('\uD83D\uDD25' + hero.killStreak + 'x', x + radius + 8, y - 4);
+      }
+    });
+
+    // ─── Dead heroes (greyed out with timer) ────────────────
+    gameState.heroes.forEach(hero => {
+      if (hero.alive) return;
+      const x = hero.x * scaleX, y = hero.y * scaleY;
+      const radius = 6 * Math.max(scaleX, 0.2);
+
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = '#555555';
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#FF4444';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const secs = hero.respawnIn ? Math.ceil(hero.respawnIn / 20) : '?';
+      ctx.fillText('\u2620 ' + secs + 's', x, y);
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  // Run entity rendering at 20fps (independent of Phaser)
+  setInterval(renderEntities, 50);
+
+  // Position the entity canvas correctly inside main-area
+  function positionEntityCanvas() {
+    const gc = document.getElementById('game-container');
+    const ec = document.getElementById('entity-canvas');
+    if (!gc || !ec) return;
+    const r = gc.getBoundingClientRect();
+    ec.style.top = r.top + 'px';
+    ec.style.left = r.left + 'px';
+    ec.style.width = r.width + 'px';
+    ec.style.height = r.height + 'px';
+    ec.style.position = 'fixed';
+  }
+  positionEntityCanvas();
+  window.addEventListener('resize', positionEntityCanvas);
+  setInterval(positionEntityCanvas, 2000); // re-check periodically
+})();
 
 // Resize handled by Phaser Scale.FIT
 </script>

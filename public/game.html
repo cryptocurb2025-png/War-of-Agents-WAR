@@ -2960,9 +2960,9 @@ function pUpdate() {
 
   const halfW = MAP_W / 2;
 
-  // Draw base terrain even before WebSocket connects — single seamless fill
+  // Draw base terrain — massive fill to cover any camera overshoot
   graphics.fillStyle(0x2A6A1A, 1);
-  graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
+  graphics.fillRect(-1000, -1000, MAP_W + 2000, MAP_H + 2000);
   // Lane roads (all 3)
   graphics.fillStyle(0x5A4A2A, 1);
   graphics.fillRect(-200, 400, MAP_W + 400, 200);  // top
@@ -2984,9 +2984,9 @@ function pUpdate() {
   // Alliance side: lush green that gets darker with era
   const groundColor = era >= 3 ? 0x1E5A12 : (era >= 2 ? 0x246818 : 0x2A6A1A);
 
-  // Single unified ground fill — no seam, no split, no dark center strip
+  // Single unified ground fill — massive to cover any camera area
   graphics.fillStyle(groundColor, 1);
-  graphics.fillRect(-200, -200, MAP_W + 400, MAP_H + 400);
+  graphics.fillRect(-1000, -1000, MAP_W + 2000, MAP_H + 2000);
 
   // Scorched earth spots at center (more with era)
   if (era >= 2) {
@@ -3228,8 +3228,17 @@ function pUpdate() {
   }
 
   // ─── UNITS + HEROES as Phaser sprites ─────────────────────
-  _renderedPositions.length = 0; // clear proximity tracking each frame
+  _renderedPositions.length = 0;
   const activeIds = new Set();
+
+  // Debug: log once on first render
+  if (!window._firstRenderLogged && gs.heroes.length > 0) {
+    window._firstRenderLogged = true;
+    console.log('[RENDER] heroes:', gs.heroes.length, 'units:', gs.units.length, 'structures:', gs.structures.length);
+    console.log('[RENDER] first hero at:', gs.heroes[0].x, gs.heroes[0].y, 'class:', gs.heroes[0].heroClass);
+    console.log('[RENDER] cam zoom:', cam.zoom, 'center:', cam.scrollX, cam.scrollY);
+    console.log('[RENDER] textures exist — a_knight:', phaserScene.textures.exists('a_knight'), 'au_footman:', phaserScene.textures.exists('au_footman'));
+  }
 
   for (const u of gs.units) {
     if (!u.alive) continue;
@@ -3240,6 +3249,26 @@ function pUpdate() {
     if (!h.alive) continue;
     activeIds.add(h.id);
     renderSprite(h.id, heroTexKey(h.heroClass, h.faction), h, t, true);
+  }
+
+  // ─── GUARANTEED VISIBLE: draw circles for all entities via graphics ───
+  // This ensures entities are ALWAYS visible even if sprite textures fail
+  for (const h of gs.heroes) {
+    if (!h.alive) continue;
+    const c = h.faction === 'alliance' ? 0x4A8FE0 : 0xE24B4A;
+    graphics.fillStyle(c, 0.8);
+    graphics.fillCircle(h.x, h.y, 18);
+    // White outline for heroes
+    graphics.lineStyle(2, 0xFFFFFF, 0.6);
+    graphics.strokeCircle(h.x, h.y, 20);
+    // Level text
+    graphics.fillStyle(0xFFFFFF, 1);
+  }
+  for (const u of gs.units) {
+    if (!u.alive) continue;
+    const c = u.faction === 'alliance' ? 0x6AAFFF : 0xFF7A7A;
+    graphics.fillStyle(c, 0.6);
+    graphics.fillCircle(u.x, u.y, 8);
   }
 
   // Remove stale sprites
@@ -3656,10 +3685,17 @@ function renderSprite(id, texKey, entity, t, isHero) {
   // Use actual entity Y position (units now spawn across all 3 lanes)
   const clampedY = entity.y;
 
-  // Create or reuse sprite
+  // Create or reuse sprite — fallback to colored rectangle if texture missing
   let sp = spritePool[id];
   if (!sp) {
-    sp = phaserScene.add.sprite(entity.x, clampedY, texKey).setDepth(10);
+    const hasTex = phaserScene.textures.exists(texKey);
+    if (hasTex) {
+      sp = phaserScene.add.sprite(entity.x, clampedY, texKey).setDepth(10);
+    } else {
+      // Fallback: colored rectangle so entity is always visible
+      const fallbackColor = isA ? 0x4A8FE0 : 0xE24B4A;
+      sp = phaserScene.add.rectangle(entity.x, clampedY, isHero ? 16 : 10, isHero ? 20 : 12, fallbackColor).setDepth(10);
+    }
     sp.setData('isAlliance', isA);
     spritePool[id] = sp;
 

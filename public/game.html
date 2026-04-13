@@ -5857,6 +5857,7 @@ function updatePlayerControls() {
 
   // Floating damage numbers
   const _dmgFloats = []; // {x, y, text, color, age}
+  const _goldParticles = []; // {x, y, vx, vy, age, maxAge}
   const _abilityFX = []; // {x, y, type, color, age, maxAge}
 
   // Screen shake
@@ -5913,6 +5914,18 @@ function updatePlayerControls() {
       } else if (prev !== undefined && e.hp > prev && e.alive) {
         const heal = e.hp - prev;
         _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, text: '+' + heal, color: '#44FF44', age: 0 });
+      }
+      // Gold burst when entity dies
+      if (e.hp <= 0 && prev > 0) {
+        for (let gi = 0; gi < 5; gi++) {
+          _goldParticles.push({
+            x: e.x * scaleX, y: e.y * scaleY,
+            vx: (Math.random()-0.5) * 4, vy: -Math.random() * 3 - 1,
+            age: 0, maxAge: 20 + Math.random()*10
+          });
+        }
+        // Show +GOLD text
+        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 30, text: '+GOLD', color: '#FFD700', age: 0 });
       }
       window._prevEntityHP[e.id] = e.hp;
     }
@@ -6201,27 +6214,52 @@ function updatePlayerControls() {
         ctx.fillStyle = '#FF6600'; ctx.font = '8px sans-serif';
         ctx.textBaseline = 'bottom'; ctx.fillText(hero.killStreak + 'x', x + 14*s, y - 10*s);
       }
+      // Ability cooldowns (player only)
+      if (isMine && hero.abilities) {
+        const abKeys = ['Q','W','E','R','T','ULT'];
+        hero.abilities.forEach((ab, idx) => {
+          if (idx > 5) return;
+          const abX = x - 30*s + idx * 10*s;
+          const abY = y + 22*s + 8;
+          ctx.fillStyle = ab.cd > 0 ? '#333333' : '#44AA44';
+          ctx.fillRect(abX, abY, 8*s, 3);
+          if (ab.cd > 0) {
+            ctx.fillStyle = '#FF6644';
+            ctx.font = '7px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(Math.ceil(ab.cd/20) + '', abX + 4*s, abY - 1);
+          }
+        });
+      }
     });
 
-    // ─── Dead heroes (greyed out with timer) ────────────────
+    // ─── Dead heroes (fallen, greyed, respawn timer) ────────────────
     gameState.heroes.forEach(hero => {
       if (hero.alive) return;
       const x = hero.x * scaleX, y = hero.y * scaleY;
-      const radius = 6 * Math.max(scaleX, 0.2);
-
-      ctx.globalAlpha = 0.4;
-      ctx.fillStyle = '#555555';
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
-
+      const s = Math.max(scaleX / 0.15, 0.6) * 0.8;
+      // Fallen body (rotated, greyed)
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.PI / 6); // tilted to side
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = '#444444';
+      ctx.fillRect(-6*s, -10*s, 12*s, 20*s);
+      ctx.restore();
+      // Skull icon
+      ctx.fillStyle = '#FF444488';
+      ctx.font = `${Math.max(12, 14*s)}px serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('\u2620', x, y - 8*s);
+      // Respawn timer
       ctx.fillStyle = '#FF4444';
-      ctx.font = 'bold 9px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.max(10, 11*s)}px sans-serif`;
       const secs = hero.respawnIn ? Math.ceil(hero.respawnIn / 20) : '?';
-      ctx.fillText('\u2620 ' + secs + 's', x, y);
-      ctx.globalAlpha = 1;
+      ctx.fillText(secs + 's', x, y + 12*s);
+      // Name (faded)
+      ctx.fillStyle = '#666666';
+      ctx.font = '9px sans-serif';
+      ctx.fillText((hero.displayName || hero.heroClass).substring(0, 8), x, y - 18*s);
     });
 
     // ─── Floating damage/heal numbers ───────────────────────
@@ -6245,6 +6283,22 @@ function updatePlayerControls() {
       ctx.globalAlpha = 1;
     }
     while (_dmgFloats.length > 60) _dmgFloats.shift();
+
+    // Gold coin particles
+    for (let i = _goldParticles.length - 1; i >= 0; i--) {
+      const g = _goldParticles[i];
+      g.age++;
+      if (g.age > g.maxAge) { _goldParticles.splice(i, 1); continue; }
+      g.x += g.vx; g.y += g.vy; g.vy += 0.15; // gravity
+      const p = g.age / g.maxAge;
+      ctx.globalAlpha = 1 - p;
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath(); ctx.arc(g.x, g.y, 3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#FFF8DC';
+      ctx.beginPath(); ctx.arc(g.x - 0.5, g.y - 0.5, 1, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    while (_goldParticles.length > 100) _goldParticles.shift();
 
     // Level-up burst effects
     for (let i = _levelUpFX.length - 1; i >= 0; i--) {

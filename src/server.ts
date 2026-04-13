@@ -1957,6 +1957,13 @@ wss.on('connection', (ws) => {
         if (!hero) return;
         hero.controlMode = msg.mode === 'manual' ? 'manual' : 'auto';
       }
+      // Ping relay — broadcast to all clients
+      if (msg.type === 'ping') {
+        const pingMsg = JSON.stringify({ type: 'ping', x: msg.x, y: msg.y, from: msg.agentId });
+        for (const c of clients) {
+          if (c !== ws && c.readyState === WebSocket.OPEN) c.send(pingMsg);
+        }
+      }
     } catch {}
   });
   // Send initial state

@@ -1600,6 +1600,7 @@
   <div class="death-sub">The Iron Horde claims another soul</div>
   <div class="death-countdown" id="death-countdown">—</div>
   <div class="death-countdown-label">Respawning</div>
+  <div id="death-recap" style="display:none;margin-top:16px;padding:12px 20px;background:rgba(0,0,0,0.4);border:1px solid rgba(226,75,74,0.3);border-radius:6px;text-align:center"></div>
 </div>
 
 <!-- ─── EVENT ANNOUNCEMENT ────────────────────────────── -->
@@ -1986,6 +1987,17 @@ function spawnAbilityEffect(evt) {
 
 ws.onmessage = (e) => {
   const msg = JSON.parse(e.data);
+  if (msg.type === 'ping') {
+    if (phaserScene) {
+      const px = msg.x, py = msg.y;
+      const pingRing = phaserScene.add.circle(px, py, 5, 0xFFD700, 0).setDepth(200);
+      pingRing.setStrokeStyle(3, 0xFFD700, 1);
+      phaserScene.tweens.add({ targets: pingRing, scaleX: 6, scaleY: 6, alpha: 0, duration: 1200, onComplete: () => pingRing.destroy() });
+      const pingText = phaserScene.add.text(px, py - 30, '!', { fontSize: '24px', fontFamily: 'Cinzel', color: '#FFD700', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setDepth(201);
+      phaserScene.tweens.add({ targets: pingText, y: py - 60, alpha: 0, duration: 2000, onComplete: () => pingText.destroy() });
+    }
+    return;
+  }
   if (msg.type === 'chat') { addChatMsg(msg.name, msg.text); return; }
   if (msg.type === 'state') {
     const prev = gameState;
@@ -2431,6 +2443,22 @@ function pCreate() {
   this.input.mouse.disableContextMenu();
   this.input.on('pointerdown', (pointer) => {
     if (!gameState) return;
+
+    // Alt+click = ping
+    if (pointer.event && pointer.event.altKey && playerAgentId) {
+      const wx = Math.round(pointer.worldX), wy = Math.round(pointer.worldY);
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'ping', agentId: playerAgentId, x: wx, y: wy }));
+      }
+      if (phaserScene) {
+        const pingRing = phaserScene.add.circle(wx, wy, 5, 0xFFD700, 0).setDepth(200);
+        pingRing.setStrokeStyle(3, 0xFFD700, 1);
+        phaserScene.tweens.add({ targets: pingRing, scaleX: 6, scaleY: 6, alpha: 0, duration: 1200, onComplete: () => pingRing.destroy() });
+        const pingText = phaserScene.add.text(wx, wy - 30, '!', { fontSize: '24px', fontFamily: 'Cinzel', color: '#FFD700', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setDepth(201);
+        phaserScene.tweens.add({ targets: pingText, y: wy - 60, alpha: 0, duration: 2000, onComplete: () => pingText.destroy() });
+      }
+      return;
+    }
 
     // Right-click = move to position (Dota-style)
     if (playerAgentId && pointer.rightButtonDown()) {
@@ -3369,6 +3397,21 @@ function renderSprite(id, texKey, entity, t, isHero) {
   sp.setScale(isHero ? 4.0 : 3.0);
   sp.setAlpha(1);
   sp.setAngle(0);
+
+  // Fog of war: dim enemies outside vision range
+  if (playerAgentId && gameState && gameState.fogOfWar && entity.faction !== (localStorage.getItem('woa_faction') || 'alliance')) {
+    const myVision = gameState.fogOfWar[localStorage.getItem('woa_faction') || 'alliance'] || [];
+    let inVision = false;
+    for (const v of myVision) {
+      const dx = entity.x - v.x, dy = entity.y - v.y;
+      if (dx*dx + dy*dy < v.radius * v.radius) { inVision = true; break; }
+    }
+    if (!inVision) {
+      sp.setAlpha(0.15);
+      if (sp._label) sp._label.setAlpha(0);
+      if (sp._glow) sp._glow.setAlpha(0);
+    }
+  }
 
   // Glow follows smoothly
   if (sp._glow) {
@@ -5082,8 +5125,25 @@ function updatePlayerControls() {
     }
     const secs = hero.respawnIn ? Math.ceil(hero.respawnIn / 20) : '?';
     if (deathCountdown) deathCountdown.textContent = secs;
+    // Death recap
+    const recapEl = document.getElementById('death-recap');
+    if (recapEl && gameState.kills) {
+      const recentKills = gameState.kills.slice(-5);
+      const myDeath = recentKills.find(k => k.victimId === hero.id);
+      if (myDeath) {
+        const killer = gameState.heroes.find(h => h.id === myDeath.killerId);
+        recapEl.innerHTML = `
+          <div style="color:#E24B4A;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:4px">KILLED BY</div>
+          <div style="color:#FFD700;font-size:14px;font-weight:900">${killer ? killer.heroClass.toUpperCase() : 'UNKNOWN'}</div>
+          <div style="color:#8A7D66;font-size:10px;margin-top:2px">${killer ? killer.faction : ''} · Level ${killer ? killer.level : '?'}</div>
+        `;
+        recapEl.style.display = 'block';
+      }
+    }
   } else if (deathOverlay && deathOverlay.classList.contains('show')) {
     deathOverlay.classList.remove('show');
+    const recapEl = document.getElementById('death-recap');
+    if (recapEl) recapEl.style.display = 'none';
   }
 
   const info = document.getElementById('pc-hero-info');

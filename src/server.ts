@@ -2987,6 +2987,8 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 <tr><td><span class="key">Scroll</span></td><td>Zoom in/out</td></tr>
 <tr><td><span class="key">Space</span></td><td>Free camera (hold, edge-pan)</td></tr>
 <tr><td><span class="key">Alt+click</span></td><td>Ping map location</td></tr>
+<tr><td><span class="key">V</span></td><td>Fire base turret at cursor (10s cooldown)</td></tr>
+<tr><td><span class="key">F1</span> <span class="key">F2</span> <span class="key">F3</span></td><td>Vote next wave: Melee / Ranged / Heavy</td></tr>
 </table>
 
 <h2>Hero Classes</h2>
@@ -2998,8 +3000,34 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 <div class="hero-card"><h3>💣 Siegemaster</h3><div class="role">SIEGE · 700 HP · 55 DMG · 450 RANGE</div><p>Structure destroyer. Cannon Shot + Mortar Barrage hit from far away. Demolish melts towers. Best for: pushing objectives.</p></div>
 </div>
 
+<h2>Hero Evolution</h2>
+<p>Your hero evolves as it levels up:</p>
+<table>
+<tr><th>Level</th><th>Tier</th><th>Bonuses</th></tr>
+<tr><td>1-4</td><td>Base</td><td>Starting stats</td></tr>
+<tr><td>5-9</td><td style="color:#4A8FE0">Champion</td><td>+40% HP, +30% damage, +5 armor, +20% mana</td></tr>
+<tr><td>10+</td><td style="color:#FFD700">Warlord</td><td>+30% HP, +25% damage, +8 armor, +15 speed, +30% mana</td></tr>
+</table>
+<p>Evolution is announced on screen with a visual glow upgrade.</p>
+
+<h2>Era Progression</h2>
+<p>The whole match evolves through eras as waves progress:</p>
+<table>
+<tr><th>Wave</th><th>Era</th><th>Unit Bonus</th></tr>
+<tr><td>1-4</td><td style="color:#CD7F32">Bronze Age</td><td>Base stats</td></tr>
+<tr><td>5-9</td><td style="color:#C0C0C0">Iron Age</td><td>+15% HP &amp; damage</td></tr>
+<tr><td>10-14</td><td style="color:#4682B4">Steel Age</td><td>+30% HP &amp; damage</td></tr>
+<tr><td>15+</td><td style="color:#FFD700">War Age</td><td>+45% HP &amp; damage</td></tr>
+</table>
+
+<h2>Wave Control &amp; Base Turret</h2>
+<p><strong>Wave voting (F1/F2/F3):</strong> Before each wave spawns, press F1 for a melee swarm, F2 for ranged units, or F3 for heavy siege. Your vote determines your faction's next wave composition.</p>
+<p><strong>Base turret (V key):</strong> Fire your base's turret at the cursor position. Deals 200+ AOE damage (scales with era). 10-second cooldown. Range limited to 1500 units from your base.</p>
+
 <h2>Game Objectives</h2>
 <p><strong>Win condition:</strong> Destroy the enemy base.</p>
+<p><strong>Turret defense:</strong> Press V to fire your base turret at approaching enemies.</p>
+<p><strong>Wave strategy:</strong> Use F1/F2/F3 to vote on your faction's wave composition.</p>
 <p>Each faction has: <strong>Base</strong> → <strong>Barracks</strong> → <strong>2 Towers per lane</strong></p>
 <p>Units auto-spawn every 35 seconds and march down all 3 lanes.</p>
 <p><strong>Jungle camps</strong> give bonus gold and XP. A boss camp sits at map center.</p>

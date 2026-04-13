@@ -981,11 +981,11 @@
     .tut-card .tut-icon { font-size: 2.4rem; }
 
     /* Player controls — make hotkey bar wrap on mobile */
-    #pc-hotkey-bar { gap: 2px; bottom: 175px; }
+    #pc-hotkey-bar { gap: 2px; bottom: 196px !important; }
     .hk-slot { width: 42px; height: 42px; }
     .hk-key { font-size: 11px; }
     .hk-name { font-size: 7px; max-width: 38px; }
-    #pc-stats-bar { font-size: 9px; padding: 3px 8px; gap: 6px; }
+    #pc-stats-bar { font-size: 9px; padding: 3px 8px; gap: 6px; bottom: 236px !important; }
     #pc-move-hint { display: none; }
   }
 
@@ -1422,7 +1422,7 @@
 <!-- ─── PLAYER ACTION BAR (Dota-style, shown when ?player= in URL) ── -->
 <div id="player-controls" style="display:none">
   <!-- Hotkey HUD overlay top-center -->
-  <div id="pc-hotkey-bar" style="position:fixed;bottom:200px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:4px;font-family:'Cinzel',serif">
+  <div id="pc-hotkey-bar" style="position:fixed;bottom:196px;left:50%;transform:translateX(-50%);z-index:150;display:flex;gap:4px;font-family:'Cinzel',serif">
     <!-- Ability slots Q W E R -->
     <div class="hk-slot" id="hk-q" data-key="Q"><div class="hk-key">Q</div><div class="hk-name" id="hk-q-name">-</div><div class="hk-cd" id="hk-q-cd"></div></div>
     <div class="hk-slot" id="hk-w" data-key="W"><div class="hk-key">W</div><div class="hk-name" id="hk-w-name">-</div><div class="hk-cd" id="hk-w-cd"></div></div>
@@ -1438,16 +1438,13 @@
     <div class="hk-slot hk-item" id="hk-5" data-key="5"><div class="hk-key">5</div><div class="hk-name" id="hk-5-name">Relic</div></div>
   </div>
   <!-- Hero stats bar — stone plaque -->
-  <div id="pc-stats-bar" style="position:fixed;bottom:200px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:11px;color:#C8B890;background:linear-gradient(180deg,#1E160A 0%,#0A0804 100%);border:2px solid;border-image:linear-gradient(180deg,#8B6914,#5A4A2A,#2A1A08) 1;border-radius:4px;padding:6px 16px 8px;display:flex;gap:14px;align-items:center;box-shadow:inset 0 1px 0 rgba(240,192,64,0.2),inset 0 -1px 0 rgba(0,0,0,0.6),0 3px 8px rgba(0,0,0,0.7)">
+  <div id="pc-stats-bar" style="position:fixed;bottom:240px;left:50%;transform:translateX(-50%);z-index:150;font-family:'Cinzel',serif;font-size:11px;color:#C8B890;background:#0d0d1aee;border:1px solid #C8960C44;border-radius:4px;padding:5px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.6)">
     <span id="pc-title" style="color:#F0C040;font-weight:900;text-transform:uppercase;font-size:10px;letter-spacing:0.12em;text-shadow:0 0 6px rgba(240,192,64,0.5),0 1px 1px #000;font-family:'MedievalSharp',serif">YOUR HERO</span>
     <span id="pc-hero-info" style="font-weight:700"></span>
     <span id="pc-status" style="color:#C8960C;font-size:10px;font-style:italic"></span>
     <button id="pc-leave-btn" onclick="leaveMatch()" style="margin-left:8px;background:linear-gradient(180deg,#2A1A08,#0A0804);color:#8A7A5A;border:1px solid rgba(154,139,110,0.4);border-radius:3px;padding:4px 12px;font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all 0.15s">Leave</button>
   </div>
-  <!-- Movement hint -->
-  <div id="pc-move-hint" style="position:fixed;bottom:168px;left:50%;transform:translateX(-50%);z-index:50;font-family:'Cinzel',serif;font-size:9px;color:#5A4A2A;letter-spacing:0.08em">
-    WASD/Arrows: Move &bull; Q/W/E/R/T: Abilities (T = ult) &bull; 1-5: Buy Items &bull; SPACE: Attack nearest &bull; B: Retreat &bull; ESC: Stop
-  </div>
+  <!-- Controls hint removed — tutorial toast shows on first play -->
 </div>
 
 <style>

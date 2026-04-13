@@ -5919,27 +5919,60 @@ function updatePlayerControls() {
       });
     }
 
-    // ─── Draw units as small soldiers ──────────────────────
+    // ─── Draw units as typed soldiers ──────────────────────
     if (gameState.units) {
-      const us = Math.max(scaleX / 0.15, 0.5) * 0.7; // unit scale
+      const us = Math.max(scaleX / 0.15, 0.5) * 0.6;
       gameState.units.forEach(u => {
         if (!u.alive) return;
         const x = u.x * scaleX, y = u.y * scaleY;
         const isA = u.faction === 'alliance';
-        // Body
-        ctx.fillStyle = isA ? '#3070C0' : '#8B2222';
-        ctx.fillRect(x-3*us, y-4*us, 6*us, 8*us);
-        // Head
-        ctx.fillStyle = isA ? '#4A8FE0' : '#CC3322';
-        ctx.beginPath(); ctx.arc(x, y-6*us, 3*us, 0, Math.PI*2); ctx.fill();
-        // Legs
-        ctx.fillRect(x-3*us, y+4*us, 2*us, 4*us); ctx.fillRect(x+1*us, y+4*us, 2*us, 4*us);
-        // HP indicator (only if damaged)
+        const t = u.unitType;
+        const isLarge = (t === 'colossus' || t === 'gryphon');
+        const isWide = (t === 'ballista' || t === 'colossus');
+        const sz = isLarge ? us * 1.6 : us;
+
+        if (t === 'ballista') {
+          // Ballista — wide mechanical
+          ctx.fillStyle = '#6A6A6A'; ctx.fillRect(x-6*sz, y-3*sz, 12*sz, 6*sz);
+          ctx.fillStyle = '#8B6914'; ctx.fillRect(x+4*sz, y-5*sz, 2*sz, 4*sz);
+          ctx.fillStyle = '#4A4A4A'; ctx.beginPath(); ctx.arc(x-4*sz, y+4*sz, 2*sz, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(x+3*sz, y+4*sz, 2*sz, 0, Math.PI*2); ctx.fill();
+        } else if (t === 'colossus') {
+          // Colossus — massive dark iron
+          ctx.fillStyle = '#2A2A2A'; ctx.fillRect(x-7*sz, y-6*sz, 14*sz, 12*sz);
+          ctx.fillStyle = '#1A1A1A'; ctx.fillRect(x-5*sz, y-9*sz, 10*sz, 4*sz);
+          ctx.fillStyle = '#FF2200'; ctx.fillRect(x-3*sz, y-7*sz, 2*sz, 1*sz); ctx.fillRect(x+1*sz, y-7*sz, 2*sz, 1*sz);
+          ctx.fillStyle = '#3A3A3A'; ctx.fillRect(x-9*sz, y-5*sz, 3*sz, 5*sz); ctx.fillRect(x+6*sz, y-5*sz, 3*sz, 5*sz);
+        } else if (t === 'gryphon' || t === 'au_gryphon' || t === 'hu_gryphon') {
+          // Gryphon — winged
+          ctx.fillStyle = isA ? '#4A8FE0' : '#CC3322';
+          ctx.fillRect(x-3*sz, y-3*sz, 6*sz, 6*sz);
+          // Wings
+          ctx.beginPath(); ctx.moveTo(x-3*sz, y-2*sz); ctx.lineTo(x-10*sz, y+1*sz); ctx.lineTo(x-3*sz, y+3*sz); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(x+3*sz, y-2*sz); ctx.lineTo(x+10*sz, y+1*sz); ctx.lineTo(x+3*sz, y+3*sz); ctx.fill();
+        } else {
+          // Standard soldier (footman, archer, warrior, shredder, warlock)
+          ctx.fillStyle = isA ? '#3070C0' : '#8B2222';
+          ctx.fillRect(x-3*sz, y-3*sz, 6*sz, 7*sz);
+          // Head with helmet/spike
+          ctx.fillStyle = isA ? '#D4B840' : '#2A2020';
+          ctx.beginPath(); ctx.arc(x, y-5*sz, 2.5*sz, 0, Math.PI*2); ctx.fill();
+          if (!isA) { ctx.fillStyle = '#2A2020'; ctx.fillRect(x-0.5*sz, y-8*sz, 1*sz, 3*sz); } // spike
+          // Legs
+          ctx.fillStyle = isA ? '#3070C0' : '#8B2222';
+          ctx.fillRect(x-3*sz, y+4*sz, 2*sz, 3*sz); ctx.fillRect(x+1*sz, y+4*sz, 2*sz, 3*sz);
+          // Weapon hint
+          if (t === 'archer' || t === 'shredder') {
+            ctx.fillStyle = '#888'; ctx.fillRect(x+4*sz, y-4*sz, 1*sz, 6*sz);
+          }
+        }
+        // HP bar (only if damaged)
         if (u.hp < u.maxHp) {
           const pct = u.hp / u.maxHp;
-          ctx.fillStyle = '#111'; ctx.fillRect(x-5*us, y-9*us, 10*us, 2*us);
+          const bw = isWide ? 10*sz : 6*sz;
+          ctx.fillStyle = '#111'; ctx.fillRect(x-bw, y-(isLarge?11:8)*sz, bw*2, 2*sz);
           ctx.fillStyle = pct > 0.5 ? '#44AA44' : '#CC3322';
-          ctx.fillRect(x-5*us, y-9*us, 10*us*pct, 2*us);
+          ctx.fillRect(x-bw, y-(isLarge?11:8)*sz, bw*2*pct, 2*sz);
         }
       });
     }
@@ -6070,32 +6103,33 @@ function updatePlayerControls() {
       }
       ctx.restore();
 
-      // ── Labels and bars ──
+      // ── Labels and bars (compact, no overlap) ──
       ctx.textAlign = 'center';
-      // Name
-      ctx.fillStyle = isMine ? '#FFD700' : '#FFFFFF';
-      ctx.font = `bold ${Math.max(8, 9*s)}px Cinzel, sans-serif`;
+      // Name (max 10 chars, small font)
+      const displayName = (hero.displayName || hero.heroClass).substring(0, 10);
+      ctx.fillStyle = isMine ? '#FFD700' : '#FFFFFFCC';
+      ctx.font = '11px Cinzel, sans-serif';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(hero.displayName || hero.heroClass, x, y - 18*s - 4);
-      // Level
-      ctx.fillStyle = '#C8960C'; ctx.font = `bold ${Math.max(7, 7*s)}px sans-serif`;
-      ctx.textBaseline = 'top'; ctx.fillText('Lv' + hero.level, x, y + 18*s);
-      // HP bar
+      ctx.fillText(displayName, x, y - 16*s - 2);
+      // Level badge (small)
+      ctx.fillStyle = '#C8960C'; ctx.font = '9px sans-serif';
+      ctx.textBaseline = 'top'; ctx.fillText('Lv' + hero.level, x, y + 16*s + 2);
+      // HP bar (compact)
       const hpPct = hero.hp / hero.maxHp;
-      const barW = 20*s;
-      ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, y+18*s+10, barW, 3);
+      const barW = Math.max(18, 16*s);
+      ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, y+16*s+12, barW, 3);
       ctx.fillStyle = hpPct > 0.5 ? '#44CC44' : hpPct > 0.25 ? '#CCAA22' : '#CC3322';
-      ctx.fillRect(x-barW/2, y+18*s+10, barW*hpPct, 3);
+      ctx.fillRect(x-barW/2, y+16*s+12, barW*hpPct, 3);
       // MP bar
       if (hero.maxMana > 0) {
         const mpPct = hero.mana / hero.maxMana;
-        ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, y+18*s+14, barW, 2);
-        ctx.fillStyle = '#4488EE'; ctx.fillRect(x-barW/2, y+18*s+14, barW*mpPct, 2);
+        ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, y+16*s+16, barW, 2);
+        ctx.fillStyle = '#4488EE'; ctx.fillRect(x-barW/2, y+16*s+16, barW*mpPct, 2);
       }
-      // Kill streak
+      // Kill streak (small)
       if (hero.killStreak >= 3) {
-        ctx.fillStyle = '#FF6600'; ctx.font = 'bold 8px sans-serif';
-        ctx.textBaseline = 'bottom'; ctx.fillText('\uD83D\uDD25' + hero.killStreak + 'x', x + 16*s, y - 12*s);
+        ctx.fillStyle = '#FF6600'; ctx.font = '8px sans-serif';
+        ctx.textBaseline = 'bottom'; ctx.fillText(hero.killStreak + 'x', x + 14*s, y - 10*s);
       }
     });
 
@@ -6127,14 +6161,18 @@ function updatePlayerControls() {
   // Position the entity canvas correctly inside main-area
   function positionEntityCanvas() {
     const gc = document.getElementById('game-container');
+    const bp = document.getElementById('bottom-panel');
+    const tb = document.getElementById('top-bar');
     const ec = document.getElementById('entity-canvas');
-    if (!gc || !ec) return;
-    const r = gc.getBoundingClientRect();
-    ec.style.top = r.top + 'px';
-    ec.style.left = r.left + 'px';
-    ec.style.width = r.width + 'px';
-    ec.style.height = r.height + 'px';
+    if (!ec) return;
+    // Fill full viewport width, from below top-bar to above bottom-panel
+    const topH = tb ? tb.offsetHeight : 42;
+    const botH = bp ? bp.offsetHeight : 190;
     ec.style.position = 'fixed';
+    ec.style.top = topH + 'px';
+    ec.style.left = '0';
+    ec.style.width = window.innerWidth + 'px';
+    ec.style.height = (window.innerHeight - topH - botH) + 'px';
   }
   positionEntityCanvas();
   window.addEventListener('resize', positionEntityCanvas);

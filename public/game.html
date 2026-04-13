@@ -4467,6 +4467,7 @@ function updateUI() {
     const justLeveled = h.level > prevLvl;
     window._prevHeroLevels[h.id] = h.level;
     card.className = `hero-card ${h.faction} ${h.alive?'':'dead'} ${isMine?'mine':''} ${justLeveled?'levelup':''}`;
+    card.style.background = '#0d0d1a';
     const streak = h.killStreak>=3 ? `<span class="streak-badge">\uD83D\uDD25${h.killStreak}x</span>` : '';
     const deadIcon = !h.alive ? '\u2620 ' : '';
     const icon = CLASS_ICONS[h.heroClass]||'';
@@ -4507,6 +4508,7 @@ function updateUI() {
   for (let i = sorted.length; i < totalSlots; i++) {
     const empty = document.createElement('div');
     empty.className = 'hero-card empty-slot';
+    empty.style.cssText = 'background:#0d0d1a !important;border:1px solid #1a1a24;min-width:152px;min-height:80px;display:flex;align-items:center;justify-content:center;border-radius:6px;flex-shrink:0';
     empty.innerHTML = '<div style="color:#2A2A3A;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-family:Cinzel,serif">WAITING...</div>';
     panel.appendChild(empty);
   }
@@ -5871,16 +5873,28 @@ function updatePlayerControls() {
   function renderEntities() {
     const canvas = document.getElementById('entity-canvas');
     if (!canvas || !gameState) return;
-    if (canvas.width < 10) positionEntityCanvas(); // re-init if needed
+
+    // Force canvas to full viewport size every frame
+    const tb = document.getElementById('top-bar');
+    const bp = document.getElementById('bottom-panel');
+    const topH = (tb && !IS_SPECTATE) ? tb.offsetHeight : 0;
+    const botH = (bp && !IS_SPECTATE) ? bp.offsetHeight : 0;
+    const w = window.innerWidth;
+    const h = window.innerHeight - topH - botH;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.cssText = `position:fixed;top:${topH}px;left:0;width:${w}px;height:${h}px;pointer-events:none;z-index:5`;
+    }
 
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, w, h);
 
     if (!gameState.heroes) return;
 
-    // Scale from MAP coordinates (4800x2400) to canvas pixel coordinates
-    const scaleX = canvas.width / MAP_WC;
-    const scaleY = canvas.height / MAP_HC;
+    // Scale from MAP coordinates (4800x2400) to actual pixel dimensions
+    const scaleX = w / MAP_WC;
+    const scaleY = h / MAP_HC;
 
     // ─── Track HP changes for damage numbers ─────────────
     if (!window._prevEntityHP) window._prevEntityHP = {};
@@ -6119,9 +6133,13 @@ function updatePlayerControls() {
       ctx.textAlign = 'center';
       // Name (max 10 chars, small font)
       const displayName = (hero.displayName || hero.heroClass).substring(0, 10);
+      // Faction badge + name
+      const badge = isA ? '[A]' : '[H]';
+      ctx.font = 'bold 9px sans-serif'; ctx.textBaseline = 'bottom'; ctx.textAlign = 'center';
+      ctx.fillStyle = isA ? '#4fc3f7' : '#ff6666';
+      ctx.fillText(badge, x - ctx.measureText(displayName).width/2 - 10, y - 16*s - 2);
       ctx.fillStyle = isMine ? '#FFD700' : '#FFFFFFCC';
       ctx.font = '11px Cinzel, sans-serif';
-      ctx.textBaseline = 'bottom';
       ctx.fillText(displayName, x, y - 16*s - 2);
       // Level badge (small)
       ctx.fillStyle = '#C8960C'; ctx.font = '9px sans-serif';
@@ -6170,18 +6188,23 @@ function updatePlayerControls() {
     for (let i = _dmgFloats.length - 1; i >= 0; i--) {
       const d = _dmgFloats[i];
       d.age++;
-      if (d.age > 20) { _dmgFloats.splice(i, 1); continue; } // 1 second at 20fps
-      const progress = d.age / 20;
-      ctx.globalAlpha = 1 - progress;
-      ctx.fillStyle = d.color;
-      ctx.font = `bold ${d.text.startsWith('+') ? 11 : 13}px sans-serif`;
+      if (d.age > 30) { _dmgFloats.splice(i, 1); continue; } // 1.5 seconds at 20fps
+      const progress = d.age / 30;
+      ctx.globalAlpha = Math.min(1, 2 - progress * 2); // full opacity first half, fade second half
+      const isCrit = parseInt(d.text.replace(/[^0-9]/g, '')) > 80;
+      const isHeal = d.text.startsWith('+');
+      ctx.fillStyle = isCrit ? '#FFD700' : d.color;
+      ctx.font = `bold ${isCrit ? 18 : (isHeal ? 13 : 15)}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(d.text, d.x + (Math.random() - 0.5) * 2, d.y - d.age * 1.5);
+      // Stroke for readability
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.strokeText(d.text, d.x, d.y - d.age * 1.2);
+      ctx.fillText(d.text, d.x, d.y - d.age * 1.2);
       ctx.globalAlpha = 1;
     }
-    // Cap float count
-    while (_dmgFloats.length > 50) _dmgFloats.shift();
+    while (_dmgFloats.length > 60) _dmgFloats.shift();
   }
 
   // Run entity rendering at 20fps (independent of Phaser)

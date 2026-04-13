@@ -657,8 +657,8 @@
   #heroes-panel {
     flex: 1;
     display: flex;
-    gap: 5px;
-    padding: 6px 8px;
+    gap: 0px; /* zero gap — no canvas bleed between cards */
+    padding: 4px;
     overflow-x: auto;
     align-items: stretch;
     background: #0d0d1a !important;
@@ -666,10 +666,19 @@
     z-index: 101;
     min-height: 100%;
   }
+  /* Solid cover behind all hero cards */
+  #heroes-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #0d0d1a;
+    z-index: -1;
+  }
   /* Force every child in heroes-panel to be opaque dark */
   #heroes-panel > * {
     background: #0d0d1a !important;
     border: 1px solid #1a1a2a;
+    margin: 0 2px;
   }
   #heroes-panel > .empty-slot {
     background: #0a0a14 !important;

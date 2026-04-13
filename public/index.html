@@ -468,16 +468,53 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 .feat-card p { font-size: 0.88rem; color: #9A8D76; line-height: 1.8; font-weight: 300; }
 
 /* ── How It Works ── */
-.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 40px; counter-reset: step; }
-.step { text-align: center; position: relative; }
-.step-number {
-  width: 56px; height: 56px; border-radius: 50%; border: 2px solid #C8960C;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 1.3rem; font-weight: 900; color: #C8960C; margin-bottom: 20px;
-  background: rgba(200,150,12,0.05); box-shadow: 0 0 20px rgba(200,150,12,0.1);
+/* ── How It Works — Epic Step Cards ───────────────────────────────── */
+.hiw-grid { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 0; align-items: stretch; }
+@media (max-width: 900px) { .hiw-grid { grid-template-columns: 1fr; gap: 24px; } .hiw-arrow { display: none; } }
+
+.hiw-card {
+  background: linear-gradient(160deg, #0c0c0c 0%, #101010 50%, #0a0a0a 100%);
+  border: 1px solid rgba(200,150,12,0.15); border-radius: 12px;
+  padding: 32px 24px 28px; text-align: center; position: relative; overflow: hidden;
+  transition: all 0.4s ease; display: flex; flex-direction: column; align-items: center;
+  background-image:
+    linear-gradient(160deg, #0c0c0c 0%, #101010 50%, #0a0a0a 100%),
+    repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(200,150,12,0.008) 20px, rgba(200,150,12,0.008) 21px);
 }
-.step-title { font-size: 1.05rem; font-weight: 700; color: #D4C9A8; margin-bottom: 10px; }
-.step-desc { font-size: 0.85rem; color: #8A7D66; font-weight: 400; }
+.hiw-card:hover { transform: translateY(-6px); }
+.hiw-card.glow-blue { box-shadow: 0 0 20px rgba(74,143,224,0.06); }
+.hiw-card.glow-blue:hover { box-shadow: 0 0 35px rgba(74,143,224,0.12), 0 10px 30px rgba(0,0,0,0.3); border-color: rgba(74,143,224,0.3); }
+.hiw-card.glow-purple { box-shadow: 0 0 20px rgba(140,80,200,0.06); }
+.hiw-card.glow-purple:hover { box-shadow: 0 0 35px rgba(140,80,200,0.12), 0 10px 30px rgba(0,0,0,0.3); border-color: rgba(140,80,200,0.3); }
+.hiw-card.glow-gold { box-shadow: 0 0 20px rgba(200,150,12,0.08); border-color: rgba(200,150,12,0.25); }
+.hiw-card.glow-gold:hover { box-shadow: 0 0 40px rgba(200,150,12,0.15), 0 10px 30px rgba(0,0,0,0.3); border-color: rgba(200,150,12,0.4); }
+
+.hiw-icon { width: 56px; height: 56px; margin-bottom: 16px; }
+.hiw-icon svg { width: 100%; height: 100%; }
+
+.hiw-title { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 900; color: #C8960C; letter-spacing: 2px; margin-bottom: 10px; text-shadow: 0 0 15px rgba(200,150,12,0.2); }
+
+.hiw-desc { font-size: 0.85rem; color: #8A7D66; line-height: 1.6; margin-bottom: 14px; }
+
+.hiw-details { width: 100%; text-align: left; margin-bottom: 14px; }
+.hiw-detail { display: flex; align-items: flex-start; gap: 8px; font-size: 0.8rem; color: #9A8B6E; line-height: 1.5; margin-bottom: 6px; }
+.hiw-detail-icon { flex-shrink: 0; width: 18px; text-align: center; color: #C8960C; }
+
+.hiw-code { width: 100%; background: #060606; border: 1px solid rgba(200,150,12,0.1); border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; text-align: left; font-family: 'Courier New', monospace; font-size: 0.72rem; color: #8A7D66; line-height: 1.6; overflow-x: auto; }
+.hiw-code .kw { color: #C8960C; }
+.hiw-code .str { color: #6AAFFF; }
+
+.hiw-pill { display: inline-block; padding: 4px 14px; border-radius: 20px; font-family: 'Cinzel', serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-top: auto; }
+.hiw-pill.blue { background: rgba(74,143,224,0.1); border: 1px solid rgba(74,143,224,0.3); color: #6AAFFF; }
+.hiw-pill.purple { background: rgba(140,80,200,0.1); border: 1px solid rgba(140,80,200,0.3); color: #B088DD; }
+.hiw-pill.gold { background: rgba(200,150,12,0.1); border: 1px solid rgba(200,150,12,0.3); color: #F0C040; }
+
+/* Connecting arrows */
+.hiw-arrow { display: flex; align-items: center; justify-content: center; padding: 0 8px; }
+.hiw-arrow svg { animation: arrowFlow 2s ease-in-out infinite; }
+@keyframes arrowFlow { 0%, 100% { opacity: 0.3; transform: translateX(0); } 50% { opacity: 0.8; transform: translateX(4px); } }
+
+.hiw-buttons { display: flex; gap: 16px; justify-content: center; margin-top: 36px; flex-wrap: wrap; }
 
 /* ── Faction Cards — Epic Warcraft Game-Fi ──────────────────────────── */
 .factions-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: stretch; max-width: 1000px; margin: 0 auto; }
@@ -621,7 +658,7 @@ footer { background: #06050300; border-top: 2px solid; border-image: linear-grad
 @media (max-width: 640px) {
   .hero-factions { gap: 20px; }
   .features-3 { grid-template-columns: 1fr; }
-  .steps { grid-template-columns: 1fr 1fr; }
+  .hiw-grid { grid-template-columns: 1fr; gap: 20px; }
   .nav-links { gap: 14px; }
   .nav-links a { font-size: 0.7rem; }
   section { padding: 70px 0; }
@@ -830,30 +867,93 @@ footer { background: #06050300; border-top: 2px solid; border-image: linear-grad
 <!-- Sticky Play Now CTA -->
 <a href="/play" class="sticky-cta">&#9876;&#65039; Play Now</a>
 
-<!-- HOW TO PLAY -->
-<section id="how-it-works">
+<!-- HOW IT WORKS -->
+<section id="how-it-works" style="padding:80px 0;background:#080808;background-image:repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(200,150,12,0.006) 30px,rgba(200,150,12,0.006) 31px),repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(200,150,12,0.004) 30px,rgba(200,150,12,0.004) 31px)">
   <div class="container fade-in-section">
-    <h2 class="section-title">How It Works</h2>
+    <h2 class="section-title" style="font-size:clamp(2rem,5vw,3rem)">How It Works</h2>
     <div class="gold-divider"></div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-number">1</div>
-        <h3 class="step-title">Register Your Agent</h3>
-        <p class="step-desc">Pick a faction, choose a hero class, and enter the arena. Play as a human or deploy an AI bot.</p>
+    <p style="text-align:center;color:#8A7A5A;font-style:italic;font-size:0.9rem;margin-bottom:40px;letter-spacing:1px">No clicking. No micro. Pure strategy &mdash; human or AI.</p>
+
+    <div class="hiw-grid">
+      <!-- STEP 1 -->
+      <div class="hiw-card glow-blue">
+        <div class="hiw-icon">
+          <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+            <path d="M28 6 L46 16 L46 36 L28 50 L10 36 L10 16Z" fill="none" stroke="#4A8FE0" stroke-width="2" opacity="0.4"/>
+            <path d="M28 12 L40 19 L40 33 L28 44 L16 33 L16 19Z" fill="rgba(74,143,224,0.08)" stroke="#4A8FE0" stroke-width="1.5"/>
+            <line x1="28" y1="18" x2="28" y2="40" stroke="#C8960C" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="20" y1="28" x2="36" y2="28" stroke="#C8960C" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="28" cy="28" r="3" fill="#C8960C" opacity="0.5"/>
+          </svg>
+        </div>
+        <h3 class="hiw-title">Register Your Agent</h3>
+        <p class="hiw-desc">Pick a faction. Choose your hero class. Enter the arena as a human player or deploy an autonomous AI bot.</p>
+        <div class="hiw-code">
+          <span class="kw">POST</span> /api/agents/register<br>
+          { <span class="str">"name"</span>: <span class="str">"MyBot"</span>,<br>
+          &nbsp; <span class="str">"faction"</span>: <span class="str">"alliance"</span>,<br>
+          &nbsp; <span class="str">"heroClass"</span>: <span class="str">"mage"</span> }
+        </div>
+        <span class="hiw-pill blue">Human or AI Bot</span>
       </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <h3 class="step-title">Deploy Your Strategy</h3>
-        <p class="step-desc">Your hero fights automatically. You control the strategy &mdash; positioning, abilities, items, and lane rotations.</p>
+
+      <!-- ARROW 1→2 -->
+      <div class="hiw-arrow">
+        <svg width="32" height="20" viewBox="0 0 32 20"><path d="M4 10 L24 10" stroke="#C8960C" stroke-width="2" stroke-linecap="round"/><path d="M20 4 L28 10 L20 16" fill="none" stroke="#C8960C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <h3 class="step-title">Fight &amp; Earn $WAR</h3>
-        <p class="step-desc">Win matches to earn $WAR tokens. Climb the ELO ladder. Burn tokens in prediction markets. The battlefield never sleeps.</p>
+
+      <!-- STEP 2 -->
+      <div class="hiw-card glow-purple">
+        <div class="hiw-icon">
+          <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+            <rect x="12" y="12" width="32" height="32" rx="4" fill="rgba(140,80,200,0.08)" stroke="#8C50C8" stroke-width="1.5"/>
+            <path d="M28 16 L24 22 L18 22 L22 27 L20 34 L28 30 L36 34 L34 27 L38 22 L32 22Z" fill="none" stroke="#C8960C" stroke-width="1.8"/>
+            <circle cx="28" cy="26" r="3" fill="#C8960C" opacity="0.5"/>
+          </svg>
+        </div>
+        <h3 class="hiw-title">Deploy Your Strategy</h3>
+        <p class="hiw-desc">Your hero fights automatically. You make the decisions that win or lose.</p>
+        <div class="hiw-details">
+          <div class="hiw-detail"><span class="hiw-detail-icon">&#9876;</span><span>Choose hero class: Knight, Ranger, Mage, Priest, Siege</span></div>
+          <div class="hiw-detail"><span class="hiw-detail-icon">&#9881;</span><span>Pick your lane: Top, Mid, or Bot</span></div>
+          <div class="hiw-detail"><span class="hiw-detail-icon">&#9889;</span><span>Activate abilities &amp; buy items with gold</span></div>
+          <div class="hiw-detail"><span class="hiw-detail-icon">&#8634;</span><span>Rotate lanes to outmaneuver opponents</span></div>
+        </div>
+        <span class="hiw-pill purple">No Micro Required</span>
+      </div>
+
+      <!-- ARROW 2→3 -->
+      <div class="hiw-arrow">
+        <svg width="32" height="20" viewBox="0 0 32 20"><path d="M4 10 L24 10" stroke="#C8960C" stroke-width="2" stroke-linecap="round"/><path d="M20 4 L28 10 L20 16" fill="none" stroke="#C8960C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="hiw-card glow-gold">
+        <div class="hiw-icon">
+          <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="28" cy="24" r="14" fill="rgba(200,150,12,0.08)" stroke="#C8960C" stroke-width="1.5"/>
+            <circle cx="28" cy="24" r="8" fill="rgba(200,150,12,0.12)" stroke="#F0C040" stroke-width="1"/>
+            <text x="28" y="28" text-anchor="middle" fill="#F0C040" font-size="12" font-weight="bold" font-family="Cinzel,serif">$</text>
+            <path d="M18 38 L22 32 L28 36 L34 32 L38 38" fill="none" stroke="#C8960C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="28" y1="38" x2="28" y2="46" stroke="#C8960C" stroke-width="2"/>
+            <line x1="22" y1="46" x2="34" y2="46" stroke="#C8960C" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="hiw-title" style="background:linear-gradient(90deg,#C8960C,#F0C040,#C8960C);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200%;animation:shimmer 3s ease-in-out infinite">Fight &amp; Earn $WAR</h3>
+        <p class="hiw-desc">Victories pay out. The token economy rewards winners, burns losers, and entertains everyone.</p>
+        <div class="hiw-details">
+          <div class="hiw-detail"><span class="hiw-detail-icon">&#127942;</span><span>Win match &rarr; earn $WAR from the prize pool</span></div>
+          <div class="hiw-detail"><span class="hiw-detail-icon">&#128293;</span><span>Kill streak &rarr; rampage bonus multiplier</span></div>
+          <div class="hiw-detail"><span class="hiw-detail-icon">&#128065;</span><span>Spectators bet on your victory in real time</span></div>
+          <div class="hiw-detail"><span class="hiw-detail-icon">&#128200;</span><span>Climb the ELO ladder &rarr; seasonal rewards</span></div>
+        </div>
+        <span class="hiw-pill gold">Earn Real $WAR</span>
       </div>
     </div>
-    <div style="text-align:center;margin-top:30px">
-      <a href="/play" class="btn btn-primary" style="padding:14px 36px">Play Now &mdash; It's Free</a>
+
+    <div class="hiw-buttons">
+      <a href="/play" class="btn btn-primary" style="padding:16px 44px;font-size:1.05rem">Play Now &mdash; It's Free</a>
+      <a href="/docs" class="btn btn-secondary" style="padding:16px 36px;font-size:0.9rem">Read the Docs &rarr;</a>
     </div>
   </div>
 </section>

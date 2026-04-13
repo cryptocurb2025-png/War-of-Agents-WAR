@@ -2093,12 +2093,18 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-// Handle resize
+// Handle resize — also recalculate camera zoom
 function resizeGame() {
   const d = getGameDimensions();
   if (game && game.scale) {
     game.scale.resize(d.w, d.h);
-    console.log('Phaser resized to:', d.w, 'x', d.h);
+    // Recalculate camera zoom to fit full map (spectator wide view)
+    if (cam) {
+      const wideZoom = d.w / MAP_W;
+      cam.setZoom(wideZoom);
+      cam.centerOn(MAP_W / 2, MAP_H / 2);
+    }
+    console.log('Phaser resized to:', d.w, 'x', d.h, 'zoom:', cam ? cam.zoom : 'n/a');
   }
 }
 window.addEventListener('resize', resizeGame);
@@ -2601,7 +2607,7 @@ function pUpdate() {
   // Draw base terrain even before WebSocket connects
   graphics.fillStyle(0x3A7A2A, 1);
   graphics.fillRect(0, 0, halfW, MAP_H);
-  graphics.fillStyle(0x5A3A1A, 1);
+  graphics.fillStyle(0x2A1508, 1);
   graphics.fillRect(halfW, 0, halfW, MAP_H);
   // Lane
   graphics.fillStyle(0x6B5A3A, 1);
@@ -2661,16 +2667,20 @@ function pUpdate() {
   graphics.fillStyle(isNight ? 0x0A1A3A : 0x4A8FE0, 0.03);
   graphics.fillRect(0, 0, halfW, 400);
 
-  // Right half — Mordor dark earth #1A0A00
-  graphics.fillStyle(isNight ? 0x0A0500 : 0x1A0A00, 1);
+  // Right half — Horde scorched earth (brightened for visibility)
+  graphics.fillStyle(isNight ? 0x120800 : 0x2A1508, 1);
   graphics.fillRect(halfW, 0, halfW, MAP_H);
 
   // Dark red fog overlay on upper Horde area
-  graphics.fillStyle(0x330000, 0.2);
+  graphics.fillStyle(0x440808, 0.25);
   graphics.fillRect(halfW, 0, halfW, 800);
 
-  // Lava crack lines (orange #FF4400 at low opacity)
-  graphics.lineStyle(3, 0xFF4400, 0.3);
+  // Subtle red tint across horde ground for contrast
+  graphics.fillStyle(0x1A0800, 0.4);
+  graphics.fillRect(halfW, 800, halfW, MAP_H - 800);
+
+  // Lava crack lines (orange #FF4400 at higher opacity for visibility)
+  graphics.lineStyle(3, 0xFF4400, 0.45);
   const lavaCracks = [
     [2500,300,2700,500], [2800,100,3000,400], [3200,600,3500,300],
     [3600,200,3800,500], [4000,400,4200,100], [4300,300,4500,600],
@@ -2690,11 +2700,11 @@ function pUpdate() {
     {x:2800,y:1700}, {x:3400,y:1850}, {x:4000,y:1750}];
   for (const fp of firePits) {
     const flicker = Math.sin(t * 0.08 + fp.x * 0.01) * 0.04;
-    graphics.fillStyle(0xFF2200, 0.08 + flicker);
+    graphics.fillStyle(0xFF2200, 0.15 + flicker);
     graphics.fillCircle(fp.x, fp.y, 55 + Math.sin(t * 0.06 + fp.y) * 5);
-    graphics.fillStyle(0xFF4400, 0.15 + flicker);
+    graphics.fillStyle(0xFF4400, 0.25 + flicker);
     graphics.fillCircle(fp.x, fp.y, 30);
-    graphics.fillStyle(0xFFAA00, 0.2 + flicker);
+    graphics.fillStyle(0xFFAA00, 0.3 + flicker);
     graphics.fillCircle(fp.x, fp.y, 12);
     graphics.fillStyle(0xFFDD44, 0.15);
     graphics.fillCircle(fp.x, fp.y, 5);

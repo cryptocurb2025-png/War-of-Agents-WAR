@@ -323,25 +323,44 @@ nav .container { display: flex; align-items: center; justify-content: space-betw
 /* Live game embed */
 .live-embed {
   margin-top: 40px; text-align: center;
-  /* Break out of .container to be full viewport width */
-  width: 100vw; margin-left: calc(-50vw + 50%); position: relative;
+  position: relative; max-width: 960px; margin-left: auto; margin-right: auto;
 }
 .live-embed-label {
   font-family: 'Cinzel', serif; font-size: 0.75rem; font-weight: 700;
   letter-spacing: 3px; text-transform: uppercase; color: #44AA44;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   animation: tickerPulse 2s ease-in-out infinite;
 }
 .live-embed-label::before { content: '\25CF '; }
-.live-embed iframe {
-  width: 100%; max-width: none; height: 520px;
-  border: 2px solid rgba(200,150,12,0.3); border-radius: 8px;
-  background: #050308;
-  box-shadow: 0 0 40px rgba(0,0,0,0.5), 0 0 20px rgba(200,150,12,0.05);
+/* Gold ornate frame around the battlefield preview */
+.live-embed-frame {
+  position: relative; border-radius: 10px; overflow: hidden;
+  border: 3px solid; border-image: linear-gradient(135deg, #5A4A2A, #F0C040, #C8960C, #F0C040, #5A4A2A) 1;
+  box-shadow: 0 0 40px rgba(200,150,12,0.15), 0 0 80px rgba(0,0,0,0.5), inset 0 0 30px rgba(0,0,0,0.3);
+}
+.live-embed-frame iframe {
+  display: block; width: 100%; height: 400px;
+  border: none; background: #050a14;
+  /* Scale down slightly so the full battlefield fits cleanly */
+  transform-origin: top left;
+}
+/* Dark fade overlay at bottom of preview — blends into page */
+.live-embed-frame::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+  background: linear-gradient(to top, #0A0804 0%, rgba(10,8,4,0.8) 40%, transparent 100%);
+  pointer-events: none; z-index: 2;
+}
+/* Corner ornaments on the frame */
+.live-embed-frame::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(200,150,12,0.1);
 }
 .live-embed-link {
-  display: inline-block; margin-top: 8px;
-  font-size: 0.75rem; color: #6A5E48; letter-spacing: 1px;
+  display: inline-block; margin-top: 12px;
+  font-size: 0.8rem; color: #6A5E48; letter-spacing: 1px;
 }
 .live-embed-link:hover { color: #C8960C; }
 
@@ -561,7 +580,7 @@ footer {
   section { padding: 70px 0; }
   .token-compare-grid { grid-template-columns: 1fr; }
   .token-vs-divider { padding: 8px 0; }
-  .live-embed iframe { height: 360px; }
+  .live-embed-frame iframe { height: 280px; }
 }
 </style>
 </head>
@@ -795,14 +814,21 @@ footer {
       <span id="ticker-text">Connecting to battlefield...</span>
     </div>
     <!-- LIVE GAME EMBED -->
+  </div>
+  <div class="hero-scroll-hint">&#9660; SCROLL TO EXPLORE &#9660;</div>
+</section>
+
+<!-- ════════ LIVE BATTLE PREVIEW (between hero and features) ════════ -->
+<section style="padding:60px 0 40px;background:#0A0804;position:relative;z-index:1">
+  <div class="container">
     <div class="live-embed">
       <div class="live-embed-label">LIVE BATTLE</div>
-      <iframe src="/game.html?spectate=true" title="Live Battle" loading="lazy" allow="autoplay"></iframe>
-      <br>
+      <div class="live-embed-frame">
+        <iframe src="/game.html?spectate=true" title="Live Battle" loading="lazy" allow="autoplay"></iframe>
+      </div>
       <a href="/game.html?spectate=true" target="_blank" class="live-embed-link">Watch Fullscreen &rarr;</a>
     </div>
   </div>
-  <div class="hero-scroll-hint">&#9660; SCROLL TO EXPLORE &#9660;</div>
 </section>
 
 <!-- LIVE STATS BAR -->

@@ -2682,7 +2682,8 @@ function pCreate() {
   phaserScene = this;
   cam = this.cameras.main;
   cam.setBackgroundColor('#0d0d1a');
-  cam.setBounds(0, 0, MAP_W, MAP_H);
+  // Extended bounds to prevent black edges (terrain draws beyond map)
+  cam.setBounds(-500, -500, MAP_W + 1000, MAP_H + 1000);
 
   // Zoom: fit FULL map into view (both width AND height)
   const z = calcZoom(this.scale.width, this.scale.height);
@@ -2969,6 +2970,27 @@ function pUpdate() {
   graphics.fillRect(-200, 1040, MAP_W + 400, 320); // mid
   graphics.fillRect(-200, 1800, MAP_W + 400, 200); // bot
 
+  // ═══ DEBUG: visible markers at known positions ═══
+  // Red cross at exact map center (2400, 1200) — should be visible if camera is centered
+  graphics.fillStyle(0xFF0000, 1);
+  graphics.fillCircle(MAP_W/2, MAP_H/2, 40);
+  graphics.fillRect(MAP_W/2 - 100, MAP_H/2 - 5, 200, 10);
+  graphics.fillRect(MAP_W/2 - 5, MAP_H/2 - 100, 10, 200);
+  // Blue marker at Alliance base (150, 1200)
+  graphics.fillStyle(0x0000FF, 1);
+  graphics.fillCircle(150, MAP_H/2, 40);
+  // Orange marker at Horde base (4650, 1200)
+  graphics.fillStyle(0xFF8800, 1);
+  graphics.fillCircle(MAP_W - 150, MAP_H/2, 40);
+  // Yellow markers at each 1000px along x axis at mid lane
+  graphics.fillStyle(0xFFFF00, 0.8);
+  for (let mx = 0; mx <= MAP_W; mx += 1000) {
+    graphics.fillCircle(mx, MAP_H/2, 20);
+    // Draw x coordinate as text wouldn't work easily, so use different sizes
+    graphics.fillRect(mx - 2, MAP_H/2 - 50, 4, 100); // vertical line
+  }
+  // ═══ END DEBUG ═══
+
   if (!gameState) return; // rest needs game state
 
   const gs = gameState;
@@ -3234,10 +3256,17 @@ function pUpdate() {
   // Debug: log once on first render
   if (!window._firstRenderLogged && gs.heroes.length > 0) {
     window._firstRenderLogged = true;
-    console.log('[RENDER] heroes:', gs.heroes.length, 'units:', gs.units.length, 'structures:', gs.structures.length);
-    console.log('[RENDER] first hero at:', gs.heroes[0].x, gs.heroes[0].y, 'class:', gs.heroes[0].heroClass);
-    console.log('[RENDER] cam zoom:', cam.zoom, 'center:', cam.scrollX, cam.scrollY);
-    console.log('[RENDER] textures exist — a_knight:', phaserScene.textures.exists('a_knight'), 'au_footman:', phaserScene.textures.exists('au_footman'));
+    const visW = phaserScene.scale.width / cam.zoom;
+    const visH = phaserScene.scale.height / cam.zoom;
+    const camCenterX = cam.scrollX + visW / 2;
+    const camCenterY = cam.scrollY + visH / 2;
+    console.log('[RENDER] heroes:', gs.heroes.length, 'units:', gs.units.length);
+    console.log('[RENDER] hero positions:', gs.heroes.map(h => `${h.heroClass}@(${h.x},${h.y})`).join(', '));
+    console.log('[RENDER] canvas px:', phaserScene.scale.width, 'x', phaserScene.scale.height);
+    console.log('[RENDER] cam zoom:', cam.zoom.toFixed(4), 'scrollX:', cam.scrollX.toFixed(0), 'scrollY:', cam.scrollY.toFixed(0));
+    console.log('[RENDER] visible world:', Math.round(visW), 'x', Math.round(visH), 'center:', Math.round(camCenterX), Math.round(camCenterY));
+    console.log('[RENDER] MAP_W:', MAP_W, 'MAP_H:', MAP_H, 'hero range:', Math.min(...gs.heroes.map(h=>h.x)), 'to', Math.max(...gs.heroes.map(h=>h.x)));
+    console.log('[RENDER] textures: a_knight=', phaserScene.textures.exists('a_knight'), 'au_footman=', phaserScene.textures.exists('au_footman'));
   }
 
   for (const u of gs.units) {

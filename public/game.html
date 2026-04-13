@@ -3259,35 +3259,81 @@ function pUpdate() {
   graphics.fillStyle(0x2244AA, 0.7);
   graphics.fillTriangle(125, MAP_H/2 - 220, 145 + bWave1, MAP_H/2 - 212, 125, MAP_H/2 - 204);
 
-  // Iron Horde fortress (far right, x=MAP_W-250 to MAP_W-50)
+  // Iron Horde Orcish Stronghold (far right) — taller than Alliance
   const hx = MAP_W - 160;
-  graphics.fillStyle(0x3A1A0A, 0.9);
-  // Main hall (jagged top)
-  graphics.fillRect(hx - 50, MAP_H/2 - 100, 100, 220);
-  // Spikes on top
-  graphics.fillTriangle(hx - 50, MAP_H/2 - 100, hx - 40, MAP_H/2 - 100, hx - 45, MAP_H/2 - 130);
-  graphics.fillTriangle(hx - 20, MAP_H/2 - 100, hx - 10, MAP_H/2 - 100, hx - 15, MAP_H/2 - 140);
-  graphics.fillTriangle(hx + 10, MAP_H/2 - 100, hx + 20, MAP_H/2 - 100, hx + 15, MAP_H/2 - 135);
-  graphics.fillTriangle(hx + 40, MAP_H/2 - 100, hx + 50, MAP_H/2 - 100, hx + 45, MAP_H/2 - 125);
-  // Side towers
-  graphics.fillRect(hx - 80, MAP_H/2 - 80, 30, 180);
-  graphics.fillRect(hx + 50, MAP_H/2 - 90, 30, 190);
-  // Spike on towers
-  graphics.fillTriangle(hx - 80, MAP_H/2 - 80, hx - 65, MAP_H/2 - 120, hx - 50, MAP_H/2 - 80);
-  graphics.fillTriangle(hx + 50, MAP_H/2 - 90, hx + 65, MAP_H/2 - 130, hx + 80, MAP_H/2 - 90);
-  // Iron gate
-  graphics.fillStyle(0x1A0A04, 1);
-  graphics.fillRect(hx - 12, MAP_H/2 + 80, 24, 40);
-  // Forge windows (glowing orange)
-  graphics.fillStyle(0xFF6600, 0.4);
-  graphics.fillRect(hx - 8, MAP_H/2 - 60, 6, 10);
-  graphics.fillRect(hx + 5, MAP_H/2 - 60, 6, 10);
-  graphics.fillRect(hx - 35, MAP_H/2 - 40, 5, 8);
-  graphics.fillRect(hx + 35, MAP_H/2 - 40, 5, 8);
-  // Horde banner
-  const bWave2 = Math.sin(t * 0.06 + 2) * 3;
-  graphics.fillStyle(0xAA2211, 0.7);
-  graphics.fillTriangle(hx - 15, MAP_H/2 - 140, hx + 5 + bWave2, MAP_H/2 - 132, hx - 15, MAP_H/2 - 124);
+  const hBaseY = MAP_H/2;
+  // Dark volcanic rock base — 3 tiers getting narrower
+  graphics.fillStyle(0x1A1008, 1);
+  graphics.fillRect(hx - 70, hBaseY - 60, 140, 180); // tier 1 (widest)
+  graphics.fillStyle(0x1A1008, 1);
+  graphics.fillRect(hx - 55, hBaseY - 120, 110, 70); // tier 2
+  graphics.fillStyle(0x1A1008, 1);
+  graphics.fillRect(hx - 40, hBaseY - 180, 80, 70); // tier 3 (narrowest)
+  // Spire top
+  graphics.fillStyle(0x1A1008, 1);
+  graphics.fillTriangle(hx - 20, hBaseY - 180, hx, hBaseY - 240, hx + 20, hBaseY - 180);
+
+  // 8 brutal iron spikes with blood-red tips
+  const spikePositions = [
+    {x: hx-65, y: hBaseY-60}, {x: hx-45, y: hBaseY-120}, {x: hx-30, y: hBaseY-180},
+    {x: hx+65, y: hBaseY-60}, {x: hx+45, y: hBaseY-120}, {x: hx+30, y: hBaseY-180},
+    {x: hx-15, y: hBaseY-230}, {x: hx+15, y: hBaseY-230},
+  ];
+  for (const sp of spikePositions) {
+    graphics.fillStyle(0x3A3030, 1);
+    graphics.fillRect(sp.x - 2, sp.y, 4, -30);
+    graphics.fillStyle(0xCC2200, 0.8);
+    graphics.fillTriangle(sp.x - 3, sp.y - 28, sp.x, sp.y - 40, sp.x + 3, sp.y - 28);
+  }
+
+  // Large orcish skull on gate
+  graphics.fillStyle(0xD4C8A0, 0.7);
+  graphics.fillCircle(hx, hBaseY + 40, 16);
+  graphics.fillRect(hx - 10, hBaseY + 50, 20, 12); // jaw
+  // Skull eyes (glowing red)
+  graphics.fillStyle(0xFF2200, 0.8);
+  graphics.fillCircle(hx - 5, hBaseY + 37, 3);
+  graphics.fillCircle(hx + 5, hBaseY + 37, 3);
+  // Nose
+  graphics.fillStyle(0x1A1008, 1);
+  graphics.fillTriangle(hx - 2, hBaseY + 44, hx, hBaseY + 48, hx + 2, hBaseY + 44);
+
+  // Gate (dark opening)
+  graphics.fillStyle(0x0A0804, 1);
+  graphics.fillRect(hx - 14, hBaseY + 60, 28, 60);
+
+  // Iron torches flanking gate (orange flames)
+  for (const tx of [hx - 25, hx + 25]) {
+    graphics.fillStyle(0x3A2A10, 1);
+    graphics.fillRect(tx - 2, hBaseY + 40, 4, 30);
+    const flicker = Math.sin(t * 0.12 + tx) * 3;
+    graphics.fillStyle(0xFF6600, 0.6);
+    graphics.fillCircle(tx, hBaseY + 36 + flicker, 5);
+    graphics.fillStyle(0xFFAA00, 0.4);
+    graphics.fillCircle(tx, hBaseY + 34 + flicker, 3);
+  }
+
+  // Red war banner with skull (left flank)
+  graphics.fillStyle(0x5A3A10, 1);
+  graphics.fillRect(hx - 80, hBaseY - 100, 3, 120);
+  const bWave2 = Math.sin(t * 0.06 + 2) * 4;
+  graphics.fillStyle(0xAA1111, 0.8);
+  graphics.fillRect(hx - 77, hBaseY - 100, 18 + bWave2, 24);
+  graphics.fillStyle(0xD4C8A0, 0.4);
+  graphics.fillCircle(hx - 68 + bWave2/2, hBaseY - 90, 4); // skull on banner
+
+  // Red glowing crystal at spire top (pulses)
+  const crystalPulse = 0.5 + Math.sin(t * 0.08) * 0.3;
+  graphics.fillStyle(0xFF2200, crystalPulse);
+  graphics.fillCircle(hx, hBaseY - 238, 6);
+  graphics.fillStyle(0xFF4444, crystalPulse * 0.4);
+  graphics.fillCircle(hx, hBaseY - 238, 12);
+
+  // Dark red ambient glow at base
+  graphics.fillStyle(0xFF2200, 0.04);
+  graphics.fillCircle(hx, hBaseY + 40, 120);
+  graphics.fillStyle(0xFF0000, 0.02);
+  graphics.fillCircle(hx, hBaseY, 200);
 
   // ═══ FRONTLINE INDICATOR ═══
   // Show which side is winning based on average unit X positions
@@ -4458,6 +4504,10 @@ function updateUI() {
   if (!window._prevHeroLevels) window._prevHeroLevels = {};
   const panel = document.getElementById('heroes-panel');
   panel.innerHTML = '';
+
+  // Force panel background opaque (anti-green-bleed nuclear fix)
+  panel.style.background = '#0d0d1a';
+  panel.parentElement.style.background = '#0d0d1a';
 
   const sorted = [...gs.heroes].sort((a,b) => {
     if (a.faction !== b.faction) return a.faction==='alliance'?-1:1;
@@ -5980,6 +6030,15 @@ function updatePlayerControls() {
       gameState.units.forEach(u => {
         if (!u.alive) return;
         const x = u.x * scaleX, y = u.y * scaleY;
+        // Clamp unit to nearest lane corridor
+        const lanes = [{min:400*scaleY, max:600*scaleY}, {min:1040*scaleY, max:1360*scaleY}, {min:1800*scaleY, max:2000*scaleY}];
+        let cy = y;
+        let bestDist = 9999;
+        for (const ln of lanes) {
+          const mid = (ln.min + ln.max) / 2;
+          const d = Math.abs(y - mid);
+          if (d < bestDist) { bestDist = d; cy = Math.max(ln.min, Math.min(ln.max, y)); }
+        }
         const isA = u.faction === 'alliance';
         const t = u.unitType;
         const isLarge = (t === 'colossus' || t === 'gryphon');
@@ -5988,51 +6047,52 @@ function updatePlayerControls() {
 
         if (t === 'ballista') {
           // Ballista — wide mechanical
-          ctx.fillStyle = '#6A6A6A'; ctx.fillRect(x-6*sz, y-3*sz, 12*sz, 6*sz);
-          ctx.fillStyle = '#8B6914'; ctx.fillRect(x+4*sz, y-5*sz, 2*sz, 4*sz);
-          ctx.fillStyle = '#4A4A4A'; ctx.beginPath(); ctx.arc(x-4*sz, y+4*sz, 2*sz, 0, Math.PI*2); ctx.fill();
-          ctx.beginPath(); ctx.arc(x+3*sz, y+4*sz, 2*sz, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#6A6A6A'; ctx.fillRect(x-6*sz, cy-3*sz, 12*sz, 6*sz);
+          ctx.fillStyle = '#8B6914'; ctx.fillRect(x+4*sz, cy-5*sz, 2*sz, 4*sz);
+          ctx.fillStyle = '#4A4A4A'; ctx.beginPath(); ctx.arc(x-4*sz, cy+4*sz, 2*sz, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(x+3*sz, cy+4*sz, 2*sz, 0, Math.PI*2); ctx.fill();
         } else if (t === 'colossus') {
           // Colossus — massive dark iron
-          ctx.fillStyle = '#2A2A2A'; ctx.fillRect(x-7*sz, y-6*sz, 14*sz, 12*sz);
-          ctx.fillStyle = '#1A1A1A'; ctx.fillRect(x-5*sz, y-9*sz, 10*sz, 4*sz);
-          ctx.fillStyle = '#FF2200'; ctx.fillRect(x-3*sz, y-7*sz, 2*sz, 1*sz); ctx.fillRect(x+1*sz, y-7*sz, 2*sz, 1*sz);
-          ctx.fillStyle = '#3A3A3A'; ctx.fillRect(x-9*sz, y-5*sz, 3*sz, 5*sz); ctx.fillRect(x+6*sz, y-5*sz, 3*sz, 5*sz);
+          ctx.fillStyle = '#2A2A2A'; ctx.fillRect(x-7*sz, cy-6*sz, 14*sz, 12*sz);
+          ctx.fillStyle = '#1A1A1A'; ctx.fillRect(x-5*sz, cy-9*sz, 10*sz, 4*sz);
+          ctx.fillStyle = '#FF2200'; ctx.fillRect(x-3*sz, cy-7*sz, 2*sz, 1*sz); ctx.fillRect(x+1*sz, cy-7*sz, 2*sz, 1*sz);
+          ctx.fillStyle = '#3A3A3A'; ctx.fillRect(x-9*sz, cy-5*sz, 3*sz, 5*sz); ctx.fillRect(x+6*sz, cy-5*sz, 3*sz, 5*sz);
         } else if (t === 'gryphon' || t === 'au_gryphon' || t === 'hu_gryphon') {
           // Gryphon — winged
           ctx.fillStyle = isA ? '#4A8FE0' : '#CC3322';
-          ctx.fillRect(x-3*sz, y-3*sz, 6*sz, 6*sz);
+          ctx.fillRect(x-3*sz, cy-3*sz, 6*sz, 6*sz);
           // Wings
-          ctx.beginPath(); ctx.moveTo(x-3*sz, y-2*sz); ctx.lineTo(x-10*sz, y+1*sz); ctx.lineTo(x-3*sz, y+3*sz); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(x+3*sz, y-2*sz); ctx.lineTo(x+10*sz, y+1*sz); ctx.lineTo(x+3*sz, y+3*sz); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(x-3*sz, cy-2*sz); ctx.lineTo(x-10*sz, cy+1*sz); ctx.lineTo(x-3*sz, cy+3*sz); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(x+3*sz, cy-2*sz); ctx.lineTo(x+10*sz, cy+1*sz); ctx.lineTo(x+3*sz, cy+3*sz); ctx.fill();
         } else {
           // Standard soldier (footman, archer, warrior, shredder, warlock)
           ctx.fillStyle = isA ? '#3070C0' : '#8B2222';
-          ctx.fillRect(x-3*sz, y-3*sz, 6*sz, 7*sz);
+          ctx.fillRect(x-3*sz, cy-3*sz, 6*sz, 7*sz);
           // Head with helmet/spike
           ctx.fillStyle = isA ? '#D4B840' : '#2A2020';
-          ctx.beginPath(); ctx.arc(x, y-5*sz, 2.5*sz, 0, Math.PI*2); ctx.fill();
-          if (!isA) { ctx.fillStyle = '#2A2020'; ctx.fillRect(x-0.5*sz, y-8*sz, 1*sz, 3*sz); } // spike
+          ctx.beginPath(); ctx.arc(x, cy-5*sz, 2.5*sz, 0, Math.PI*2); ctx.fill();
+          if (!isA) { ctx.fillStyle = '#2A2020'; ctx.fillRect(x-0.5*sz, cy-8*sz, 1*sz, 3*sz); } // spike
           // Legs
           ctx.fillStyle = isA ? '#3070C0' : '#8B2222';
-          ctx.fillRect(x-3*sz, y+4*sz, 2*sz, 3*sz); ctx.fillRect(x+1*sz, y+4*sz, 2*sz, 3*sz);
+          ctx.fillRect(x-3*sz, cy+4*sz, 2*sz, 3*sz); ctx.fillRect(x+1*sz, cy+4*sz, 2*sz, 3*sz);
           // Weapon hint
           if (t === 'archer' || t === 'shredder') {
-            ctx.fillStyle = '#888'; ctx.fillRect(x+4*sz, y-4*sz, 1*sz, 6*sz);
+            ctx.fillStyle = '#888'; ctx.fillRect(x+4*sz, cy-4*sz, 1*sz, 6*sz);
           }
         }
         // HP bar (only if damaged)
         if (u.hp < u.maxHp) {
           const pct = u.hp / u.maxHp;
           const bw = isWide ? 10*sz : 6*sz;
-          ctx.fillStyle = '#111'; ctx.fillRect(x-bw, y-(isLarge?11:8)*sz, bw*2, 2*sz);
+          ctx.fillStyle = '#111'; ctx.fillRect(x-bw, cy-(isLarge?11:8)*sz, bw*2, 2*sz);
           ctx.fillStyle = pct > 0.5 ? '#44AA44' : '#CC3322';
-          ctx.fillRect(x-bw, y-(isLarge?11:8)*sz, bw*2*pct, 2*sz);
+          ctx.fillRect(x-bw, cy-(isLarge?11:8)*sz, bw*2*pct, 2*sz);
         }
       });
     }
 
     // ─── Draw heroes with character sprites ───────────────────
+    const _labelPositions = [];
     gameState.heroes.forEach(hero => {
       if (!hero.alive) return;
       const x = hero.x * scaleX, y = hero.y * scaleY;
@@ -6042,10 +6102,10 @@ function updatePlayerControls() {
 
       // Player hero glow
       if (isMine) {
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.12)';
-        ctx.beginPath(); ctx.arc(x, y, 28*s, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(x, y, 22*s, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.08)';
+        ctx.beginPath(); ctx.arc(x, y, 12*s, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y, 10*s, 0, Math.PI * 2); ctx.stroke();
         // Attack range circle (very subtle)
         ctx.strokeStyle = 'rgba(255,255,255,0.08)';
         ctx.lineWidth = 1;
@@ -6188,6 +6248,13 @@ function updatePlayerControls() {
       ctx.textAlign = 'center';
       // Name (max 10 chars, small font)
       const displayName = (hero.displayName || hero.heroClass).substring(0, 10);
+      // Skip label if another label is within 60px
+      let showLabel = true;
+      for (const lp of _labelPositions) {
+        if (Math.abs(lp.x - x) < 60 && Math.abs(lp.y - y) < 40) { showLabel = false; break; }
+      }
+      _labelPositions.push({ x, y });
+      if (showLabel) {
       // Name with small faction dot
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.fillStyle = isMine ? '#FFD700' : '#FFFFFFCC';
@@ -6196,6 +6263,7 @@ function updatePlayerControls() {
       // Tiny faction dot top-left of sprite
       ctx.fillStyle = isA ? '#4fc3f7' : '#ff6666';
       ctx.beginPath(); ctx.arc(x - 10*s, y - 14*s, 3, 0, Math.PI * 2); ctx.fill();
+      }
       // Level badge (small)
       ctx.fillStyle = '#C8960C'; ctx.font = '9px sans-serif';
       ctx.textBaseline = 'top'; ctx.fillText('Lv' + hero.level, x, y + 16*s + 2);

@@ -878,52 +878,57 @@
     margin: 2px 0;
   }
 
-  /* ─── CHAT — compact bottom-left, no overlap ────────── */
+  /* ─── CHAT — Ages of War parchment style ────────────── */
   #chat-panel {
     position: fixed;
-    bottom: 196px; /* sits just above bottom panel */
+    bottom: 196px;
     left: 8px;
-    width: 220px;
-    background: rgba(0,0,0,0.85);
-    border: 1px solid #C8960C33;
+    width: 280px;
+    background: rgba(10,8,6,0.88);
+    border: 1px solid #c8941a;
     border-radius: 6px;
     z-index: 140;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+    box-shadow: 0 2px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,150,12,0.06);
   }
   #chat-header {
-    font-size: 9px; color: #C8960C; letter-spacing: 0.12em; text-transform: uppercase;
-    padding: 4px 8px; border-bottom: 1px solid #C8960C22; cursor: pointer; user-select: none;
+    font-family: 'Cinzel', serif; font-size: 9px; color: #c8941a; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 5px 10px; border-bottom: 1px solid #c8941a33; cursor: pointer; user-select: none;
     display: flex; justify-content: space-between; align-items: center;
+    background: rgba(200,150,12,0.04);
   }
   #chat-header:hover { color: #F0C040; }
-  #chat-header .chat-minimize { font-size: 12px; color: #5A4A2A; cursor: pointer; }
-  #chat-header .chat-minimize:hover { color: #C8960C; }
-  #chat-panel.collapsed #chat-messages,
-  #chat-panel.collapsed #chat-input-row { display: none; }
-  #chat-panel.collapsed { width: 120px; }
+  #chat-header .chat-minimize {
+    font-size: 11px; color: #5A4A2A; cursor: pointer; transition: transform 0.2s, color 0.2s;
+  }
+  #chat-header .chat-minimize:hover { color: #c8941a; }
+  #chat-panel.collapsed .chat-minimize { transform: rotate(180deg); }
+  #chat-panel.collapsed #chat-messages { display: none; }
+  #chat-panel.collapsed { width: 200px; }
   #chat-messages {
-    max-height: 120px; overflow-y: auto; padding: 4px 8px; font-size: 10px; color: #8A7D66;
-    scrollbar-width: thin; scrollbar-color: #C8960C33 transparent;
+    max-height: 160px; overflow-y: auto; padding: 5px 10px; font-size: 11px; color: #9A8B6E;
+    scrollbar-width: thin; scrollbar-color: #c8941a33 transparent;
   }
-  #chat-messages div { margin-bottom: 3px; line-height: 1.3; word-break: break-word; }
-  #chat-messages .chat-name { font-weight: 700; font-size: 10px; }
-  #chat-messages .chat-name.alliance { color: #4A8FE0; }
-  #chat-messages .chat-name.horde { color: #E24B4A; }
-  #chat-messages .chat-name.mine { color: #FFD700; }
-  #chat-messages .chat-system { color: #C8960C; font-style: italic; font-size: 9px; }
-  #chat-input-row { display: flex; border-top: 1px solid #C8960C22; }
+  #chat-messages div { margin-bottom: 4px; line-height: 1.35; word-break: break-word; opacity: 1; transition: opacity 0.5s; }
+  #chat-messages div.faded { opacity: 0.3; }
+  #chat-messages .chat-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 10px; }
+  #chat-messages .chat-name.alliance { color: #4fc3f7; }
+  #chat-messages .chat-name.horde { color: #ff6666; }
+  #chat-messages .chat-name.mine { color: #ffd700; }
+  #chat-messages .chat-system { color: #c8941a; font-style: italic; font-size: 10px; text-align: center; display: block; }
+  #chat-input-row { display: flex; border-top: 1px solid #c8941a33; }
   #chat-input {
-    flex: 1; background: rgba(0,0,0,0.5); border: none; color: #d4c08a; padding: 5px 8px;
-    font-family: 'Cinzel', serif; font-size: 10px; outline: none;
+    flex: 1; background: rgba(0,0,0,0.4); border: none; color: #d4c08a; padding: 6px 10px;
+    font-family: 'Cinzel', serif; font-size: 11px; outline: none; max-length: 60;
   }
-  #chat-input::placeholder { color: #3A3A3A; }
+  #chat-input:focus { border-bottom: 1px solid #c8941a; background: rgba(0,0,0,0.6); }
+  #chat-input::placeholder { color: #4A3A2A; font-style: italic; }
   #chat-send {
-    background: #C8960C22; color: #C8960C; border: none; border-left: 1px solid #C8960C22;
-    padding: 5px 10px; font-family: 'Cinzel', serif; font-size: 9px; cursor: pointer;
-    font-weight: 700; letter-spacing: 0.05em;
+    background: rgba(200,148,26,0.15); color: #c8941a; border: none; border-left: 1px solid #c8941a33;
+    padding: 6px 12px; font-family: 'Cinzel', serif; font-size: 9px; cursor: pointer;
+    font-weight: 700; letter-spacing: 0.08em;
   }
   #chat-send:hover { background: #C8960C44; color: #F0C040; }
 
@@ -1540,7 +1545,7 @@
   <div id="chat-header"><span>CHAT</span><span class="chat-minimize" onclick="document.getElementById('chat-panel').classList.toggle('collapsed')">&#9660;</span></div>
   <div id="chat-messages"></div>
   <div id="chat-input-row">
-    <input id="chat-input" type="text" placeholder="Type message..." maxlength="120" autocomplete="off">
+    <input id="chat-input" type="text" placeholder="Speak warrior..." maxlength="60" autocomplete="off">
     <button id="chat-send">Send</button>
   </div>
 </div>
@@ -1835,17 +1840,34 @@ function updateEventTicker(gs) {
 document.getElementById('chat-header').onclick = () => {
   document.getElementById('chat-panel').classList.toggle('collapsed');
 };
-const chatName = 'Spectator' + Math.floor(Math.random() * 999);
+const chatName = localStorage.getItem('woa_playerName') || ('Spectator' + Math.floor(Math.random() * 999));
+const EMOTES = {'/gg':'Good game!', '/ally':'Push the alliance lane!', '/horde':'For the Horde!', '/lol':'hahaha', '/gl':'Good luck!', '/wp':'Well played!'};
 document.getElementById('chat-send').onclick = () => {
   const inp = document.getElementById('chat-input');
-  const txt = inp.value.trim();
-  if (txt && ws.readyState === WebSocket.OPEN) {
+  let txt = inp.value.trim();
+  if (!txt) return;
+  // Emote shortcuts
+  const emote = EMOTES[txt.toLowerCase()];
+  if (emote) txt = emote;
+  if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'chat', name: chatName, text: txt }));
-    addChatMsg(chatName, txt);
-    inp.value = '';
+    addChatMsg(chatName, txt, localStorage.getItem('woa_faction'));
   }
+  inp.value = '';
 };
 document.getElementById('chat-input').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('chat-send').click(); };
+
+// Auto-fade old messages after 30 seconds
+setInterval(() => {
+  const msgs = document.getElementById('chat-messages');
+  if (!msgs) return;
+  const children = msgs.children;
+  const now = Date.now();
+  for (let i = 0; i < children.length; i++) {
+    const ts = children[i].dataset.ts;
+    if (ts && now - Number(ts) > 30000) children[i].classList.add('faded');
+  }
+}, 5000);
 
 // ─── Betting Panel ──────────────────────────────────────
 document.getElementById('bet-toggle').onclick = () => {
@@ -1924,17 +1946,18 @@ function updateBettingPanel() {
 function addChatMsg(name, text, faction) {
   const div = document.getElementById('chat-messages');
   const msg = document.createElement('div');
-  // Determine name color class
+  msg.dataset.ts = Date.now();
   const myName = localStorage.getItem('woa_playerName') || '';
   const nameClass = name === myName ? 'mine' : (faction === 'alliance' ? 'alliance' : (faction === 'horde' ? 'horde' : ''));
   msg.innerHTML = `<span class="chat-name ${nameClass}">${name}:</span> ${text}`;
   div.appendChild(msg);
   div.scrollTop = div.scrollHeight;
-  while (div.children.length > 50) div.removeChild(div.firstChild);
+  while (div.children.length > 30) div.removeChild(div.firstChild);
 }
 function addSystemChat(text) {
   const div = document.getElementById('chat-messages');
   const msg = document.createElement('div');
+  msg.dataset.ts = Date.now();
   msg.innerHTML = `<span class="chat-system">${text}</span>`;
   div.appendChild(msg);
   div.scrollTop = div.scrollHeight;
@@ -2080,8 +2103,15 @@ ws.onmessage = (e) => {
         if (_announcedKills.has(kid)) continue;
         _announcedKills.add(kid);
         if (k.isRampage) {
-          const name = k.killerName || k.killerClass;
-          announceEvent(name.toUpperCase() + ' IS RAMPAGING', 'rampage');
+          const kname = k.killerName || k.killerClass;
+          announceEvent(kname.toUpperCase() + ' IS RAMPAGING', 'rampage');
+          addSystemChat('RAMPAGE! ' + kname + ' is on fire!');
+        }
+        // Post kill to chat
+        const killer = gameState.heroes.find(h => h.id === k.killerId);
+        const victim = gameState.heroes.find(h => h.id === k.victimId);
+        if (killer && victim) {
+          addSystemChat(killer.heroClass + ' slew ' + victim.heroClass + '!');
         }
       }
       if (_announcedKills.size > 200) _announcedKills = new Set([...Array.from(_announcedKills).slice(-100)]);
@@ -2094,12 +2124,15 @@ ws.onmessage = (e) => {
           const fac = s.faction === 'alliance' ? 'ALLIANCE' : 'HORDE';
           if (s.structureType === 'base') {
             announceEvent(fac + ' BASE DESTROYED', 'tower');
+            addSystemChat(fac + ' base has been destroyed!');
             triggerShake(20);
           } else if (s.structureType === 'barracks') {
             announceEvent(fac + ' BARRACKS FALLEN', 'tower');
+            addSystemChat(fac + ' barracks has fallen!');
             triggerShake(12);
           } else {
             announceEvent(fac + ' TOWER FALLS', 'tower');
+            addSystemChat(fac + ' tower destroyed!');
             triggerShake(8);
           }
         }
@@ -2224,131 +2257,311 @@ function pPreload() {
     } catch(e) { console.warn('genTex failed:', key, e); }
   }
 
-  // ─── UNIT TEXTURES (52x52) ────────────────────────
+  // ─── HERO TEXTURES — detailed pixel art (52x52) ────────────────────
   const S = 52;
 
-  // Alliance Knight — blue armored warrior with sword + shield (64x64)
+  // ═══ ALLIANCE HEROES ═══
+
+  // Alliance Knight — gold armor, blue cape, sword + shield
   genTex('a_knight', S, S, (g) => {
-    const c = S/2; // center = 32
-    g.fillStyle(0x4A7ABF, 1); g.fillRect(c-10, c-12, 20, 26);
-    g.fillStyle(0x2A4A7A, 1); g.fillRect(c-16, c-12, 12, 10); g.fillRect(c+4, c-12, 12, 10);
-    g.fillStyle(0xBBCCDD, 1); g.fillCircle(c, c-18, 10);
-    g.fillStyle(0xDDB88A, 1); g.fillRect(c-5, c-20, 10, 6);
-    g.fillStyle(0x2A4A7A, 1); g.fillRect(c-7, c+14, 6, 14); g.fillRect(c+1, c+14, 6, 14);
-    g.fillStyle(0x4A7ABF, 1); g.fillRoundedRect(3, c-14, 14, 26, 4);
-    g.lineStyle(2, 0xffd700, 0.7); g.strokeRoundedRect(3, c-14, 14, 26, 4);
-    g.lineStyle(3, 0xCCCCDD, 1); g.lineBetween(S-12, c-22, S-12, c+10);
-    g.lineStyle(2, 0xBB9933, 1); g.lineBetween(S-18, c-4, S-6, c-4);
-  });
-
-  // Horde Knight — red orc warrior with battle axe (64x64)
-  genTex('h_knight', S, S, (g) => {
     const c = S/2;
-    g.fillStyle(0x8B3A2A, 1); g.fillRect(c-10, c-12, 20, 26);
-    g.fillStyle(0x5A2218, 1); g.fillRect(c-16, c-12, 12, 10); g.fillRect(c+4, c-12, 12, 10);
-    g.fillStyle(0x5A8A3A, 1); g.fillCircle(c, c-18, 12);
-    g.fillStyle(0x3A5A2A, 1); g.fillRect(c-5, c-20, 10, 6);
-    g.fillStyle(0x5A2218, 1); g.fillRect(c-7, c+14, 6, 14); g.fillRect(c+1, c+14, 6, 14);
-    g.lineStyle(4, 0x5A3A1A, 1); g.lineBetween(S-10, c-24, S-10, c+14);
-    g.fillStyle(0x888888, 1);
-    g.fillTriangle(S-10, c-22, S-18, c-14, S-10, c-6);
-    g.fillTriangle(S-10, c-22, S-2, c-14, S-10, c-6);
+    // Blue cape behind body
+    g.fillStyle(0x2244AA, 0.7); g.fillRect(c-8, c-8, 16, 22);
+    // Legs (gold greaves)
+    g.fillStyle(0xB8961E, 1); g.fillRect(c-6, c+10, 5, 12); g.fillRect(c+1, c+10, 5, 12);
+    // Body (gold armor)
+    g.fillStyle(0xD4B840, 1); g.fillRect(c-8, c-6, 16, 18);
+    // Armor shadow detail
+    g.fillStyle(0xC8A030, 1); g.fillRect(c-8, c, 16, 4);
+    g.fillStyle(0xB89020, 0.5); g.fillRect(c-7, c-4, 14, 2);
+    // Armor highlight
+    g.fillStyle(0xE8D060, 0.4); g.fillRect(c-6, c-5, 4, 8);
+    // Helmet (gold with blue plume)
+    g.fillStyle(0xD4B840, 1); g.fillRect(c-7, c-16, 14, 12);
+    g.fillStyle(0xC8A030, 1); g.fillRect(c-8, c-8, 16, 4); // visor
+    g.fillStyle(0x1A1A2A, 1); g.fillRect(c-5, c-7, 10, 2); // eye slit
+    g.fillStyle(0x2244AA, 1); g.fillRect(c-2, c-22, 4, 8); // plume
+    g.fillStyle(0x3366CC, 0.7); g.fillRect(c-1, c-24, 2, 4); // plume tip
+    // Shield (left side, blue with gold cross)
+    g.fillStyle(0x2244AA, 1); g.fillRect(c-16, c-6, 10, 14);
+    g.fillStyle(0x1A3388, 1); g.fillRect(c-15, c-5, 8, 12);
+    g.fillStyle(0xD4B840, 1);
+    g.fillRect(c-12, c-3, 2, 8); // cross vert
+    g.fillRect(c-14, c, 6, 2); // cross horiz
+    // Sword (right side, grey blade)
+    g.fillStyle(0x888888, 1); g.fillRect(c+10, c-18, 3, 20); // blade
+    g.fillStyle(0xCCCCCC, 0.6); g.fillRect(c+11, c-16, 1, 16); // highlight
+    g.fillStyle(0x8B6914, 1); g.fillRect(c+8, c, 7, 3); // crossguard
+    g.fillStyle(0x5A3A10, 1); g.fillRect(c+10, c+3, 3, 6); // grip
   });
 
-  // Alliance Ranger — green hooded archer with bow (64x64)
+  // Alliance Ranger — green hood, bow, leather armor
   genTex('a_ranger', S, S, (g) => {
     const c = S/2;
-    g.fillStyle(0x2E6030, 1); g.fillTriangle(c, c-8, c-14, c+18, c+14, c+18);
-    g.fillStyle(0x1A3A1A, 1); g.fillTriangle(c, c-24, c-12, c-6, c+12, c-6);
-    g.fillStyle(0xDDB88A, 1); g.fillCircle(c, c-14, 5);
-    g.fillStyle(0x1A3A1A, 1); g.fillRect(c-4, c+18, 4, 10); g.fillRect(c, c+18, 4, 10);
-    g.lineStyle(3, 0x6B4A1A, 1);
-    g.beginPath(); g.arc(S-10, c, 18, -1.2, 1.2); g.strokePath();
-    g.lineStyle(1, 0xDDDDDD, 0.6);
-    g.lineBetween(S-10+Math.cos(-1.2)*18, c+Math.sin(-1.2)*18, S-10+Math.cos(1.2)*18, c+Math.sin(1.2)*18);
-    g.lineStyle(2, 0x888888, 0.8); g.lineBetween(c-4, c, S-2, c);
+    // Legs (dark green)
+    g.fillStyle(0x2A3A1A, 1); g.fillRect(c-5, c+10, 4, 12); g.fillRect(c+1, c+10, 4, 12);
+    // Body (leather)
+    g.fillStyle(0x3A5A2A, 1); g.fillRect(c-7, c-4, 14, 16);
+    g.fillStyle(0x2A4A1A, 1); g.fillRect(c-6, c, 12, 4); // belt
+    g.fillStyle(0x5A3A10, 1); g.fillRect(c-6, c+1, 12, 2); // belt buckle
+    // Hood (pointed)
+    g.fillStyle(0x2A4A2A, 1);
+    g.fillTriangle(c, c-22, c-9, c-4, c+9, c-4);
+    g.fillRect(c-8, c-8, 16, 6);
+    // Face shadow
+    g.fillStyle(0x1A2A1A, 1); g.fillRect(c-5, c-6, 10, 4);
+    // Glowing eyes
+    g.fillStyle(0x66DD66, 0.9); g.fillRect(c-3, c-5, 2, 1); g.fillRect(c+1, c-5, 2, 1);
+    // Bow (right side, brown arc)
+    g.lineStyle(2, 0x8B6914, 1);
+    g.beginPath(); g.arc(c+14, c, 12, -1.2, 1.2); g.strokePath();
+    g.lineStyle(1, 0xD4C9A8, 0.6);
+    g.lineBetween(c+14, c-11, c+14, c+11); // bowstring
+    // Quiver on back
+    g.fillStyle(0x6A4A1A, 1); g.fillRect(c-12, c-10, 5, 16);
+    g.fillStyle(0x888888, 0.7);
+    g.lineBetween(c-11, c-12, c-11, c-10); g.lineBetween(c-9, c-13, c-9, c-10);
   });
 
-  // Horde Ranger — dark troll with bow (64x64)
-  genTex('h_ranger', S, S, (g) => {
-    const c = S/2;
-    g.fillStyle(0x5A3A1A, 1); g.fillTriangle(c, c-8, c-14, c+18, c+14, c+18);
-    g.fillStyle(0x3A2210, 1); g.fillTriangle(c, c-24, c-12, c-6, c+12, c-6);
-    g.fillStyle(0x3A7A5A, 1); g.fillCircle(c, c-14, 5);
-    g.fillStyle(0x3A2210, 1); g.fillRect(c-4, c+18, 4, 10); g.fillRect(c, c+18, 4, 10);
-    g.lineStyle(3, 0x4A2A0A, 1);
-    g.beginPath(); g.arc(10, c, 18, Math.PI-1.2, Math.PI+1.2); g.strokePath();
-    g.lineStyle(2, 0x888888, 0.8); g.lineBetween(c+4, c, 2, c);
-  });
-
-  // Alliance Mage — purple robed wizard with staff + orb (64x64)
+  // Alliance Archmage — blue/purple robes, glowing staff
   genTex('a_mage', S, S, (g) => {
     const c = S/2;
-    g.fillStyle(0x5A3AAA, 1); g.fillTriangle(c, c-10, c-16, c+20, c+16, c+20);
-    g.fillStyle(0x2A1A6A, 1); g.fillCircle(c, c-16, 9);
-    g.fillStyle(0xDDB88A, 1); g.fillCircle(c, c-16, 5);
-    g.fillStyle(0x2A1A6A, 1); g.fillRect(c-4, c+18, 4, 8); g.fillRect(c, c+18, 4, 8);
-    g.lineStyle(3, 0x5A3A1A, 1); g.lineBetween(S-10, c+20, S-10, c-26);
-    g.fillStyle(0x8866FF, 0.8); g.fillCircle(S-10, c-28, 7);
-    g.fillStyle(0xBB99FF, 1); g.fillCircle(S-10, c-28, 3);
+    // Robe body (flowing)
+    g.fillStyle(0x3A2A7A, 1);
+    g.fillTriangle(c, c+22, c-12, c+22, c-8, c-2);
+    g.fillTriangle(c, c+22, c+12, c+22, c+8, c-2);
+    g.fillRect(c-8, c-2, 16, 14);
+    // Robe detail - star patterns
+    g.fillStyle(0x6A5ABA, 0.3);
+    g.fillCircle(c-3, c+4, 1); g.fillCircle(c+4, c+8, 1); g.fillCircle(c-5, c+12, 1);
+    // Tall pointed hat
+    g.fillStyle(0x2A1A5A, 1);
+    g.fillTriangle(c, c-26, c-8, c-4, c+8, c-4);
+    g.fillRect(c-10, c-6, 20, 4); // hat brim
+    // Star on hat
+    g.fillStyle(0xFFD700, 0.8); g.fillCircle(c, c-16, 2);
+    // Face + beard
+    g.fillStyle(0xD4B088, 1); g.fillRect(c-4, c-4, 8, 6);
+    g.fillStyle(0xC0B0A0, 0.8);
+    g.fillTriangle(c, c+6, c-3, c, c+3, c); // beard
+    // Eyes
+    g.fillStyle(0x8844FF, 0.9); g.fillRect(c-2, c-3, 2, 1); g.fillRect(c+1, c-3, 2, 1);
+    // Staff with glowing orb
+    g.fillStyle(0x8B6914, 1); g.fillRect(c+12, c-20, 3, 36);
+    g.fillStyle(0x7744DD, 0.9); g.fillCircle(c+13, c-22, 5);
+    g.fillStyle(0xAA88FF, 0.5); g.fillCircle(c+13, c-22, 3);
+    g.fillStyle(0xDDCCFF, 0.8); g.fillCircle(c+13, c-23, 1.5);
   });
 
-  // Horde Mage — orc shaman with skull staff (64x64)
-  genTex('h_mage', S, S, (g) => {
-    const c = S/2;
-    g.fillStyle(0x6A2A4A, 1); g.fillTriangle(c, c-10, c-16, c+20, c+16, c+20);
-    g.fillStyle(0x3A0A2A, 1); g.fillCircle(c, c-16, 9);
-    g.fillStyle(0x5A8A3A, 1); g.fillCircle(c, c-16, 5);
-    g.fillStyle(0x3A0A2A, 1); g.fillRect(c-4, c+18, 4, 8); g.fillRect(c, c+18, 4, 8);
-    g.lineStyle(3, 0x3A2A0A, 1); g.lineBetween(10, c+20, 10, c-26);
-    g.fillStyle(0xDDDDCC, 0.9); g.fillCircle(10, c-28, 7);
-    g.fillStyle(0x000000, 0.7); g.fillCircle(8, c-29, 2); g.fillCircle(12, c-29, 2);
-  });
-
-  // Alliance Priest — white/gold healer (64x64)
+  // Alliance Priest — white robes, gold holy symbol
   genTex('a_priest', S, S, (g) => {
     const c = S/2;
-    g.fillStyle(0xC8D8F0, 1); g.fillTriangle(c, c-10, c-16, c+20, c+16, c+20);
-    g.fillStyle(0xEEEEFF, 1); g.fillCircle(c, c-16, 9);
-    g.fillStyle(0xDDB88A, 1); g.fillCircle(c, c-16, 5);
-    g.fillStyle(0xAABBCC, 1); g.fillRect(c-4, c+18, 4, 8); g.fillRect(c, c+18, 4, 8);
-    g.fillStyle(0xffd700, 0.9); g.fillRect(c-3, c-4, 6, 20); g.fillRect(c-10, c+2, 20, 6);
+    // Robe body (white/cream)
+    g.fillStyle(0xF0E8D0, 1);
+    g.fillTriangle(c, c+22, c-10, c+22, c-7, c-2);
+    g.fillTriangle(c, c+22, c+10, c+22, c+7, c-2);
+    g.fillRect(c-7, c-2, 14, 14);
+    // Gold trim
+    g.fillStyle(0xD4B840, 0.6); g.fillRect(c-7, c+10, 14, 2);
+    // Hood
+    g.fillStyle(0xE8E0D0, 1);
+    g.fillRect(c-7, c-12, 14, 12);
+    g.fillTriangle(c, c-16, c-7, c-6, c+7, c-6);
+    // Face
+    g.fillStyle(0xD4C0A0, 1); g.fillRect(c-4, c-6, 8, 6);
+    // Serene eyes (closed)
+    g.lineStyle(1, 0x6A5A3A, 1);
+    g.lineBetween(c-3, c-4, c-1, c-3); g.lineBetween(c+1, c-3, c+3, c-4);
+    // Gold cross on chest
+    g.fillStyle(0xFFD700, 1);
+    g.fillRect(c-1, c-1, 2, 8); g.fillRect(c-3, c+1, 6, 2);
+    // Healing hands glow
+    g.fillStyle(0x66DD66, 0.3); g.fillCircle(c-10, c+4, 5); g.fillCircle(c+10, c+4, 5);
+    g.fillStyle(0xAAFFAA, 0.15); g.fillCircle(c-10, c+4, 8); g.fillCircle(c+10, c+4, 8);
+    // Halo
+    g.lineStyle(1.5, 0xFFD700, 0.4);
+    g.strokeCircle(c, c-14, 8);
   });
 
-  // Horde Priest — witch doctor (64x64)
-  genTex('h_priest', S, S, (g) => {
-    const c = S/2;
-    g.fillStyle(0xAA8833, 1); g.fillTriangle(c, c-10, c-16, c+20, c+16, c+20);
-    g.fillStyle(0x887722, 1); g.fillCircle(c, c-16, 9);
-    g.fillStyle(0x5A8A3A, 1); g.fillCircle(c, c-16, 5);
-    g.fillStyle(0x665520, 1); g.fillRect(c-4, c+18, 4, 8); g.fillRect(c, c+18, 4, 8);
-    g.lineStyle(3, 0xDDDDCC, 1); g.lineBetween(10, c+20, 10, c-20);
-    g.fillStyle(0xDDDDCC, 0.9); g.fillCircle(10, c-22, 4);
-    g.fillStyle(0xDDDDCC, 0.8); g.fillCircle(8, c-12, 3); g.fillCircle(12, c-4, 3);
-  });
-
-  // Alliance Siegemaster — dwarf engineer with cannon (64x64)
+  // Alliance Siegemaster — heavy iron armor, tools
   genTex('a_siege', S, S, (g) => {
     const c = S/2;
-    g.fillStyle(0xAA8833, 1); g.fillRect(c-12, c-6, 24, 18);
-    g.fillStyle(0x6A5520, 1); g.fillRect(c-8, c+12, 7, 12); g.fillRect(c+1, c+12, 7, 12);
-    g.fillStyle(0xDDB88A, 1); g.fillCircle(c, c-12, 9);
-    g.fillStyle(0x886633, 1); g.fillRect(c-6, c-6, 5, 5);
-    g.fillStyle(0x555555, 1); g.fillRect(c+12, c-2, 18, 8);
-    g.fillStyle(0x333333, 1); g.fillCircle(c+12, c+2, 5);
-    g.lineStyle(1.5, 0xffd700, 0.5); g.strokeRect(c+12, c-2, 18, 8);
+    // Legs (iron greaves, wide stance)
+    g.fillStyle(0x5A6A7A, 1); g.fillRect(c-8, c+10, 6, 12); g.fillRect(c+2, c+10, 6, 12);
+    // Body (wide iron plates)
+    g.fillStyle(0x6A7A8A, 1); g.fillRect(c-10, c-6, 20, 18);
+    g.fillStyle(0x5A6A7A, 1); g.fillRect(c-10, c, 20, 4); // plate line
+    // Rivets
+    g.fillStyle(0x8A9AAA, 1);
+    g.fillCircle(c-8, c-4, 1.5); g.fillCircle(c+8, c-4, 1.5);
+    g.fillCircle(c-8, c+6, 1.5); g.fillCircle(c+8, c+6, 1.5);
+    // Heavy helmet (square, iron)
+    g.fillStyle(0x5A6A7A, 1); g.fillRect(c-9, c-16, 18, 12);
+    g.fillStyle(0x4A5A6A, 1); g.fillRect(c-9, c-8, 18, 4); // visor
+    g.fillStyle(0xFF6600, 0.7); g.fillRect(c-5, c-7, 4, 2); g.fillRect(c+1, c-7, 4, 2); // eye glow
+    // Tool belt
+    g.fillStyle(0x5A3A10, 1); g.fillRect(c-10, c+6, 20, 3);
+    // Gear emblem
+    g.lineStyle(1, 0x8A9AAA, 0.6); g.strokeCircle(c, c-1, 4);
+    g.fillStyle(0x8A9AAA, 0.4); g.fillCircle(c, c-1, 2);
+    // Wrench (right hand)
+    g.fillStyle(0x888888, 1); g.fillRect(c+12, c-4, 3, 14);
+    g.fillStyle(0x999999, 1); g.fillRect(c+10, c-6, 7, 4);
+    // Cannonball (left hand)
+    g.fillStyle(0x2A2420, 1); g.fillCircle(c-14, c+2, 5);
+    g.fillStyle(0x3A3430, 0.5); g.fillCircle(c-15, c+1, 2);
   });
 
-  // Horde Siegemaster — orc with catapult (64x64)
+  // ═══ IRON HORDE HEROES ═══
+
+  // Iron Warlord — dark iron/red, skull deco, twin axes
+  genTex('h_knight', S, S, (g) => {
+    const c = S/2;
+    // Dark cape
+    g.fillStyle(0x4A0A0A, 0.7); g.fillRect(c-8, c-8, 16, 22);
+    // Legs
+    g.fillStyle(0x3A2A1A, 1); g.fillRect(c-6, c+10, 5, 12); g.fillRect(c+1, c+10, 5, 12);
+    // Body (dark iron)
+    g.fillStyle(0x4A3A2A, 1); g.fillRect(c-8, c-6, 16, 18);
+    g.fillStyle(0x3A2A1A, 1); g.fillRect(c-8, c, 16, 4);
+    // Red trim
+    g.fillStyle(0xCC2200, 0.6); g.fillRect(c-8, c-6, 16, 2); g.fillRect(c-8, c+10, 16, 2);
+    // Spiked helmet
+    g.fillStyle(0x3A3030, 1); g.fillRect(c-8, c-16, 16, 12);
+    g.fillStyle(0xCC2200, 0.8); g.fillRect(c-2, c-20, 4, 6); // center spike
+    g.fillStyle(0x3A3030, 1); g.fillRect(c-10, c-18, 4, 4); g.fillRect(c+6, c-18, 4, 4); // side spikes
+    // Glowing red eyes
+    g.fillStyle(0xFF2200, 0.9); g.fillRect(c-4, c-8, 3, 2); g.fillRect(c+1, c-8, 3, 2);
+    // Skull on chest
+    g.fillStyle(0xD4C8A0, 0.5); g.fillCircle(c, c+2, 4);
+    g.fillStyle(0x1A0A00, 0.6); g.fillCircle(c-1, c+1, 1); g.fillCircle(c+1, c+1, 1);
+    // Twin axes
+    g.fillStyle(0x5A4A3A, 1); g.fillRect(c-16, c-10, 3, 18); g.fillRect(c+13, c-10, 3, 18);
+    g.fillStyle(0x888888, 1);
+    g.fillTriangle(c-18, c-10, c-13, c-10, c-16, c-16);
+    g.fillTriangle(c+18, c-10, c+13, c-10, c+16, c-16);
+  });
+
+  // Shadow Hunter — dark, bone decorations, daggers
+  genTex('h_ranger', S, S, (g) => {
+    const c = S/2;
+    // Legs
+    g.fillStyle(0x1A2A1A, 1); g.fillRect(c-5, c+10, 4, 12); g.fillRect(c+1, c+10, 4, 12);
+    // Body (shadow leather)
+    g.fillStyle(0x1A2818, 1); g.fillRect(c-7, c-4, 14, 16);
+    g.fillStyle(0x2A3820, 0.5); g.fillRect(c-6, c, 12, 3);
+    // Bone necklace
+    g.fillStyle(0xD4C8A0, 0.6);
+    g.fillCircle(c-3, c-2, 1.5); g.fillCircle(c, c-1, 1.5); g.fillCircle(c+3, c-2, 1.5);
+    // Hood (darker, more menacing)
+    g.fillStyle(0x0A1A0A, 1);
+    g.fillTriangle(c, c-24, c-10, c-4, c+10, c-4);
+    g.fillRect(c-9, c-8, 18, 6);
+    // Glowing green eyes
+    g.fillStyle(0x44FF44, 0.9); g.fillRect(c-3, c-6, 2, 2); g.fillRect(c+1, c-6, 2, 2);
+    // Twin daggers
+    g.fillStyle(0xAAAAAA, 1);
+    g.fillRect(c-14, c-2, 2, 10);
+    g.fillRect(c+12, c-2, 2, 10);
+    g.fillStyle(0xCCCCCC, 0.5);
+    g.fillTriangle(c-14, c-2, c-12, c-2, c-13, c-6);
+    g.fillTriangle(c+12, c-2, c+14, c-2, c+13, c-6);
+    // Bone shoulder pads
+    g.fillStyle(0xD4C8A0, 0.5);
+    g.fillRect(c-10, c-4, 4, 3); g.fillRect(c+6, c-4, 4, 3);
+  });
+
+  // Fel Sorcerer — dark purple/green, demon horns, corrupted staff
+  genTex('h_mage', S, S, (g) => {
+    const c = S/2;
+    // Robe (dark purple with green tint)
+    g.fillStyle(0x2A0A3A, 1);
+    g.fillTriangle(c, c+22, c-12, c+22, c-8, c-2);
+    g.fillTriangle(c, c+22, c+12, c+22, c+8, c-2);
+    g.fillRect(c-8, c-2, 16, 14);
+    // Fel energy lines
+    g.fillStyle(0x44FF44, 0.15);
+    g.lineBetween(c-6, c+2, c+6, c+10);
+    g.lineBetween(c+6, c+2, c-6, c+10);
+    // Hood with horns
+    g.fillStyle(0x1A0A2A, 1);
+    g.fillTriangle(c, c-20, c-8, c-4, c+8, c-4);
+    g.fillRect(c-9, c-6, 18, 4);
+    // Demon horns
+    g.fillStyle(0x3A0A0A, 1);
+    g.fillTriangle(c-8, c-10, c-6, c-10, c-10, c-22);
+    g.fillTriangle(c+8, c-10, c+6, c-10, c+10, c-22);
+    // Fel eyes
+    g.fillStyle(0x44FF44, 0.9); g.fillRect(c-3, c-5, 2, 2); g.fillRect(c+1, c-5, 2, 2);
+    // Corrupted staff
+    g.fillStyle(0x3A1A3A, 1); g.fillRect(c+12, c-20, 3, 36);
+    g.fillStyle(0x44FF44, 0.8); g.fillCircle(c+13, c-22, 5);
+    g.fillStyle(0x22AA22, 0.5); g.fillCircle(c+13, c-22, 3);
+    g.fillStyle(0xAAFFAA, 0.6); g.fillCircle(c+13, c-23, 1.5);
+  });
+
+  // Blood Shaman — dark red robes, bone staff, tribal markings
+  genTex('h_priest', S, S, (g) => {
+    const c = S/2;
+    // Robe (dark red)
+    g.fillStyle(0x5A1A1A, 1);
+    g.fillTriangle(c, c+22, c-10, c+22, c-7, c-2);
+    g.fillTriangle(c, c+22, c+10, c+22, c+7, c-2);
+    g.fillRect(c-7, c-2, 14, 14);
+    // Tribal markings
+    g.fillStyle(0xCC4422, 0.4);
+    g.lineBetween(c-5, c, c-2, c+6);
+    g.lineBetween(c+2, c+6, c+5, c);
+    // Bone headdress
+    g.fillStyle(0xD4C8A0, 0.8);
+    g.fillRect(c-8, c-14, 16, 4);
+    g.fillTriangle(c-6, c-14, c-4, c-14, c-5, c-20);
+    g.fillTriangle(c+4, c-14, c+6, c-14, c+5, c-20);
+    g.fillTriangle(c-1, c-14, c+1, c-14, c, c-22);
+    // Face (tribal war paint)
+    g.fillStyle(0x8A5A3A, 1); g.fillRect(c-5, c-8, 10, 8);
+    g.fillStyle(0xCC2200, 0.5); g.fillRect(c-4, c-6, 2, 4); g.fillRect(c+2, c-6, 2, 4);
+    // Red glowing eyes
+    g.fillStyle(0xFF4444, 0.9); g.fillRect(c-3, c-5, 2, 1); g.fillRect(c+1, c-5, 2, 1);
+    // Bone staff
+    g.fillStyle(0xD4C8A0, 0.9); g.fillRect(c+12, c-18, 3, 34);
+    g.fillStyle(0xD4C8A0, 1); g.fillCircle(c+13, c-20, 4);
+    g.fillStyle(0xFF2200, 0.5); g.fillCircle(c+13, c-20, 2);
+    // Blood aura
+    g.fillStyle(0xFF2200, 0.1); g.fillCircle(c, c, 18);
+  });
+
+  // Ironclad Engineer — black iron, orange exhaust, mechanical arm
   genTex('h_siege', S, S, (g) => {
     const c = S/2;
-    g.fillStyle(0x8A4422, 1); g.fillRect(c-12, c-6, 24, 18);
-    g.fillStyle(0x5A2A10, 1); g.fillRect(c-8, c+12, 7, 12); g.fillRect(c+1, c+12, 7, 12);
-    g.fillStyle(0x5A8A3A, 1); g.fillCircle(c, c-12, 10);
-    g.lineStyle(4, 0x5A3A1A, 1); g.lineBetween(4, c+14, 4, c-16);
-    g.lineStyle(3, 0x5A3A1A, 1); g.lineBetween(4, c-16, 14, c-22);
-    g.fillStyle(0x555555, 1); g.fillCircle(14, c-22, 5);
-    g.fillStyle(0x5A3A1A, 1); g.fillRect(0, c+14, 18, 8);
+    // Legs (heavy iron)
+    g.fillStyle(0x3A3A40, 1); g.fillRect(c-8, c+10, 6, 12); g.fillRect(c+2, c+10, 6, 12);
+    // Body (black iron plates)
+    g.fillStyle(0x2A2A30, 1); g.fillRect(c-10, c-6, 20, 18);
+    g.fillStyle(0x3A3A40, 1); g.fillRect(c-10, c, 20, 4);
+    // Orange exhaust ports
+    g.fillStyle(0xFF6600, 0.6); g.fillCircle(c-8, c-2, 2); g.fillCircle(c+8, c-2, 2);
+    g.fillStyle(0xFFAA00, 0.3); g.fillCircle(c-8, c-4, 3); g.fillCircle(c+8, c-4, 3);
+    // Iron rivets
+    g.fillStyle(0x6A6A70, 1);
+    g.fillCircle(c-8, c-4, 1.5); g.fillCircle(c+8, c-4, 1.5);
+    g.fillCircle(c-8, c+6, 1.5); g.fillCircle(c+8, c+6, 1.5);
+    // Heavy helmet (angular)
+    g.fillStyle(0x2A2A30, 1); g.fillRect(c-9, c-16, 18, 12);
+    g.fillStyle(0x1A1A20, 1); g.fillRect(c-9, c-8, 18, 4);
+    g.fillStyle(0xFF6600, 0.8); g.fillRect(c-5, c-7, 4, 2); g.fillRect(c+1, c-7, 4, 2);
+    // Smoke stack on top
+    g.fillStyle(0x3A3A40, 1); g.fillRect(c+4, c-22, 4, 8);
+    g.fillStyle(0x444444, 0.3); g.fillCircle(c+6, c-24, 3);
+    // Mechanical arm (left)
+    g.fillStyle(0x4A4A50, 1); g.fillRect(c-16, c-4, 8, 4);
+    g.fillRect(c-18, c-2, 4, 8);
+    g.fillStyle(0xFF6600, 0.4); g.fillCircle(c-16, c+4, 2);
+    // Bomb/cannonball (right)
+    g.fillStyle(0x2A2420, 1); g.fillCircle(c+16, c+2, 6);
+    g.fillStyle(0x3A3430, 0.5); g.fillCircle(c+15, c+1, 2.5);
+    g.fillStyle(0x8B6914, 1); g.lineBetween(c+16, c-4, c+18, c-8);
+    g.fillStyle(0xFF6600, 0.7); g.fillCircle(c+18, c-8, 2);
   });
 
   // ─── CREEP / UNIT TEXTURES (36x36, smaller than heroes) ────────

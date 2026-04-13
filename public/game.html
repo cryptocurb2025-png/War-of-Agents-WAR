@@ -4837,24 +4837,27 @@ if (playerAgentId) {
       return;
     }
 
-    // Q W E R = abilities (send targetId if we have a focus target)
-    const abIdx = ABILITY_KEYS.indexOf(key);
-    if (abIdx >= 0 && myHeroAbilities[abIdx]) {
+    // Q W E R T = abilities via WebSocket (with cooldown check)
+    if (ABILITY_KEYS.includes(key)) {
       e.preventDefault();
+      const idx = ABILITY_KEYS.indexOf(key);
+      const myH = getMyHero();
+      if (!myH || !myH.abilities || !myH.abilities[idx]) return;
+      const ability = myH.abilities[idx];
+      if (ability.cd > 0) return; // on cooldown
+      // Send ability via WebSocket
+      if (ws && ws.readyState === 1) {
+        const msg = { type: 'hero_ability', agentId: playerAgentId, abilityId: ability.id };
+        if (currentTargetId) msg.targetId = currentTargetId;
+        ws.send(JSON.stringify(msg));
+      }
+      // Visual feedback - flash the key slot
+      const slotEl = document.getElementById('hk-' + key);
+      if (slotEl) {
+        slotEl.style.boxShadow = '0 0 15px #FFD700';
+        setTimeout(() => { slotEl.style.boxShadow = ''; }, 200);
+      }
       flashSlot('hk-' + key);
-      const abCmd = { action:'ability', abilityId:myHeroAbilities[abIdx].id };
-      if (currentTargetId) abCmd.targetId = currentTargetId;
-      sendCmd(abCmd).then(d => {
-        if (d.success) {
-          let msg = d.ability + '!';
-          if (d.damage) msg += ' -' + d.damage + ' dmg';
-          if (d.healed) msg += ' +' + d.healed + ' heal';
-          if (d.targets > 1) msg += ' (' + d.targets + ' hit)';
-          document.getElementById('pc-status').textContent = msg;
-        } else {
-          document.getElementById('pc-status').textContent = d.error || 'Failed';
-        }
-      });
       return;
     }
 
@@ -4877,13 +4880,45 @@ if (playerAgentId) {
       return;
     }
 
-    // B = retreat to base
+    // B = toggle shop
     if (key === 'b') {
-      const faction = localStorage.getItem('woa_faction') || 'alliance';
-      const tx = faction === 'alliance' ? 200 : 4600;
-      sendCmd({action:'move', targetX:tx, targetY:1200}).then(() => {
-        document.getElementById('pc-status').textContent = 'RETREATING TO BASE';
-      });
+      e.preventDefault();
+      const shop = document.getElementById('shop-modal');
+      if (shop) {
+        shop.classList.toggle('show');
+        if (shop.classList.contains('show')) openShop();
+      }
+      return;
+    }
+
+    // TAB = show scoreboard
+    if (key === 'tab') {
+      e.preventDefault();
+      const sb = document.getElementById('scoreboard-overlay');
+      if (sb && gameState) {
+        sb.style.display = 'flex';
+        const body = document.getElementById('scoreboard-body');
+        body.innerHTML = '';
+        const sorted = [...gameState.heroes].sort((a,b) => (b.kills||0) - (a.kills||0));
+        for (const h of sorted) {
+          const isMine = playerAgentId && h.agentId === playerAgentId;
+          const fClr = h.faction === 'alliance' ? '#4A8FE0' : '#E24B4A';
+          const row = document.createElement('tr');
+          row.style.borderBottom = '1px solid #1A1A2A';
+          if (isMine) row.style.background = 'rgba(200,150,12,0.08)';
+          if (!h.alive) row.style.opacity = '0.5';
+          row.innerHTML =
+            '<td style="padding:6px;font-weight:700;color:' + (isMine?'#FFD700':'#D4C9A8') + '">' + h.heroClass + (isMine?' (YOU)':'') + '</td>' +
+            '<td style="padding:6px;text-align:center;color:' + fClr + '">' + h.faction + '</td>' +
+            '<td style="padding:6px;text-align:center">' + (h.level||1) + '</td>' +
+            '<td style="padding:6px;text-align:center;color:#66CC66">' + (h.kills||0) + '</td>' +
+            '<td style="padding:6px;text-align:center;color:#CC4444">' + (h.deaths||0) + '</td>' +
+            '<td style="padding:6px;text-align:center;color:#8888CC">' + (h.assists||0) + '</td>' +
+            '<td style="padding:6px;text-align:center;color:#F0C040">' + (h.gold||0) + '</td>' +
+            '<td style="padding:6px;text-align:center;font-size:10px;color:#8A7D66">' + (h.items && h.items.length ? h.items.map(function(it){return typeof it==='string'?it:it.name||it.id}).join(', ') : 'none') + '</td>';
+          body.appendChild(row);
+        }
+      }
       return;
     }
   });
@@ -4893,6 +4928,11 @@ if (playerAgentId) {
     keysDown[key] = false;
     // Space released = return camera to hero follow
     if (key === ' ') cameraFreeMode = false;
+    // Tab released = hide scoreboard
+    if (key === 'tab') {
+      const sb = document.getElementById('scoreboard-overlay');
+      if (sb) sb.style.display = 'none';
+    }
     stopMoveLoop();
     // Stop manual move loop when all movement keys are released
     if (controlMode === 'manual' && !keysDown['a'] && !keysDown['d'] && !keysDown['w'] && !keysDown['s'] && !keysDown['arrowleft'] && !keysDown['arrowright'] && !keysDown['arrowup'] && !keysDown['arrowdown']) {
@@ -5100,6 +5140,29 @@ function updatePlayerControls() {
         slot.dataset.abilityTier = ab.tier || 1;
       }
     });
+    // Update ability cooldowns on hotkey bar with visual overlays
+    hero.abilities.forEach((a, i) => {
+      const key = ABILITY_KEYS[i];
+      const slotEl = document.getElementById('hk-' + key);
+      if (!slotEl) return;
+      if (a.cd > 0) {
+        const cdSec = Math.ceil(a.cd / 20);
+        slotEl.style.opacity = '0.4';
+        slotEl.style.position = 'relative';
+        let cdOv = slotEl.querySelector('.cd-overlay');
+        if (!cdOv) {
+          cdOv = document.createElement('div');
+          cdOv.className = 'cd-overlay';
+          cdOv.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);color:#FF6644;font-size:14px;font-weight:900;font-family:Cinzel,serif;border-radius:4px;pointer-events:none';
+          slotEl.appendChild(cdOv);
+        }
+        cdOv.textContent = cdSec + 's';
+      } else {
+        slotEl.style.opacity = '1';
+        const cdOv = slotEl.querySelector('.cd-overlay');
+        if (cdOv) cdOv.remove();
+      }
+    });
   }
 
   // Update owned items
@@ -5117,5 +5180,23 @@ function updatePlayerControls() {
 
 // Resize handled by Phaser Scale.FIT
 </script>
+<div id="scoreboard-overlay" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;font-family:Cinzel,serif">
+  <div style="background:linear-gradient(145deg,#12100A,#0E0C07);border:2px solid #C8960C;border-radius:12px;padding:24px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto">
+    <h2 style="color:#C8960C;text-align:center;font-size:1.2rem;letter-spacing:3px;margin-bottom:16px">SCOREBOARD</h2>
+    <table id="scoreboard-table" style="width:100%;border-collapse:collapse;font-size:12px;color:#D4C9A8">
+      <thead><tr style="border-bottom:2px solid #C8960C44">
+        <th style="text-align:left;padding:6px;color:#C8960C">Hero</th>
+        <th style="color:#C8960C;padding:6px">Faction</th>
+        <th style="color:#C8960C;padding:6px">Level</th>
+        <th style="color:#C8960C;padding:6px">K</th>
+        <th style="color:#C8960C;padding:6px">D</th>
+        <th style="color:#C8960C;padding:6px">A</th>
+        <th style="color:#C8960C;padding:6px">Gold</th>
+        <th style="color:#C8960C;padding:6px">Items</th>
+      </tr></thead>
+      <tbody id="scoreboard-body"></tbody>
+    </table>
+  </div>
+</div>
 </body>
 </html>

@@ -1919,6 +1919,39 @@ wss.on('connection', (ws) => {
         if (!hero || !hero.alive) return;
         hero.focusTargetId = msg.targetId || null;
       }
+      if (msg.type === 'hero_ability') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (!hero || !hero.alive) return;
+        const abilityId = msg.abilityId;
+        if (!abilityId) return;
+        // Set pending ability - the existing tick loop will process it
+        hero.pendingAbilityId = abilityId;
+        // If targeting a position, set move target to walk into range
+        if (msg.targetX !== undefined && msg.targetY !== undefined) {
+          hero.moveTarget = { x: Math.max(0, Math.min(MAP_W, Number(msg.targetX))), y: Math.max(0, Math.min(MAP_H, Number(msg.targetY))) };
+        }
+        // If targeting an entity, focus on it
+        if (msg.targetId) {
+          hero.focusTargetId = msg.targetId;
+        }
+      }
+      if (msg.type === 'hero_buy') {
+        const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
+        if (!hero || !hero.alive) return;
+        const itemId = msg.itemId;
+        if (!itemId) return;
+        const item = SHOP_ITEMS.find(i => i.id === itemId);
+        if (!item) return;
+        if (hero.gold < item.cost) return;
+        if (hero.items.find(i => i.id === itemId)) return;
+        hero.gold -= item.cost;
+        hero.items.push(item);
+        if (item.stats.hp) { hero.maxHp += item.stats.hp; hero.hp += item.stats.hp; }
+        if (item.stats.damage) hero.damage += item.stats.damage;
+        if (item.stats.armor) hero.armor += item.stats.armor;
+        if (item.stats.speed) hero.speed += item.stats.speed;
+        if (item.stats.mana) { hero.maxMana += item.stats.mana; hero.mana += item.stats.mana; }
+      }
       if (msg.type === 'set_control_mode') {
         const hero = [...state.heroes.values()].find(h => h.agentId === msg.agentId);
         if (!hero) return;

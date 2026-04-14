@@ -3100,6 +3100,10 @@ function pUpdate() {
   // Alliance side — grass #1E3A2F darkened ~15% toward gray
   graphics.fillStyle(0x1A3128, 1);
   graphics.fillRect(-2000, -2000, halfW + 2000, MAP_H + 4000);
+  // Terrain grain — low-opacity speckle over grass + dirt for depth
+  drawTerrainNoise(-200, -200, halfW + 200, MAP_H + 400, true);         // Alliance grass
+  drawTerrainNoise(halfW, -200, MAP_W - halfW + 200, MAP_H + 400, false); // Horde dirt
+
   // Lane rendering — base fill, vertical gradient (center lighter, edges darker),
   // noise grain, wear cracks, and crisp dark borders. Called per-lane.
   drawLane(-200, 400, MAP_W + 400, 200);   // top
@@ -4506,6 +4510,38 @@ function renderSprite(id, texKey, entity, t, isHero) {
   bar.fill.setFillStyle(barColor);
   bar.lvl.setPosition(newX, newY - 72);
   bar.lvl.setText(entity.level !== undefined ? `${entity.level}` : '');
+}
+
+// ─── Terrain grain — low-opacity speckle, seeded, grass vs dirt ──
+function drawTerrainNoise(x, y, w, h, isGrass) {
+  const rand = (seed) => { const s = Math.sin(seed * 9301 + 49297) * 233280; return s - Math.floor(s); };
+  // Density: ~1 dot per 2800 px² → subtle, not busy
+  const n = Math.floor((w * h) / 2800);
+  const seedBase = isGrass ? 777 : 331;
+  for (let i = 0; i < n; i++) {
+    const gx = x + rand(i + seedBase) * w;
+    const gy = y + rand(i * 7 + seedBase * 3) * h;
+    const shade = rand(i * 13 + seedBase);
+    if (shade < 0.55) {
+      // Dark speckle — 5-9% opacity
+      graphics.fillStyle(0x000000, 0.05 + shade * 0.07);
+      graphics.fillRect(gx, gy, 2, 2);
+    } else {
+      // Light tonal speckle — faction-tinted, very faint (4-8%)
+      const col = isGrass ? 0x3A6048 : 0x4A3030;
+      graphics.fillStyle(col, 0.04 + (shade - 0.55) * 0.09);
+      graphics.fillRect(gx, gy, 2, 2);
+    }
+  }
+  // Occasional slightly larger tuft/clod — very faint, just break up uniformity
+  const tufts = Math.floor(n / 40);
+  for (let i = 0; i < tufts; i++) {
+    const tx = x + rand(i * 31 + seedBase) * w;
+    const ty = y + rand(i * 53 + seedBase * 2) * h;
+    const col = isGrass ? 0x2E4838 : 0x3A2828;
+    graphics.fillStyle(col, 0.08);
+    graphics.fillCircle(tx, ty, 3);
+  }
 }
 
 // ─── Draw a single lane with gradient, grain, wear, and borders ──

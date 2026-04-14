@@ -2189,10 +2189,28 @@ ws.onmessage = (e) => {
   }
   if (msg.type === 'mission_completed') {
     if (msg.targetAgentId && msg.targetAgentId === playerAgentId) {
-      announceEvent('✓ ' + (msg.label || 'MISSION').toUpperCase() + ' COMPLETE', 'king');
-      addSystemChat('Mission: ' + (msg.label || 'complete') + ' · +' + (msg.rewardGold || 0) + 'g / +' + (msg.rewardXp || 0) + ' XP' + (msg.rewardToken ? ' / +' + msg.rewardToken + ' $WAR' : ''));
+      const diffIcon = msg.difficulty === 'hard' ? '★★★ ' : msg.difficulty === 'medium' ? '★★ ' : '★ ';
+      announceEvent('✓ ' + diffIcon + (msg.label || 'MISSION').toUpperCase() + ' COMPLETE', 'king');
+      // Floating reward numbers above the player hero (big + visible)
+      if (msg.heroX !== undefined && msg.heroY !== undefined) {
+        if (window._pushKillGold) window._pushKillGold(msg.heroX, msg.heroY - 40, msg.totalGold || msg.rewardGold);
+        if (window._pushXPFloat)  window._pushXPFloat(msg.heroX, msg.heroY - 60, msg.totalXp || msg.rewardXp);
+        if (msg.bonusHit && window._pushKillGold) {
+          // Stagger the BONUS float so it reads as a second beat
+          setTimeout(() => {
+            if (msg.bonusType === 'gold' && window._pushKillGold) window._pushKillGold(msg.heroX, msg.heroY - 80, msg.bonusGold);
+            else if (window._pushXPFloat) window._pushXPFloat(msg.heroX, msg.heroY - 80, msg.bonusXp);
+          }, 250);
+        }
+      }
+      // Rich chat summary
+      const parts = ['+' + (msg.rewardGold || 0) + ' GOLD', '+' + (msg.rewardXp || 0) + ' XP'];
+      if (msg.rewardToken) parts.push('+' + msg.rewardToken + ' $WAR');
+      if (msg.bonusHit) parts.push('🎁 BONUS ' + (msg.bonusType === 'gold' ? '+' + msg.bonusGold + 'g' : '+' + msg.bonusXp + ' XP'));
+      addSystemChat('✓ ' + (msg.label || 'mission') + ' — ' + parts.join(' · '));
       try { if (typeof sfxLevelUp === 'function') sfxLevelUp(); } catch {}
-      fetchMissions(); // refresh panel
+      if (msg.bonusHit) { try { if (typeof sfxGold === 'function') setTimeout(() => sfxGold(), 300); } catch {} }
+      fetchMissions();
     }
     return;
   }
@@ -2416,10 +2434,12 @@ function renderMissions() {
     const labelStyle = m.completed ? 'color:#22C55E;text-decoration:line-through;opacity:0.6' : 'color:#FACC15';
     const tokenBadge = m.rewardToken ? `<span style="color:#C8960C;font-size:9px">·$WAR ${m.rewardToken}</span>` : '';
     const dailyBadge = m.daily ? '<span style="color:#F97316;font-size:8px;margin-left:4px">DAILY</span>' : '';
+    const stars = m.difficulty === 'hard' ? '★★★' : m.difficulty === 'medium' ? '★★' : '★';
+    const starColor = m.difficulty === 'hard' ? '#EF4444' : m.difficulty === 'medium' ? '#F97316' : '#8A7A5A';
     return `
       <div style="border-left:2px solid ${barColor};padding-left:6px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="${labelStyle};font-size:10px;font-weight:700;letter-spacing:0.5px">${m.label}${dailyBadge}</span>
+          <span style="${labelStyle};font-size:10px;font-weight:700;letter-spacing:0.5px">${m.label}<span style="color:${starColor};margin-left:4px;font-size:8px">${stars}</span>${dailyBadge}</span>
           <span style="color:#8A7A5A;font-size:9px">${m.progress}/${m.target}</span>
         </div>
         <div style="color:#706050;font-size:9px;margin:1px 0 2px">${m.description}</div>

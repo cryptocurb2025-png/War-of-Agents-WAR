@@ -428,22 +428,28 @@ interface MissionDef {
   rewardGold: number;
   rewardXp: number;
   rewardToken?: number; // hook for future $WAR
+  difficulty: 'easy' | 'medium' | 'hard';
   category: 'session' | 'daily';
 }
 
+// Rewards scaled by difficulty:
+//   easy   → base
+//   medium → 1.5x
+//   hard   → 2.25x
+// Daily missions additionally include a $WAR token amount.
 const MISSION_DEFS: MissionDef[] = [
-  // Session (auto-assigned every match)
-  { id: 'first_blood',   label: 'First Blood',   description: 'Score the first hero kill',       target: 1,  rewardGold: 150, rewardXp: 60,  category: 'session' },
-  { id: 'tower_breaker', label: 'Tower Breaker', description: 'Destroy an enemy tower',           target: 1,  rewardGold: 250, rewardXp: 100, category: 'session' },
-  { id: 'survivor',      label: 'Survivor',      description: 'Stay alive for 180 seconds',       target: 180, rewardGold: 200, rewardXp: 80, category: 'session' },
-  { id: 'farmer',        label: 'Farmer',        description: 'Kill 20 minions',                  target: 20, rewardGold: 180, rewardXp: 60,  category: 'session' },
-  { id: 'giant_slayer',  label: 'Giant Slayer',  description: 'Kill a hero 3+ levels above you',  target: 1,  rewardGold: 300, rewardXp: 150, category: 'session' },
-  // Daily rotation pool (3 randomly chosen at UTC reset)
-  { id: 'assist_ace',    label: 'Teamwork',      description: 'Earn 5 assists',                   target: 5,  rewardGold: 300, rewardXp: 120, rewardToken: 5, category: 'daily' },
-  { id: 'spender',       label: 'Big Spender',   description: 'Spend 1200 gold in shop',          target: 1200, rewardGold: 200, rewardXp: 100, rewardToken: 4, category: 'daily' },
-  { id: 'no_deaths',     label: 'Untouchable',   description: 'Win a match without dying',        target: 1,  rewardGold: 400, rewardXp: 200, rewardToken: 8, category: 'daily' },
-  { id: 'ability_chain', label: 'Combo',         description: 'Land 25 ability hits',             target: 25, rewardGold: 250, rewardXp: 100, rewardToken: 4, category: 'daily' },
-  { id: 'wave_clearer',  label: 'Wave Clearer',  description: 'Clear 3 full waves of minions',    target: 60, rewardGold: 350, rewardXp: 140, rewardToken: 6, category: 'daily' },
+  // Session
+  { id: 'first_blood',   label: 'First Blood',   description: 'Score the first hero kill',       target: 1,   rewardGold: 150, rewardXp: 60,  difficulty: 'easy',   category: 'session' },
+  { id: 'farmer',        label: 'Farmer',        description: 'Kill 20 minions',                  target: 20,  rewardGold: 220, rewardXp: 90,  difficulty: 'medium', category: 'session' },
+  { id: 'survivor',      label: 'Survivor',      description: 'Stay alive for 180 seconds',       target: 180, rewardGold: 240, rewardXp: 100, difficulty: 'medium', category: 'session' },
+  { id: 'tower_breaker', label: 'Tower Breaker', description: 'Destroy an enemy tower',           target: 1,   rewardGold: 320, rewardXp: 140, difficulty: 'medium', category: 'session' },
+  { id: 'giant_slayer',  label: 'Giant Slayer',  description: 'Kill a hero 3+ levels above you',  target: 1,   rewardGold: 450, rewardXp: 220, difficulty: 'hard',   category: 'session' },
+  // Daily pool
+  { id: 'spender',       label: 'Big Spender',   description: 'Spend 1200 gold in shop',          target: 1200, rewardGold: 250, rewardXp: 100, rewardToken: 3, difficulty: 'easy',   category: 'daily' },
+  { id: 'assist_ace',    label: 'Teamwork',      description: 'Earn 5 assists',                   target: 5,   rewardGold: 380, rewardXp: 150, rewardToken: 5, difficulty: 'medium', category: 'daily' },
+  { id: 'ability_chain', label: 'Combo',         description: 'Land 25 ability hits',             target: 25,  rewardGold: 400, rewardXp: 160, rewardToken: 5, difficulty: 'medium', category: 'daily' },
+  { id: 'wave_clearer',  label: 'Wave Clearer',  description: 'Clear 60 minions total',           target: 60,  rewardGold: 520, rewardXp: 210, rewardToken: 7, difficulty: 'medium', category: 'daily' },
+  { id: 'no_deaths',     label: 'Untouchable',   description: 'Win a match without dying',        target: 1,   rewardGold: 700, rewardXp: 350, rewardToken: 10, difficulty: 'hard', category: 'daily' },
 ];
 
 const SESSION_MISSION_IDS: MissionKind[] = ['first_blood', 'tower_breaker', 'survivor', 'farmer', 'giant_slayer'];
@@ -505,19 +511,40 @@ function bumpMission(agentId: string | undefined, id: MissionKind, delta: number
   if (!s.completed && s.progress >= s.target) {
     s.completed = true;
     const def = MISSION_DEFS.find(d => d.id === id)!;
+    // Bonus roll — 15% chance of a small reward sweetener.
+    // Scales slightly with difficulty so bigger missions get bigger bonuses.
+    const rollChance = 0.15;
+    const hit = Math.random() < rollChance;
+    let bonusGold = 0;
+    let bonusXp = 0;
+    let bonusType: string | null = null;
+    if (hit) {
+      const tierMul = def.difficulty === 'hard' ? 2 : def.difficulty === 'medium' ? 1.4 : 1;
+      const kinds = ['gold', 'gold', 'xp']; // gold-heavy
+      bonusType = kinds[Math.floor(Math.random() * kinds.length)];
+      if (bonusType === 'gold') bonusGold = Math.round((40 + Math.floor(Math.random() * 80)) * tierMul);
+      else                       bonusXp = Math.round((20 + Math.floor(Math.random() * 40)) * tierMul);
+    }
     // Apply rewards to active hero
+    const totalGold = def.rewardGold + bonusGold;
+    const totalXp   = def.rewardXp + bonusXp;
     const hero = [...state.heroes.values()].find(h => h.agentId === agentId && h.alive);
     if (hero) {
-      hero.gold += def.rewardGold;
-      (hero as any).xp = ((hero as any).xp || 0) + def.rewardXp;
+      hero.gold += totalGold;
+      (hero as any).xp = ((hero as any).xp || 0) + totalXp;
     }
     broadcastToAgent(agentId, {
       type: 'mission_completed',
       missionId: id,
       label: def.label,
+      difficulty: def.difficulty,
       rewardGold: def.rewardGold,
       rewardXp: def.rewardXp,
       rewardToken: def.rewardToken || 0,
+      bonusGold, bonusXp, bonusHit: hit, bonusType,
+      totalGold, totalXp,
+      // For client-side floating reward numbers above the hero
+      heroX: hero?.pos.x, heroY: hero?.pos.y,
     });
   }
 }
@@ -532,7 +559,7 @@ function missionsForAgent(agentId: string) {
     out.push({
       id: s.id, label: def.label, description: def.description,
       progress: s.progress, target: s.target, completed: s.completed,
-      daily: s.daily,
+      daily: s.daily, difficulty: def.difficulty,
       rewardGold: def.rewardGold, rewardXp: def.rewardXp, rewardToken: def.rewardToken || 0,
     });
   }

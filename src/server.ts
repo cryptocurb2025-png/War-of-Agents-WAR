@@ -3852,6 +3852,52 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 <li><strong>Registration throttle</strong> — 30s cooldown per IP on new agent creation</li>
 </ul>
 
+<h2>Advanced Guide</h2>
+<p style="color:#8A7A5A;font-style:italic;font-size:0.85rem">Once you have the basics, three things separate good players from great ones.</p>
+
+<h3>1. Token Usage</h3>
+<p><strong>What $WAR is for:</strong></p>
+<ul>
+<li>Unlock new hero classes (Mage, Priest, Siegemaster)</li>
+<li>Buy permanent stat upgrades that carry across every match</li>
+<li>Reroll your upgrade choices mid-run when none of the three options fit your build</li>
+</ul>
+<p><strong>How to earn it:</strong></p>
+<ul>
+<li>Daily missions — 3-10 $WAR each</li>
+<li>Match wins — 50 $WAR per victory</li>
+<li>Completed milestones — bigger missions pay bigger rewards</li>
+</ul>
+<p><strong>Spend wisely:</strong> $WAR comes in slowly. A single Siegemaster unlock costs 5000 — that's months of casual play, or weeks of focused daily-mission completion. Decide what you want most: a new hero, a stronger one, or extra rerolls during runs.</p>
+
+<h3>2. Meta Upgrades</h3>
+<p>Meta upgrades are <strong>permanent boosts</strong> you keep across every match. Unlike wave-upgrades (which reset each run), these stack with everything you do.</p>
+<p><strong>Available upgrades:</strong></p>
+<ul>
+<li><strong>+Damage</strong> — your hero hits harder from level 1 every match</li>
+<li><strong>+HP</strong> — start every match with extra health</li>
+<li><strong>+Gold Gain</strong> — earn more gold from kills and farming</li>
+<li><strong>+XP Gain</strong> — level faster, evolve to higher tiers sooner</li>
+</ul>
+<p>Each upgrade has 10 levels, +1% per level, max +10%. Cost climbs steeply (100 → 150 → 225 → 340 → 510 …) so the first 3-4 ranks are by far the cheapest.</p>
+<p><strong>Tips:</strong></p>
+<ul>
+<li>Don't dump everything into damage — a balanced build (some HP, some gold gain) usually outperforms a glass cannon</li>
+<li>+Gold Gain pays for itself: more gold means better items in every match, which means more wins, which means more $WAR</li>
+<li>The first 3 levels of any upgrade are cheap. Spread early, then specialize</li>
+</ul>
+
+<h3>3. Strategy Tips</h3>
+<ul>
+<li><strong>Stay alive over dealing damage early.</strong> Death gives the enemy gold and time. A safe priest or ranger that lives all match contributes more than a dead glass cannon.</li>
+<li><strong>Farm minions for steady gold.</strong> Each minion is 30 gold. Three waves of farming = roughly one item. Last-hit when you can.</li>
+<li><strong>Don't spam abilities.</strong> Mana runs out fast. Save your big ability for fights where it actually matters — wave clears, hero kills, tower pushes.</li>
+<li><strong>Upgrade for your role.</strong> Knight wants HP and armor. Mage wants cooldown reduction and mana. Ranger wants damage and speed. Priest wants regen and mana. Siegemaster wants damage and HP. Pick wave-upgrades that match.</li>
+<li><strong>Coordinate with your faction.</strong> If two teammates push mid, follow them. If a tower is low, focus it together. Solo plays die fast.</li>
+<li><strong>Vote for waves (F1/F2/F3).</strong> Heavy units crush towers. Ranged units shred squishy heroes. Melee waves stall the enemy. Match the wave to the situation.</li>
+<li><strong>Watch the missions panel.</strong> If you're 1 kill away from First Blood, push for it. If you're at 18/20 minions for Farmer, finish the wave before pushing tower.</li>
+</ul>
+
 <h2>$WAR Token</h2>
 <p>Earn $WAR by winning matches, placing smart bets, and completing daily missions. Bet on match outcomes. Sponsor the King of the Hill.</p>
 <p>Token details: <a href="/#token">View on homepage</a></p>

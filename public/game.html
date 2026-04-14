@@ -3099,18 +3099,21 @@ function pUpdate() {
   graphics.fillRect(-2000, -2000, MAP_W + 4000, MAP_H + 4000);
   // Alliance side — grass #1E3A2F darkened ~15% toward gray.
   // Stop short of centerline so the blend band can fade between factions.
-  const blendHalf = 320; // width each side of centerline that blends
+  const blendHalf = 560; // wider overlap → no visible seam at the center
   graphics.fillStyle(0x1A3128, 1);
   graphics.fillRect(-2000, -2000, halfW - blendHalf + 2000, MAP_H + 4000);
   // Faction transition band — stacked vertical strips cross-fading grass→dirt.
   // Skip lane Y bands so lanes aren't visually interrupted by dark seams.
-  const bandStrips = 24;
+  // Use an S-curve alpha so the mid-band has low contrast (no hard seam).
+  const bandStrips = 48;
   const laneYBands = [[400, 600], [1040, 1360], [1800, 2000]];
   for (let i = 0; i < bandStrips; i++) {
     const t = i / (bandStrips - 1); // 0..1
     const sx = halfW - blendHalf + t * (blendHalf * 2);
     const sw = (blendHalf * 2) / bandStrips + 1;
-    const alpha = 1 - t;
+    // Smoothstep alpha (S-curve) for a gentler handoff between sides
+    const smooth = t * t * (3 - 2 * t);
+    const alpha = 1 - smooth;
     // Draw around lanes, not through them — preserves lane continuity across centerline
     let cy = -2000;
     const endY = MAP_H + 2000;
@@ -3278,8 +3281,8 @@ function pUpdate() {
 
   // === LANE ROADS (all 3 lanes) — evolve with era ===
   // Lighter sand colors so lanes stand out from dark ground
-  // Sand palette, darker & less saturated (keeps lanes just brighter than terrain)
-  const roadColors = [0x8A7454, 0x927A5C, 0x888070, 0x74604E];
+  // Sand palette — bumped ~8% brighter so lanes clearly outrank terrain
+  const roadColors = [0x94805A, 0x9C8862, 0x908876, 0x7E6A54];
   const roadColor = roadColors[Math.min(era-1, 3)];
   for (const lane of ALL_LANES) {
     graphics.fillStyle(roadColor, 1);
@@ -4555,18 +4558,30 @@ function renderSprite(id, texKey, entity, t, isHero) {
 // ─── Ambient brightness patches — wide soft circles, very subtle ──
 function drawAmbientPatches() {
   const rand = (seed) => { const s = Math.sin(seed * 7331 + 2269) * 92831; return s - Math.floor(s); };
-  // 6 patches spread across the map — half warm, half cool
+  // 6 mid-sized patches spread across the map — half warm, half cool
   for (let i = 0; i < 6; i++) {
     const px = rand(i + 101) * MAP_W;
     const py = rand(i * 3 + 101) * MAP_H;
     const r  = 260 + rand(i * 5 + 101) * 220;
     const warm = rand(i * 7 + 101) < 0.5;
-    // Very soft falloff: 3 concentric circles
     const col = warm ? 0x5A3A20 : 0x204038;
     graphics.fillStyle(col, 0.03);
     graphics.fillCircle(px, py, r);
     graphics.fillStyle(col, 0.025);
     graphics.fillCircle(px, py, r * 1.35);
+  }
+  // 2 extra-large cinematic light spots, very faint, concentric for soft edges
+  for (let i = 0; i < 2; i++) {
+    const px = (i === 0 ? MAP_W * 0.28 : MAP_W * 0.72);
+    const py = (i === 0 ? MAP_H * 0.35 : MAP_H * 0.65);
+    const r  = 720 + i * 80;
+    const col = i === 0 ? 0xCFE0D0 : 0xE0C8A8;
+    graphics.fillStyle(col, 0.018);
+    graphics.fillCircle(px, py, r);
+    graphics.fillStyle(col, 0.012);
+    graphics.fillCircle(px, py, r * 1.25);
+    graphics.fillStyle(col, 0.008);
+    graphics.fillCircle(px, py, r * 1.55);
   }
 }
 
@@ -4728,7 +4743,8 @@ function drawEnvProps(x, y, w, h, isGrass) {
 // ─── Draw a single lane with gradient, grain, wear, and borders ──
 function drawLane(x, y, w, h) {
   // Base flat fill
-  graphics.fillStyle(0x8A7454, 1);
+  // Lane base — slightly brighter than terrain variants
+  graphics.fillStyle(0x94805A, 1);
   graphics.fillRect(x, y, w, h);
   // Vertical gradient — lighter center, darker edges. Fake with stacked bands.
   const bands = 8;
@@ -4778,10 +4794,13 @@ function drawLane(x, y, w, h) {
       px = nx; py = ny;
     }
   }
-  // Continuous lane highlight — thin cream streak running full length so the
-  // lane reads as one unbroken path even across the centerline
-  graphics.fillStyle(0xE8D4A8, 0.08);
-  graphics.fillRect(x, y + h * 0.48, w, Math.max(2, h * 0.04));
+  // Continuous lane highlight — double-line cream streak running full length
+  // so the lane reads as one unbroken path even across the centerline
+  graphics.fillStyle(0xEDD8A8, 0.12);
+  graphics.fillRect(x, y + h * 0.48, w, Math.max(2, h * 0.035));
+  // Soft halo above/below the highlight for dimensionality
+  graphics.fillStyle(0xEDD8A8, 0.05);
+  graphics.fillRect(x, y + h * 0.44, w, Math.max(2, h * 0.14));
   // Darker borders top + bottom
   graphics.fillStyle(0x2A1E10, 0.55);
   graphics.fillRect(x, y, w, 3);
@@ -6841,12 +6860,14 @@ function updatePlayerControls() {
     // ─── Track HP changes for damage numbers ─────────────
     if (!window._prevEntityHP) window._prevEntityHP = {};
     const allEntities = [...gameState.heroes, ...(gameState.units || [])];
+    let _batchStagger = 0; // stagger successive dmg floats within this tick
     for (const e of allEntities) {
       const prev = window._prevEntityHP[e.id];
       if (prev !== undefined && e.hp < prev) {
         const dmg = prev - e.hp;
         const isCrit = dmg > (e.maxHp || 100) * 0.15;
-        _dmgFloats.push({ x: e.x * scaleX + (Math.random()-0.5) * 24, y: e.y * scaleY - 20, dmg, kind: isCrit ? 'crit' : 'normal', age: 0, bounce: isCrit ? 8 : 0 });
+        _dmgFloats.push({ x: e.x * scaleX + (Math.random()-0.5) * 28, y: e.y * scaleY - 20, dmg, kind: isCrit ? 'crit' : 'normal', age: 0, bounce: isCrit ? 8 : 0, spawnDelay: _batchStagger });
+        _batchStagger = Math.min(6, _batchStagger + 1); // ~50ms per frame → up to 300ms total stagger
         _dmgFlash[e.id] = 4;
         _hitFlash[e.id] = 2;          // white sprite flash on hit (~100ms)
         _hitScale[e.id] = 4;          // target scale bounce 1 → 1.05 → 1 (~200ms)
@@ -7442,6 +7463,8 @@ function updatePlayerControls() {
     // ─── Floating combat text (tiered: normal/crit/heal) ───
     for (let i = _dmgFloats.length - 1; i >= 0; i--) {
       const d = _dmgFloats[i];
+      // Per-float spawn delay: stagger simultaneous numbers by ~50ms each
+      if (d.spawnDelay && d.spawnDelay > 0) { d.spawnDelay--; continue; }
       d.age++;
       if (d.age > 12) { _dmgFloats.splice(i, 1); continue; } // 0.6s at 20fps
       const p = d.age / 12;
@@ -7650,17 +7673,37 @@ function updatePlayerControls() {
         ctx.arc(lf.x + Math.cos(angle) * r, lf.y + Math.sin(angle) * r * 0.6 - p * 30, 2.5 * (1 - p * 0.4), 0, Math.PI*2);
         ctx.fill();
       }
-      // Floating text with bounce rise
-      const tyOff = -24 - lf.age * 1.4;
-      const textAlpha = Math.min(1, (1 - p) * 1.4);
-      ctx.font = 'bold 18px Cinzel, sans-serif';
+      // Floating text — quick scale pop 1 → 1.2 → 1, fade in then out, float up
+      const tyOff = -24 - lf.age * 1.6;
+      // Fade in over first 15%, hold, fade out last 40%
+      let textAlpha;
+      if (p < 0.15) textAlpha = p / 0.15;
+      else if (p < 0.6) textAlpha = 1;
+      else textAlpha = Math.max(0, 1 - (p - 0.6) / 0.4);
+      // Scale pop: 1 → 1.2 at p≈0.2, settle to 1
+      let textScale;
+      if (p < 0.2) textScale = 1 + (p / 0.2) * 0.2;
+      else if (p < 0.4) textScale = 1.2 - ((p - 0.2) / 0.2) * 0.2;
+      else textScale = 1;
+      // Soft gold glow pulse behind text
+      const glowPulse = 0.4 + Math.sin(lf.age * 0.6) * 0.25;
+      ctx.fillStyle = `rgba(255,210,90,${0.25 * textAlpha * glowPulse})`;
+      ctx.beginPath();
+      ctx.ellipse(lf.x, lf.y + tyOff, 70 * textScale, 18 * textScale, 0, 0, Math.PI*2);
+      ctx.fill();
+      // Text, scale-popped
+      ctx.save();
+      ctx.translate(lf.x, lf.y + tyOff);
+      ctx.scale(textScale, textScale);
+      ctx.font = 'bold 20px Cinzel, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.strokeStyle = `rgba(40,20,0,${textAlpha})`;
       ctx.lineWidth = 4;
-      ctx.strokeText('LEVEL UP!', lf.x, lf.y + tyOff);
-      ctx.fillStyle = `rgba(255,215,0,${textAlpha})`;
-      ctx.fillText('LEVEL UP!', lf.x, lf.y + tyOff);
+      ctx.strokeText('LEVEL UP!', 0, 0);
+      ctx.fillStyle = `rgba(255,220,90,${textAlpha})`;
+      ctx.fillText('LEVEL UP!', 0, 0);
+      ctx.restore();
     }
 
     // Tower-destruction full-screen flash (brief white wash)

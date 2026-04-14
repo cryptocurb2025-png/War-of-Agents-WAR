@@ -15,13 +15,21 @@
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { overflow: hidden !important; }
+  html, body {
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   body {
     background: #050a14;
     color: #d4c08a;
     font-family: 'Cinzel', serif;
-    overflow: hidden !important;
-    height: 100vh;
     display: flex;
     flex-direction: column;
   }
@@ -3353,6 +3361,142 @@ function pUpdate() {
     }
   }
 
+  // ═══ ALLIANCE CASTLE (far left) ═══
+  {
+    const ax = 160; const aBaseY = MAP_H/2;
+    // Main keep (blue stone)
+    graphics.fillStyle(0x1A3060, 1);
+    graphics.fillRect(ax - 60, aBaseY - 60, 120, 180);
+    // Tall tower
+    graphics.fillStyle(0x1A3868, 1);
+    graphics.fillRect(ax - 20, aBaseY - 160, 40, 100);
+    graphics.fillTriangle(ax - 25, aBaseY - 160, ax, aBaseY - 200, ax + 25, aBaseY - 160);
+    // Side towers
+    graphics.fillStyle(0x1A3060, 1);
+    graphics.fillRect(ax - 80, aBaseY - 40, 22, 160);
+    graphics.fillTriangle(ax - 82, aBaseY - 40, ax - 69, aBaseY - 70, ax - 56, aBaseY - 40);
+    graphics.fillRect(ax + 58, aBaseY - 40, 22, 160);
+    graphics.fillTriangle(ax + 56, aBaseY - 40, ax + 69, aBaseY - 70, ax + 82, aBaseY - 40);
+    // Crenellations
+    for (let cx = ax - 60; cx < ax + 60; cx += 12) {
+      graphics.fillStyle(0x2248A0, 1);
+      graphics.fillRect(cx, aBaseY - 66, 8, 8);
+    }
+    // Gate
+    graphics.fillStyle(0x0A1A30, 1);
+    graphics.fillRect(ax - 14, aBaseY + 80, 28, 40);
+    // Glowing blue windows
+    graphics.fillStyle(0x4A8FE0, 0.5);
+    graphics.fillRect(ax - 10, aBaseY - 130, 6, 12);
+    graphics.fillRect(ax + 4, aBaseY - 130, 6, 12);
+    graphics.fillRect(ax - 35, aBaseY, 5, 10);
+    graphics.fillRect(ax + 30, aBaseY, 5, 10);
+    graphics.fillRect(ax - 75, aBaseY + 10, 4, 8);
+    graphics.fillRect(ax + 71, aBaseY + 10, 4, 8);
+    // Alliance banner (waving)
+    const bw1 = Math.sin(t * 0.06) * 3;
+    graphics.fillStyle(0x2244AA, 0.8);
+    graphics.fillTriangle(ax, aBaseY - 200, ax + 20 + bw1, aBaseY - 192, ax, aBaseY - 184);
+    // Blue ambient glow
+    graphics.fillStyle(0x4A8FE0, 0.04);
+    graphics.fillCircle(ax, aBaseY, 180);
+  }
+
+  // ═══ IRON HORDE ORCISH STRONGHOLD (far right) — taller ═══
+  {
+    const hx = MAP_W - 160;
+    const hBaseY = MAP_H/2;
+    // 3 tiers of dark volcanic rock getting narrower
+    graphics.fillStyle(0x1A1008, 1);
+    graphics.fillRect(hx - 70, hBaseY - 60, 140, 180); // tier 1 (widest, base)
+    graphics.fillStyle(0x1A1008, 1);
+    graphics.fillRect(hx - 55, hBaseY - 130, 110, 70); // tier 2
+    graphics.fillStyle(0x1A1008, 1);
+    graphics.fillRect(hx - 40, hBaseY - 200, 80, 70); // tier 3 (narrowest)
+    // Spire top
+    graphics.fillStyle(0x1A1008, 1);
+    graphics.fillTriangle(hx - 20, hBaseY - 200, hx, hBaseY - 260, hx + 20, hBaseY - 200);
+
+    // 8 iron spikes with blood-red tips
+    const spikes = [
+      {x: hx - 65, y: hBaseY - 60}, {x: hx - 45, y: hBaseY - 130}, {x: hx - 30, y: hBaseY - 200},
+      {x: hx + 65, y: hBaseY - 60}, {x: hx + 45, y: hBaseY - 130}, {x: hx + 30, y: hBaseY - 200},
+      {x: hx - 15, y: hBaseY - 250}, {x: hx + 15, y: hBaseY - 250},
+    ];
+    for (const sp of spikes) {
+      graphics.fillStyle(0x3A3030, 1);
+      graphics.fillRect(sp.x - 2, sp.y - 30, 4, 30);
+      graphics.fillStyle(0xCC2200, 0.9);
+      graphics.fillTriangle(sp.x - 3, sp.y - 28, sp.x, sp.y - 42, sp.x + 3, sp.y - 28);
+    }
+
+    // Large orcish skull gate
+    graphics.fillStyle(0xD4C8A0, 0.75);
+    graphics.fillCircle(hx, hBaseY + 35, 18);
+    graphics.fillRect(hx - 12, hBaseY + 48, 24, 14); // jaw
+    // Glowing red eyes (pulsing)
+    const eyePulse = 0.7 + Math.sin(t * 0.08) * 0.25;
+    graphics.fillStyle(0xFF2200, eyePulse);
+    graphics.fillCircle(hx - 6, hBaseY + 32, 3.5);
+    graphics.fillCircle(hx + 6, hBaseY + 32, 3.5);
+    graphics.fillStyle(0xFF6644, eyePulse * 0.5);
+    graphics.fillCircle(hx - 6, hBaseY + 32, 2);
+    graphics.fillCircle(hx + 6, hBaseY + 32, 2);
+    // Nose
+    graphics.fillStyle(0x1A1008, 1);
+    graphics.fillTriangle(hx - 2, hBaseY + 40, hx, hBaseY + 45, hx + 2, hBaseY + 40);
+    // Teeth
+    graphics.fillStyle(0xD4C8A0, 0.7);
+    graphics.fillRect(hx - 8, hBaseY + 52, 2, 5);
+    graphics.fillRect(hx - 2, hBaseY + 52, 2, 5);
+    graphics.fillRect(hx + 4, hBaseY + 52, 2, 5);
+
+    // Gate (dark opening)
+    graphics.fillStyle(0x0A0804, 1);
+    graphics.fillRect(hx - 16, hBaseY + 70, 32, 50);
+
+    // Iron torches flanking gate (orange flames)
+    for (const tx of [hx - 28, hx + 28]) {
+      graphics.fillStyle(0x3A2A10, 1);
+      graphics.fillRect(tx - 2, hBaseY + 40, 4, 35);
+      const flicker = Math.sin(t * 0.12 + tx) * 3;
+      graphics.fillStyle(0xFF6600, 0.7);
+      graphics.fillCircle(tx, hBaseY + 36 + flicker, 5);
+      graphics.fillStyle(0xFFAA00, 0.5);
+      graphics.fillCircle(tx, hBaseY + 34 + flicker, 3);
+      graphics.fillStyle(0xFFDD44, 0.3);
+      graphics.fillCircle(tx, hBaseY + 32 + flicker, 1.5);
+    }
+
+    // Red war banner with skull (left flank, waving)
+    graphics.fillStyle(0x5A3A10, 1);
+    graphics.fillRect(hx - 82, hBaseY - 120, 3, 140);
+    const bWave = Math.sin(t * 0.06 + 2) * 5;
+    graphics.fillStyle(0xAA1111, 0.85);
+    graphics.fillRect(hx - 79, hBaseY - 120, 22 + bWave, 28);
+    // Skull symbol on banner
+    graphics.fillStyle(0xD4C8A0, 0.6);
+    graphics.fillCircle(hx - 68 + bWave/2, hBaseY - 106, 5);
+    graphics.fillStyle(0x1A0A00, 0.8);
+    graphics.fillRect(hx - 70 + bWave/2, hBaseY - 107, 1, 1);
+    graphics.fillRect(hx - 66 + bWave/2, hBaseY - 107, 1, 1);
+
+    // Red glowing crystal at spire top (pulses)
+    const crystalPulse = 0.5 + Math.sin(t * 0.08) * 0.4;
+    graphics.fillStyle(0xFF2200, crystalPulse);
+    graphics.fillCircle(hx, hBaseY - 258, 7);
+    graphics.fillStyle(0xFF4444, crystalPulse * 0.4);
+    graphics.fillCircle(hx, hBaseY - 258, 14);
+    graphics.fillStyle(0xFFAA88, crystalPulse * 0.8);
+    graphics.fillCircle(hx, hBaseY - 258, 3);
+
+    // Dark red ambient glow at base
+    graphics.fillStyle(0xFF2200, 0.05);
+    graphics.fillCircle(hx, hBaseY + 40, 140);
+    graphics.fillStyle(0xFF0000, 0.025);
+    graphics.fillCircle(hx, hBaseY, 220);
+  }
+
   // ─── STRUCTURES (drawn with graphics each frame) ──────────
   for (const s of gs.structures) {
     if (!s.alive) { graphics.fillStyle(0x333333, 0.3); graphics.fillRect(s.x - 15, s.y - 10, 30, 20); continue; }
@@ -4515,25 +4659,28 @@ function updateUI() {
   });
 
   for (const h of sorted) {
+    try {
     const card = document.createElement('div');
     const isMine = playerAgentId && h.agentId === playerAgentId;
     const prevLvl = window._prevHeroLevels[h.id] || h.level;
     const justLeveled = h.level > prevLvl;
     window._prevHeroLevels[h.id] = h.level;
     card.className = `hero-card ${h.faction} ${h.alive?'':'dead'} ${isMine?'mine':''} ${justLeveled?'levelup':''}`;
-    card.style.background = '#0d0d1a';
-    const streak = h.killStreak>=3 ? `<span class="streak-badge">\uD83D\uDD25${h.killStreak}x</span>` : '';
+    card.style.cssText = 'background:#0d0d1a !important;background-color:#0d0d1a !important';
+    const streak = (h.killStreak>=3) ? `<span class="streak-badge">\uD83D\uDD25${h.killStreak}x</span>` : '';
     const deadIcon = !h.alive ? '\u2620 ' : '';
     const icon = CLASS_ICONS[h.heroClass]||'';
     const clr = CLASS_CARD_COLORS[h.heroClass]||'#aaa';
     const hpPct = h.alive?(h.hp/h.maxHp*100):0;
-    const manaPct = h.alive?(h.mana/h.maxMana*100):0;
-    const agentLabel = h.agentId ? h.agentId : 'AI';
-    const pills = h.items.length>0
-      ? h.items.map(i=>`<span class="item-pill">${i}</span>`).join('')
+    const manaPct = (h.alive && h.maxMana>0)?(h.mana/h.maxMana*100):0;
+    const agentLabel = h.agentId ? String(h.agentId).substring(0,10) : 'AI';
+    const items = Array.isArray(h.items) ? h.items : [];
+    const pills = items.length>0
+      ? items.map(i=>`<span class="item-pill">${i}</span>`).join('')
       : '<span style="color:#1a2a3a;font-size:8px">No items</span>';
-    const abs = h.abilities.map(a=>
-      `<span style="color:${a.cd>0?'#1a2a3a':'#3A5A7A'}" title="${a.name} T${a.tier}">${a.name.split(' ')[0]}</span>`
+    const abilities = Array.isArray(h.abilities) ? h.abilities : [];
+    const abs = abilities.map(a=>
+      `<span style="color:${(a.cd||0)>0?'#1a2a3a':'#3A5A7A'}" title="${a.name||''} T${a.tier||1}">${(a.name||'').split(' ')[0]}</span>`
     ).join(' ');
 
     const hpNum = Math.round(hpPct);
@@ -4555,6 +4702,15 @@ function updateUI() {
       ${!h.alive?`<div style="color:#E24B4A;font-size:10px;font-weight:700;text-align:center;padding:2px 0;background:rgba(180,30,30,0.15);border-radius:3px;margin-top:2px">\u2620 DEAD &mdash; respawn ${Math.ceil((h.respawnIn||100)/20)}s</div>`:''}
     `;
     panel.appendChild(card);
+    } catch(err) {
+      console.warn('Hero card render error:', err, h);
+      // Fallback card so slot still shows
+      const fallback = document.createElement('div');
+      fallback.className = 'hero-card';
+      fallback.style.cssText = 'background:#0d0d1a !important;min-width:152px;padding:8px;color:#666;font-size:10px';
+      fallback.textContent = (h.heroClass || 'hero') + ' (render error)';
+      panel.appendChild(fallback);
+    }
   }
 
   // Fill remaining slots with empty dark placeholders (up to 6 total)
@@ -6029,16 +6185,13 @@ function updatePlayerControls() {
       const us = Math.max(scaleX / 0.15, 0.5) * 0.6;
       gameState.units.forEach(u => {
         if (!u.alive) return;
-        const x = u.x * scaleX, y = u.y * scaleY;
-        // Clamp unit to nearest lane corridor
-        const lanes = [{min:400*scaleY, max:600*scaleY}, {min:1040*scaleY, max:1360*scaleY}, {min:1800*scaleY, max:2000*scaleY}];
-        let cy = y;
-        let bestDist = 9999;
-        for (const ln of lanes) {
-          const mid = (ln.min + ln.max) / 2;
-          const d = Math.abs(y - mid);
-          if (d < bestDist) { bestDist = d; cy = Math.max(ln.min, Math.min(ln.max, y)); }
-        }
+        const x = u.x * scaleX;
+        // HARD CLAMP every unit Y to mid lane (1040-1360) — no exceptions
+        const rawY = u.y * scaleY;
+        const minY = 1040 * scaleY;
+        const maxY = 1360 * scaleY;
+        const cy = Math.max(minY, Math.min(maxY, rawY));
+        const y = cy; // ensure any leftover y refs use clamped value
         const isA = u.faction === 'alliance';
         const t = u.unitType;
         const isLarge = (t === 'colossus' || t === 'gryphon');
@@ -6095,22 +6248,20 @@ function updatePlayerControls() {
     const _labelPositions = [];
     gameState.heroes.forEach(hero => {
       if (!hero.alive) return;
-      const x = hero.x * scaleX, y = hero.y * scaleY;
+      const x = hero.x * scaleX;
+      // HARD CLAMP hero Y to mid lane (1040-1360)
+      const rawY = hero.y * scaleY;
+      const y = Math.max(1040 * scaleY, Math.min(1360 * scaleY, rawY));
       const isA = hero.faction === 'alliance';
       const isMine = playerAgentId && hero.agentId === playerAgentId;
       const s = (1 + (hero.level - 1) * 0.05) * Math.max(scaleX / 0.15, 0.6); // 5% bigger per level
 
-      // Player hero glow
+      // Player hero glow — tight, subtle
       if (isMine) {
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.08)';
-        ctx.beginPath(); ctx.arc(x, y, 12*s, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(x, y, 10*s, 0, Math.PI * 2); ctx.stroke();
-        // Attack range circle (very subtle)
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.lineWidth = 1;
-        const rangeRadius = (hero.range || 300) * scaleX;
-        ctx.beginPath(); ctx.arc(x, y, rangeRadius, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+        ctx.beginPath(); ctx.arc(x, y + 14*s, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y + 14*s, 8, 0, Math.PI * 2); ctx.stroke();
       }
 
       // ── Draw character sprite based on class ──

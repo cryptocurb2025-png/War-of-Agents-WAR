@@ -5810,6 +5810,15 @@ if (playerAgentId) {
           color: colors[idx] || '#4A8FE0',
           age: 0, maxAge: 20
         });
+        // Cast scale-bounce on hero sprite (1.0 → 1.1 → 1.0 over 150ms)
+        if (!window._castBounce) window._castBounce = {};
+        window._castBounce[myH2.id] = { age: 0, maxAge: 3 }; // 3 frames at 20fps = 150ms
+        // Glow pulse ring under hero
+        _abilityFX.push({
+          x: myH2.x, y: myH2.y,
+          type: 'aura', color: colors[idx] || '#FFD700',
+          age: 0, maxAge: 8
+        });
       }
       // Visual feedback - flash the key slot
       const slotEl = document.getElementById('hk-' + key);
@@ -6159,27 +6168,50 @@ function updatePlayerControls() {
         slot.dataset.abilityTier = ab.tier || 1;
       }
     });
-    // Update ability cooldowns on hotkey bar with visual overlays
+    // Radial cooldown overlay + ready-pulse for ability slots
+    if (!window._prevAbilityCd) window._prevAbilityCd = {};
     hero.abilities.forEach((a, i) => {
       const key = ABILITY_KEYS[i];
       const slotEl = document.getElementById('hk-' + key);
       if (!slotEl) return;
+      slotEl.style.position = 'relative';
+      // Detect ability becoming ready: trigger ready-pulse
+      const prevCd = window._prevAbilityCd[a.id] || 0;
+      if (prevCd > 0 && a.cd === 0) {
+        if (!window._abReady) window._abReady = {};
+        window._abReady[key] = 8; // pulse for 8 frames (~400ms)
+      }
+      window._prevAbilityCd[a.id] = a.cd;
+      let cdOv = slotEl.querySelector('.cd-overlay');
       if (a.cd > 0) {
+        const cdMax = a.cdMax || a.cooldown || a.cd; // fall back to current cd as max
+        const pct = Math.min(1, a.cd / cdMax);
+        const sweep = pct * 360;
         const cdSec = Math.ceil(a.cd / 20);
-        slotEl.style.opacity = '0.4';
-        slotEl.style.position = 'relative';
-        let cdOv = slotEl.querySelector('.cd-overlay');
+        slotEl.style.opacity = '0.5';
+        slotEl.style.filter = 'grayscale(0.6)';
         if (!cdOv) {
           cdOv = document.createElement('div');
           cdOv.className = 'cd-overlay';
-          cdOv.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);color:#FF6644;font-size:14px;font-weight:900;font-family:Cinzel,serif;border-radius:4px;pointer-events:none';
+          cdOv.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#FF6644;font-size:13px;font-weight:900;font-family:Cinzel,serif;border-radius:4px;pointer-events:none';
           slotEl.appendChild(cdOv);
         }
+        // Radial sweep via conic-gradient (clockwise from top)
+        cdOv.style.background = `conic-gradient(rgba(0,0,0,0.7) ${sweep}deg, transparent ${sweep}deg)`;
         cdOv.textContent = cdSec + 's';
+        // Track max for next frame
+        if (!a.cdMax || a.cd > a.cdMax) a.cdMax = a.cd;
       } else {
         slotEl.style.opacity = '1';
-        const cdOv = slotEl.querySelector('.cd-overlay');
+        slotEl.style.filter = 'none';
         if (cdOv) cdOv.remove();
+        a.cdMax = 0;
+        // Subtle ready pulse on previously-recharged ability
+        if (window._abReady && window._abReady[key]) {
+          slotEl.style.boxShadow = '0 0 12px rgba(255,215,0,0.6)';
+          window._abReady[key]--;
+          if (window._abReady[key] <= 0) { slotEl.style.boxShadow = ''; delete window._abReady[key]; }
+        }
       }
     });
   }
@@ -6301,17 +6333,28 @@ function updatePlayerControls() {
         const heal = e.hp - prev;
         _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, dmg: heal, kind: 'heal', age: 0, bounce: 0 });
       }
-      // Gold burst when entity dies
+      // Death burst: gold + dark soul particles + screen shake for player kill
       if (e.hp <= 0 && prev > 0) {
+        const dx = e.x * scaleX, dy = e.y * scaleY;
         for (let gi = 0; gi < 5; gi++) {
           _goldParticles.push({
-            x: e.x * scaleX, y: e.y * scaleY,
+            x: dx, y: dy,
             vx: (Math.random()-0.5) * 4, vy: -Math.random() * 3 - 1,
             age: 0, maxAge: 20 + Math.random()*10
           });
         }
-        // Show +GOLD text
-        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 30, kind: 'gold', text: '+GOLD', age: 0, bounce: 0 });
+        // Dark soul/dust particles in faction color
+        const deathColor = e.faction === 'alliance' ? '#88AAFF' : '#FF8888';
+        for (let pi = 0; pi < 8; pi++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = 1.5 + Math.random() * 3;
+          _hitParticles.push({
+            x: dx, y: dy,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1,
+            age: 0, maxAge: 18, color: deathColor
+          });
+        }
+        _dmgFloats.push({ x: dx, y: dy - 30, kind: 'gold', text: '+GOLD', age: 0, bounce: 0 });
       }
       window._prevEntityHP[e.id] = e.hp;
     }
@@ -6445,7 +6488,18 @@ function updatePlayerControls() {
       // Scale hierarchy: player 1.2x, siege 1.3x, regular 1.0
       const classScale = hero.heroClass === 'siegemaster' ? 1.3 : 1.0;
       const playerScale = isMine ? 1.2 : 1.0;
-      const s = (1 + (hero.level - 1) * 0.05) * classScale * playerScale * Math.max(scaleX / 0.15, 0.6);
+      // Cast scale-bounce: 1.0 → 1.1 → 1.0 over 3 frames
+      let castMult = 1.0;
+      const cb = window._castBounce && window._castBounce[hero.id];
+      if (cb) {
+        cb.age++;
+        if (cb.age >= cb.maxAge) { delete window._castBounce[hero.id]; }
+        else {
+          const cp = cb.age / cb.maxAge; // 0..1
+          castMult = 1.0 + Math.sin(cp * Math.PI) * 0.1; // bell curve to 1.1 then back
+        }
+      }
+      const s = (1 + (hero.level - 1) * 0.05) * classScale * playerScale * castMult * Math.max(scaleX / 0.15, 0.6);
 
       // Per-class idle animation offsets
       const tNow = Date.now() * 0.001;

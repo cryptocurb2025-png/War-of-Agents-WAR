@@ -6461,6 +6461,7 @@ function updatePlayerControls() {
   // Combat clarity systems
   const _dmgFlash = {};       // entityId → red flash frames (existing)
   const _hitFlash = {};       // entityId → white flash frames (new)
+  const _hitScale = {};       // entityId → scale-bounce frames remaining (1.0 → 1.05 → 1.0)
   const _hpDisplay = {};      // entityId → animated HP %
   const _hpBarFlash = {};     // entityId → yellow bar flash frames
   const _lastHpPct = {};      // entityId → previous HP % for damage detection
@@ -6543,13 +6544,14 @@ function updatePlayerControls() {
         const isCrit = dmg > (e.maxHp || 100) * 0.15;
         _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, dmg, kind: isCrit ? 'crit' : 'normal', age: 0, bounce: isCrit ? 8 : 0 });
         _dmgFlash[e.id] = 4;
-        _hitFlash[e.id] = 2;          // white sprite flash on hit
+        _hitFlash[e.id] = 2;          // white sprite flash on hit (~100ms)
+        _hitScale[e.id] = 4;          // target scale bounce 1 → 1.05 → 1 (~200ms)
         _hpBarFlash[e.id] = 3;        // yellow HP bar flash (150ms)
         // Hit particle burst (6 particles)
         const myF = localStorage.getItem('woa_faction');
         const isAlly = e.faction === myF;
         const partColor = isAlly ? '#88CCFF' : '#FFAA88';
-        const nParts = isCrit ? 10 : 8;
+        const nParts = isCrit ? 12 : 10;
         for (let i = 0; i < nParts; i++) {
           const a = Math.random() * Math.PI * 2;
           const sp = 2 + Math.random() * (isCrit ? 3.5 : 2);
@@ -6652,7 +6654,14 @@ function updatePlayerControls() {
         const t = u.unitType;
         const isLarge = (t === 'colossus' || t === 'gryphon');
         const isWide = (t === 'ballista' || t === 'colossus');
-        const sz = isLarge ? us * 1.6 : us;
+        // Hit-scale bounce for units (1 → 1.05 → 1)
+        let uHitMult = 1.0;
+        if (_hitScale[u.id]) {
+          const hp = 1 - _hitScale[u.id] / 4;
+          uHitMult = 1 + Math.sin(hp * Math.PI) * 0.05;
+          _hitScale[u.id]--;
+        }
+        const sz = (isLarge ? us * 1.6 : us) * uHitMult;
 
         // Ground shadow under unit — soft layered ellipses for depth
         const shadowW = (isWide ? 9 : 5.5) * sz;
@@ -6768,7 +6777,14 @@ function updatePlayerControls() {
           castMult = 1.0 + Math.sin(cp * Math.PI) * 0.1; // bell curve to 1.1 then back
         }
       }
-      const s = (1 + (hero.level - 1) * 0.05) * classScale * playerScale * castMult * Math.max(scaleX / 0.15, 0.6);
+      // Hit-scale bounce: 1.0 → 1.05 → 1.0 over 4 frames (bell curve)
+      let hitMult = 1.0;
+      if (_hitScale[hero.id]) {
+        const hp = 1 - _hitScale[hero.id] / 4;
+        hitMult = 1 + Math.sin(hp * Math.PI) * 0.05;
+        _hitScale[hero.id]--;
+      }
+      const s = (1 + (hero.level - 1) * 0.05) * classScale * playerScale * castMult * hitMult * Math.max(scaleX / 0.15, 0.6);
 
       // Per-class idle animation offsets
       const tNow = Date.now() * 0.001;
@@ -7123,21 +7139,21 @@ function updatePlayerControls() {
       let text, fillColor, font, scalePop = 1;
       if (d.kind === 'crit') {
         text = '-' + d.dmg; fillColor = '#FF2828';
-        font = 'bold 28px sans-serif';
-        // Bounce-scale: pop to 1.25x in first 3 frames, settle to 1.0
-        scalePop = 1 + Math.max(0, 0.25 - p * 1.1);
+        font = 'bold 40px sans-serif';
+        // Bounce-scale: pop to 1.3x in first 3 frames, settle to 1.0
+        scalePop = 1 + Math.max(0, 0.3 - p * 1.2);
       } else if (d.kind === 'heal') {
         text = '+' + d.dmg; fillColor = '#44FF66';
-        font = 'bold 18px sans-serif';
+        font = 'bold 26px sans-serif';
       } else if (d.kind === 'gold') {
         text = d.text || '+GOLD'; fillColor = '#FFD700';
-        font = 'bold 16px sans-serif';
+        font = 'bold 22px sans-serif';
       } else if (d.kind === 'xp') {
         text = d.text || '+XP'; fillColor = '#8AD8FF';
-        font = 'bold 18px Cinzel, sans-serif';
+        font = 'bold 22px Cinzel, sans-serif';
       } else {
         text = '-' + d.dmg; fillColor = '#FFFFFF';
-        font = 'bold 18px sans-serif';
+        font = 'bold 26px sans-serif';
       }
       ctx.font = font;
       ctx.textAlign = 'center';

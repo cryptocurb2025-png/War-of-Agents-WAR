@@ -2179,6 +2179,10 @@ ws.onmessage = (e) => {
         const victim = gameState.heroes.find(h => h.id === k.victimId);
         if (killer && victim) {
           addSystemChat(killer.heroClass + ' slew ' + victim.heroClass + '!');
+          // Highlight killer + show +XP above them
+          if (window._flashKiller) window._flashKiller(killer.id);
+          const xpGain = k.xp || (60 + (victim.level || 1) * 20);
+          if (window._pushXPFloat) window._pushXPFloat(killer.x, killer.y - 40, xpGain);
         }
       }
       if (_announcedKills.size > 200) _announcedKills = new Set([...Array.from(_announcedKills).slice(-100)]);
@@ -2189,20 +2193,31 @@ ws.onmessage = (e) => {
         if (prevStructures[s.id] && prevStructures[s.id].alive && !s.alive && !_announcedTowers.has(s.id)) {
           _announcedTowers.add(s.id);
           const fac = s.faction === 'alliance' ? 'ALLIANCE' : 'HORDE';
+          const sMag = s.structureType === 'base' ? 1.6 : s.structureType === 'barracks' ? 1.2 : 1.0;
+          if (window._queueTowerExplosion) window._queueTowerExplosion(s.x, s.y, s.faction, sMag);
+          sfxTower();
           if (s.structureType === 'base') {
             announceEvent(fac + ' BASE DESTROYED', 'tower');
             addSystemChat(fac + ' base has been destroyed!');
-            triggerShake(20);
+            triggerShake(20); window._triggerEntityShake && window._triggerEntityShake(14);
           } else if (s.structureType === 'barracks') {
             announceEvent(fac + ' BARRACKS FALLEN', 'tower');
             addSystemChat(fac + ' barracks has fallen!');
-            triggerShake(12);
+            triggerShake(12); window._triggerEntityShake && window._triggerEntityShake(10);
           } else {
             announceEvent(fac + ' TOWER FALLS', 'tower');
             addSystemChat(fac + ' tower destroyed!');
-            triggerShake(8);
+            triggerShake(8); window._triggerEntityShake && window._triggerEntityShake(8);
           }
         }
+      }
+    }
+    // Wave cleared announcement
+    if (prev && typeof gameState.waveCount === 'number' && gameState.waveCount > (prev.waveCount || 0)) {
+      const cleared = prev.waveCount || 0;
+      if (cleared > 0) {
+        announceEvent('WAVE ' + cleared + ' CLEARED', 'king');
+        sfxWave();
       }
     }
     // Era change announcement
@@ -2259,6 +2274,8 @@ function sfxDeath() { playTone(100, 0.3, 0.08, 'sawtooth'); }
 function sfxRampage() { playTone(400, 0.1, 0.12, 'square'); setTimeout(() => playTone(600, 0.1, 0.1, 'square'), 100); setTimeout(() => playTone(900, 0.2, 0.08, 'square'), 200); }
 function sfxAbilityHit() { playTone(350, 0.1, 0.07, 'square'); playTone(500, 0.08, 0.05, 'sine'); }
 function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTone(1000, 0.12, 0.05, 'sine'), 80); setTimeout(() => playTone(1200, 0.1, 0.04, 'sine'), 160); }
+function sfxTower() { playTone(80, 0.5, 0.12, 'sawtooth'); playTone(140, 0.4, 0.1, 'square'); setTimeout(() => playTone(60, 0.3, 0.09, 'sawtooth'), 120); }
+function sfxWave()  { playTone(500, 0.1, 0.06, 'triangle'); setTimeout(() => playTone(700, 0.1, 0.06, 'triangle'), 90); setTimeout(() => playTone(900, 0.18, 0.07, 'triangle'), 180); }
 
 // ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────
 
@@ -3963,11 +3980,29 @@ function pUpdate() {
     if (prev !== undefined && h.gold > prev) {
       const gain = h.gold - prev;
       if (gain >= 100) sfxGold();
-      const txt = phaserScene.add.text(h.x + 20, h.y - 50, `+${gain}g`, {
+      // Floating text with coin glyph
+      const txt = phaserScene.add.text(h.x + 20, h.y - 50, `\u2689 +${gain}`, {
         fontSize: '18px', fontFamily: 'Cinzel', color: '#FFD700', fontStyle: 'bold',
-        stroke: '#000', strokeThickness: 2,
+        stroke: '#000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(91);
       phaserScene.tweens.add({ targets: txt, y: h.y - 120, alpha: 0, duration: 1200, onComplete: () => txt.destroy() });
+      // Spinning coin sprite animation — ellipse that squashes to simulate spin
+      const coin = phaserScene.add.graphics().setDepth(92);
+      let spinAge = 0;
+      const spinStart = Date.now();
+      const spinner = phaserScene.time.addEvent({ delay: 30, repeat: 20, callback: () => {
+        spinAge++;
+        const t = (Date.now() - spinStart) / 1000;
+        const sx = Math.abs(Math.cos(t * 9));
+        const cy = h.y - 55 - spinAge * 2.2;
+        const cx = h.x + 4 + Math.sin(t * 4) * 3;
+        coin.clear();
+        coin.fillStyle(0xC8960C, 1 - spinAge / 21);
+        coin.fillEllipse(cx, cy, 10 * sx + 2, 10);
+        coin.fillStyle(0xFFE27A, (1 - spinAge / 21) * 0.9);
+        coin.fillEllipse(cx, cy, 6 * sx + 1, 6);
+        if (spinAge >= 21) coin.destroy();
+      } });
     }
     window._prevGoldMap[h.id] = h.gold;
   }
@@ -5835,7 +5870,7 @@ if (playerAgentId) {
           const isA = myH.faction === 'alliance';
           window._ultimateFlash = { age: 0, color: isA ? 'rgba(255,215,0,0.7)' : 'rgba(220,40,0,0.7)' };
           // Massive screen shake for ultimate
-          if (typeof triggerEntityShake === 'function') triggerEntityShake(8);
+          if (window._triggerEntityShake) window._triggerEntityShake(8);
           // Announce in chat
           addSystemChat((myH.displayName || myH.heroClass) + ' unleashes their ULTIMATE!');
         }
@@ -6342,6 +6377,7 @@ function updatePlayerControls() {
   // Screen shake
   let _shakeX = 0, _shakeY = 0, _shakeTimer = 0;
   function triggerEntityShake(amount) { _shakeTimer = Math.max(_shakeTimer, 10); _shakeX = Math.max(_shakeX, amount); _shakeY = Math.max(_shakeY, amount); }
+  window._triggerEntityShake = triggerEntityShake;
 
   // Combat clarity systems
   const _dmgFlash = {};       // entityId → red flash frames (existing)
@@ -6354,6 +6390,26 @@ function updatePlayerControls() {
   // Level-up effects
   const _prevLevels = {};
   const _levelUpFX = []; // {x, y, age}
+
+  // Tower explosions (queued from outside IIFE via window hook)
+  const _towerExplosions = []; // {mx, my, faction, mag, age}
+  window._queueTowerExplosion = (mx, my, faction, mag) => {
+    _towerExplosions.push({ mx, my, faction: faction || 'alliance', mag: mag || 1, age: 0 });
+  };
+
+  // Killer highlight flash — entityId → frames remaining
+  const _killerFlash = {};
+  window._flashKiller = (id) => { _killerFlash[id] = 18; };
+
+  // XP floats (reuses _dmgFloats with kind='xp')
+  window._pushXPFloat = (mx, my, amount) => {
+    // Map coords — convert at render time via current scale
+    _pendingXP.push({ mx, my, amount });
+  };
+  const _pendingXP = [];
+
+  // Wave-cleared banner state
+  let _prevWaveCount = -1;
 
   function renderEntities() {
     const canvas = document.getElementById('entity-canvas');
@@ -6607,6 +6663,18 @@ function updatePlayerControls() {
       ctx.beginPath();
       ctx.ellipse(drawX, drawY + 16*s, 10*s, 3.2*s, 0, 0, Math.PI*2);
       ctx.fill();
+
+      // Killer highlight flash — golden expanding halo after a kill
+      if (_killerFlash[hero.id]) {
+        const kf = _killerFlash[hero.id]--;
+        if (kf <= 0) delete _killerFlash[hero.id];
+        const kp = 1 - kf / 18;
+        ctx.strokeStyle = `rgba(255,215,0,${0.9 * (1 - kp)})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(drawX, drawY, (14 + kp * 28) * s, 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = `rgba(255,215,0,${0.18 * (1 - kp)})`;
+        ctx.beginPath(); ctx.arc(drawX, drawY, (12 + kp * 22) * s, 0, Math.PI*2); ctx.fill();
+      }
 
       // Player hero — gold pulse ring at feet
       if (isMine) {
@@ -6905,6 +6973,12 @@ function updatePlayerControls() {
       ctx.fillText((hero.displayName || hero.heroClass).substring(0, 8), x, y - 18*s);
     });
 
+    // Drain pending XP floats (pushed from kill events outside IIFE)
+    while (_pendingXP.length) {
+      const q = _pendingXP.shift();
+      _dmgFloats.push({ x: q.mx * scaleX, y: q.my * scaleY, kind: 'xp', text: '+' + q.amount + ' XP', age: 0, bounce: 4 });
+    }
+
     // ─── Floating combat text (tiered: normal/crit/heal) ───
     for (let i = _dmgFloats.length - 1; i >= 0; i--) {
       const d = _dmgFloats[i];
@@ -6923,6 +6997,9 @@ function updatePlayerControls() {
       } else if (d.kind === 'gold') {
         text = d.text || '+GOLD'; fillColor = '#FFD700';
         font = 'bold 12px sans-serif';
+      } else if (d.kind === 'xp') {
+        text = d.text || '+XP'; fillColor = '#8AD8FF';
+        font = 'bold 14px Cinzel, sans-serif';
       } else {
         text = '-' + d.dmg; fillColor = '#FFFFFF';
         font = 'bold 13px sans-serif';
@@ -6997,6 +7074,52 @@ function updatePlayerControls() {
       ctx.globalAlpha = 1;
     }
     while (_goldParticles.length > 100) _goldParticles.shift();
+
+    // Tower explosion bursts — rings + flame particles + debris
+    for (let i = _towerExplosions.length - 1; i >= 0; i--) {
+      const ex = _towerExplosions[i];
+      ex.age++;
+      const maxAge = 40;
+      if (ex.age > maxAge) { _towerExplosions.splice(i, 1); continue; }
+      const p = ex.age / maxAge;
+      const cx = ex.mx * scaleX, cy = ex.my * scaleY;
+      const mag = ex.mag;
+      const col = ex.faction === 'alliance' ? '#88BBFF' : '#FFAA55';
+      // Shockwave ring 1
+      ctx.strokeStyle = `rgba(255,220,120,${(1-p)*0.9})`;
+      ctx.lineWidth = (6 - p*5) * mag;
+      ctx.beginPath(); ctx.arc(cx, cy, (10 + p * 120) * mag, 0, Math.PI*2); ctx.stroke();
+      // Shockwave ring 2 (delayed)
+      if (ex.age > 6) {
+        const p2 = (ex.age - 6) / (maxAge - 6);
+        ctx.strokeStyle = `rgba(255,140,40,${(1-p2)*0.75})`;
+        ctx.lineWidth = (4 - p2*3) * mag;
+        ctx.beginPath(); ctx.arc(cx, cy, (8 + p2 * 90) * mag, 0, Math.PI*2); ctx.stroke();
+      }
+      // Bright white core
+      ctx.globalAlpha = Math.max(0, 1 - p * 2);
+      ctx.fillStyle = '#FFF6D0';
+      ctx.beginPath(); ctx.arc(cx, cy, (18 - p*14) * mag, 0, Math.PI*2); ctx.fill();
+      // Orange flame puff
+      ctx.globalAlpha = Math.max(0, 0.9 - p * 1.1);
+      ctx.fillStyle = '#FF7A22';
+      ctx.beginPath(); ctx.arc(cx, cy - p * 20 * mag, (28 - p*18) * mag, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+      // Seed debris particles on first frame
+      if (ex.age === 1) {
+        const n = Math.floor(14 * mag);
+        for (let k = 0; k < n; k++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = (2 + Math.random() * 4) * mag;
+          _hitParticles.push({
+            x: cx, y: cy,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2,
+            age: 0, maxAge: 28 + Math.random()*12,
+            color: Math.random() < 0.5 ? '#FFD27A' : col
+          });
+        }
+      }
+    }
 
     // Level-up burst effects
     for (let i = _levelUpFX.length - 1; i >= 0; i--) {

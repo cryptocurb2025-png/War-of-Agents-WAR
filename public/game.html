@@ -6442,7 +6442,27 @@ function updatePlayerControls() {
       const y = Math.max(1040 * scaleY, Math.min(1360 * scaleY, rawY + hSpread));
       const isA = hero.faction === 'alliance';
       const isMine = playerAgentId && hero.agentId === playerAgentId;
-      const s = (1 + (hero.level - 1) * 0.05) * Math.max(scaleX / 0.15, 0.6); // 5% bigger per level
+      // Scale hierarchy: player 1.2x, siege 1.3x, regular 1.0
+      const classScale = hero.heroClass === 'siegemaster' ? 1.3 : 1.0;
+      const playerScale = isMine ? 1.2 : 1.0;
+      const s = (1 + (hero.level - 1) * 0.05) * classScale * playerScale * Math.max(scaleX / 0.15, 0.6);
+
+      // Per-class idle animation offsets
+      const tNow = Date.now() * 0.001;
+      let idleX = 0, idleY = 0;
+      if (hero.heroClass === 'knight') {
+        idleY = Math.sin(tNow * 2.5) * 1.5; // armor bounce
+      } else if (hero.heroClass === 'ranger') {
+        idleX = Math.sin(tNow * 1.8) * 1.5; // body sway
+      } else if (hero.heroClass === 'siegemaster') {
+        // Mechanical jitter — random offset every 4 frames
+        const jSeed = Math.floor(tNow * 5);
+        idleX = ((jSeed * 13) % 5) - 2;
+        idleY = ((jSeed * 7) % 5) - 2;
+      }
+      // mage/priest idle handled in the sprite drawing (orb pulse / aura flicker)
+      const drawX = x + idleX;
+      const drawY = y + idleY;
 
       // Player hero — gold pulse ring at feet
       if (isMine) {
@@ -6454,8 +6474,46 @@ function updatePlayerControls() {
         ctx.beginPath(); ctx.arc(x, y + 14*s, 8 + pulse * 2, 0, Math.PI * 2); ctx.stroke();
       }
 
+      // ── Class silhouette outline (behind sprite) ──
+      const myF2 = localStorage.getItem('woa_faction') || 'alliance';
+      const isAlly2 = hero.faction === myF2;
+      const outlineC = isMine ? '#FFD700' : (isAlly2 ? '#44CC66' : '#FF4444');
+      // Class-specific silhouette shape behind the sprite (3px wider all sides)
+      ctx.fillStyle = outlineC;
+      ctx.globalAlpha = 0.4;
+      const silhX = x + idleX, silhY = y + idleY;
+      if (hero.heroClass === 'knight') {
+        // Bulky square silhouette
+        ctx.fillRect(silhX - 11*s, silhY - 17*s, 22*s, 34*s);
+      } else if (hero.heroClass === 'mage') {
+        // Tall narrow with hat point
+        ctx.beginPath();
+        ctx.moveTo(silhX, silhY - 24*s);
+        ctx.lineTo(silhX + 13*s, silhY + 18*s);
+        ctx.lineTo(silhX - 13*s, silhY + 18*s);
+        ctx.closePath(); ctx.fill();
+      } else if (hero.heroClass === 'ranger') {
+        // Triangular hooded
+        ctx.beginPath();
+        ctx.moveTo(silhX, silhY - 20*s);
+        ctx.lineTo(silhX + 10*s, silhY + 18*s);
+        ctx.lineTo(silhX - 10*s, silhY + 18*s);
+        ctx.closePath(); ctx.fill();
+      } else if (hero.heroClass === 'priest') {
+        // Bell shape with halo
+        ctx.fillRect(silhX - 11*s, silhY - 14*s, 22*s, 32*s);
+        ctx.beginPath();
+        ctx.arc(silhX, silhY - 14*s, 9*s, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (hero.heroClass === 'siegemaster') {
+        // Wide bulky mechanical
+        ctx.fillRect(silhX - 14*s, silhY - 17*s, 28*s, 34*s);
+      }
+      ctx.globalAlpha = 1;
+
       // ── Draw character sprite based on class ──
       ctx.save();
+      if (idleX !== 0 || idleY !== 0) ctx.translate(idleX, idleY);
       if (hero.heroClass === 'knight') {
         // Cape
         ctx.fillStyle = isA ? '#2244AA88' : '#4A0A0A88';
@@ -6529,11 +6587,14 @@ function updatePlayerControls() {
         // Cross / bone staff
         if (isA) {
           ctx.fillStyle = '#FFD700'; ctx.fillRect(x-1*s, y, 2*s, 6*s); ctx.fillRect(x-3*s, y+2*s, 6*s, 2*s);
-          // Halo
-          ctx.strokeStyle = '#FFD70066'; ctx.lineWidth = 1.5*s;
+          // Halo with idle flicker
+          const haloFlicker = 0.4 + Math.sin(tNow * 3) * 0.25;
+          ctx.strokeStyle = `rgba(255,215,0,${haloFlicker})`; ctx.lineWidth = 1.5*s;
           ctx.beginPath(); ctx.arc(x, y-12*s, 7*s, 0, Math.PI*2); ctx.stroke();
-          // Heal glow
-          ctx.fillStyle = '#66DD6633'; ctx.beginPath(); ctx.arc(x-8*s, y+4*s, 4*s, 0, Math.PI*2); ctx.fill();
+          // Heal aura with flicker
+          const auraAlpha = 0.15 + Math.sin(tNow * 2.5) * 0.1;
+          ctx.fillStyle = `rgba(102,221,102,${auraAlpha})`;
+          ctx.beginPath(); ctx.arc(x-8*s, y+4*s, 4*s, 0, Math.PI*2); ctx.fill();
           ctx.beginPath(); ctx.arc(x+8*s, y+4*s, 4*s, 0, Math.PI*2); ctx.fill();
         } else {
           ctx.fillStyle = '#D4C8A0'; ctx.fillRect(x+10*s, y-14*s, 2*s, 24*s);
@@ -6564,14 +6625,7 @@ function updatePlayerControls() {
       }
       ctx.restore();
 
-      // Team outline (ally green / enemy red, not for player)
-      if (!isMine) {
-        const myF = localStorage.getItem('woa_faction') || 'alliance';
-        const isAlly = hero.faction === myF;
-        ctx.strokeStyle = isAlly ? 'rgba(68,204,102,0.6)' : 'rgba(255,68,68,0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(x - 12*s, y - 18*s, 24*s, 36*s);
-      }
+      // (Team color shown via class silhouette behind sprite)
 
       // White hit flash (separate from red damage flash)
       if (_hitFlash[hero.id] > 0) {

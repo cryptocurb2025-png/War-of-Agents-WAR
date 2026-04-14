@@ -3094,14 +3094,14 @@ function pUpdate() {
 
   const halfW = MAP_W / 2;
 
-  // BIG dark wasteland fill first (standardized palette: dirt #3B2F2F darkened)
-  graphics.fillStyle(0x2A1E1E, 1);
+  // BIG dark wasteland fill (palette dirt, darkened and desaturated ~15%)
+  graphics.fillStyle(0x221818, 1);
   graphics.fillRect(-2000, -2000, MAP_W + 4000, MAP_H + 4000);
-  // Alliance side — grass #1E3A2F (dark, desaturated)
-  graphics.fillStyle(0x1E3A2F, 1);
+  // Alliance side — grass #1E3A2F darkened ~15% toward gray
+  graphics.fillStyle(0x1A3128, 1);
   graphics.fillRect(-2000, -2000, halfW + 2000, MAP_H + 4000);
-  // Lane roads — standardized sand #A68A64
-  graphics.fillStyle(0xA68A64, 1);
+  // Lane roads — slightly brighter than terrain but tonally closer than before
+  graphics.fillStyle(0x8A7454, 1);
   graphics.fillRect(-200, 400, MAP_W + 400, 200);  // top
   graphics.fillRect(-200, 1040, MAP_W + 400, 320); // mid
   graphics.fillRect(-200, 1800, MAP_W + 400, 200); // bot
@@ -3128,9 +3128,9 @@ function pUpdate() {
   const ALL_LANES = [{y:400,h:200},{y:1040,h:320},{y:1800,h:200}];
 
   // === GROUND BASE — darkened for contrast vs lanes ===
-  // Era ground colors — darken toward palette base as war intensifies
-  const allianceGround = era >= 3 ? 0x0F2820 : (era >= 2 ? 0x173028 : 0x1E3A2F);
-  const hordeGround    = era >= 3 ? 0x1F1414 : (era >= 2 ? 0x25191A : 0x2A1E1E);
+  // Era ground colors — darken ~15% as war intensifies, desaturated
+  const allianceGround = era >= 3 ? 0x0E2220 : (era >= 2 ? 0x142820 : 0x1A3128);
+  const hordeGround    = era >= 3 ? 0x190F10 : (era >= 2 ? 0x1E1414 : 0x221818);
 
   // BIG dark Mordor fill first
   graphics.fillStyle(hordeGround, 1);
@@ -3242,8 +3242,8 @@ function pUpdate() {
 
   // === LANE ROADS (all 3 lanes) — evolve with era ===
   // Lighter sand colors so lanes stand out from dark ground
-  // Sand palette (#A68A64 base) with era variations
-  const roadColors = [0xA68A64, 0xB09070, 0xA69A80, 0x8A7260];
+  // Sand palette, darker & less saturated (keeps lanes just brighter than terrain)
+  const roadColors = [0x8A7454, 0x927A5C, 0x888070, 0x74604E];
   const roadColor = roadColors[Math.min(era-1, 3)];
   for (const lane of ALL_LANES) {
     graphics.fillStyle(roadColor, 1);

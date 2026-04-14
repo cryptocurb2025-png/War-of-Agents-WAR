@@ -1704,6 +1704,11 @@
 
 <!-- ─── EVENT ANNOUNCEMENT ────────────────────────────── -->
 <div id="event-announce"></div>
+<div id="upgrade-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:180;background:linear-gradient(180deg,rgba(16,10,4,0.96),rgba(8,4,2,0.98));border:2px solid #C8960C;border-radius:6px;padding:20px 24px 16px;min-width:480px;box-shadow:0 0 80px rgba(200,150,12,0.4),0 6px 24px rgba(0,0,0,0.9);font-family:'Cinzel',serif">
+  <div style="text-align:center;color:#FACC15;font-size:20px;font-weight:900;letter-spacing:3px;margin-bottom:4px">WAVE UPGRADE</div>
+  <div id="upgrade-timer" style="text-align:center;color:#8A7A5A;font-size:11px;margin-bottom:14px">Choose one · <span id="upgrade-seconds">8</span>s</div>
+  <div id="upgrade-choices" style="display:flex;gap:12px;justify-content:center"></div>
+</div>
 
 <!-- ─── HOW-TO-PLAY TUTORIAL OVERLAY ─────────────────── -->
 <div id="tutorial-overlay">
@@ -2172,6 +2177,17 @@ ws.onmessage = (e) => {
     return;
   }
   if (msg.type === 'chat') { addChatMsg(msg.name, msg.text); return; }
+  if (msg.type === 'wave_upgrade_offer') {
+    if (msg.targetAgentId && msg.targetAgentId === playerAgentId) showUpgradeModal(msg.choices, msg.deadline);
+    return;
+  }
+  if (msg.type === 'wave_upgrade_applied') {
+    if (msg.targetAgentId && msg.targetAgentId === playerAgentId) {
+      closeUpgradeModal();
+      addSystemChat('Upgrade applied: ' + (msg.upgradeId || '') + (msg.auto ? ' (auto)' : ''));
+    }
+    return;
+  }
   if (msg.type === 'state') {
     const prev = gameState;
     gameState = msg.data;
@@ -2352,6 +2368,49 @@ function sfxAbilityHit() { playTone(350, 0.1, 0.07, 'square'); playTone(500, 0.0
 function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTone(1000, 0.12, 0.05, 'sine'), 80); setTimeout(() => playTone(1200, 0.1, 0.04, 'sine'), 160); }
 function sfxTower() { playTone(80, 0.5, 0.12, 'sawtooth'); playTone(140, 0.4, 0.1, 'square'); setTimeout(() => playTone(60, 0.3, 0.09, 'sawtooth'), 120); }
 function sfxWave()  { playTone(500, 0.1, 0.06, 'triangle'); setTimeout(() => playTone(700, 0.1, 0.06, 'triangle'), 90); setTimeout(() => playTone(900, 0.18, 0.07, 'triangle'), 180); }
+// ─── Wave upgrade modal ──────────────────────────────────────────────────────
+let _upgradeTimer = null;
+function showUpgradeModal(choices, deadline) {
+  const modal = document.getElementById('upgrade-modal');
+  const list = document.getElementById('upgrade-choices');
+  if (!modal || !list) return;
+  list.innerHTML = '';
+  choices.forEach(c => {
+    const card = document.createElement('button');
+    card.style.cssText = 'flex:1;max-width:150px;padding:14px 10px;background:linear-gradient(180deg,#2A1A08,#0A0804);color:#FACC15;border:2px solid #8A7A5A;border-radius:4px;font-family:Cinzel,serif;font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:1px;transition:all 0.15s';
+    card.onmouseenter = () => { card.style.borderColor = '#FACC15'; card.style.boxShadow = '0 0 16px rgba(250,204,21,0.4)'; };
+    card.onmouseleave = () => { card.style.borderColor = '#8A7A5A'; card.style.boxShadow = 'none'; };
+    card.textContent = c.label || c.id;
+    card.onclick = () => chooseUpgrade(c.id);
+    list.appendChild(card);
+  });
+  modal.style.display = 'block';
+  clearInterval(_upgradeTimer);
+  const tick = () => {
+    const secs = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    const el = document.getElementById('upgrade-seconds');
+    if (el) el.textContent = String(secs);
+    if (secs <= 0) { clearInterval(_upgradeTimer); }
+  };
+  tick();
+  _upgradeTimer = setInterval(tick, 500);
+}
+function closeUpgradeModal() {
+  const modal = document.getElementById('upgrade-modal');
+  if (modal) modal.style.display = 'none';
+  clearInterval(_upgradeTimer);
+}
+async function chooseUpgrade(choiceId) {
+  if (!playerAgentId) return;
+  closeUpgradeModal();
+  try {
+    await fetch('/api/choose_upgrade', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId: playerAgentId, choiceId }),
+    });
+  } catch (err) { console.warn('choose_upgrade failed', err); }
+}
+
 function sfxLevelUp() { playTone(660, 0.12, 0.07, 'triangle'); setTimeout(() => playTone(880, 0.12, 0.07, 'triangle'), 90); setTimeout(() => playTone(1175, 0.25, 0.08, 'triangle'), 180); setTimeout(() => playTone(1320, 0.35, 0.09, 'sine'), 280); }
 // UI click — soft short tick for buttons/hotkeys
 function sfxClick() { playTone(1400, 0.04, 0.03, 'triangle'); setTimeout(() => playTone(2200, 0.03, 0.015, 'sine'), 20); }

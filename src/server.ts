@@ -387,10 +387,18 @@ function calculateElo(winnerElo: number, loserElo: number): { newWinner: number;
   };
 }
 
+// Farm-guard: same killer→victim pair can only move ELO once per 5 min
+const ELO_PAIR_COOLDOWN_MS = 5 * 60 * 1000;
+const eloPairCooldown = new Map<string, number>(); // "killerAgent:victimAgent" → timestamp
+
 function updateEloOnKill(killerAgentId: string, victimAgentId: string) {
   const killerRow = stmtGetElo.get(killerAgentId) as { elo: number } | undefined;
   const victimRow = stmtGetElo.get(victimAgentId) as { elo: number } | undefined;
   if (!killerRow || !victimRow) return;
+  const pairKey = `${killerAgentId}:${victimAgentId}`;
+  const last = eloPairCooldown.get(pairKey) || 0;
+  if (Date.now() - last < ELO_PAIR_COOLDOWN_MS) return; // farm-guarded, no update
+  eloPairCooldown.set(pairKey, Date.now());
   const { newWinner, newLoser } = calculateElo(killerRow.elo, victimRow.elo);
   stmtUpdateElo.run(newWinner, killerAgentId);
   stmtUpdateElo.run(Math.max(0, newLoser), victimAgentId);
@@ -804,8 +812,96 @@ function getVotedUnits(faction: Faction): UnitDef[] {
   }
 }
 
+// ─── Wave Upgrade System ─────────────────────────────────────────────────────
+const UPGRADE_POOL: { id: string; label: string }[] = [
+  { id: 'dmg_up',       label: '+10% Damage' },
+  { id: 'speed_up',     label: '+15% Speed' },
+  { id: 'hp_up',        label: '+100 Max HP' },
+  { id: 'armor_up',     label: '+5 Armor' },
+  { id: 'regen_up',     label: '+3 HP/sec regen' },
+  { id: 'mana_up',      label: '+50 Max Mana' },
+  { id: 'cdr',          label: '-10% Ability Cooldown' },
+  { id: 'ability_tier', label: '+1 Tier to lowest ability' },
+];
+
+// heroId → outstanding offer { choices, deadline }
+const pendingUpgradeOffers = new Map<string, { choices: string[]; deadline: number; agentId: string }>();
+
+function rollUpgradeChoices(): string[] {
+  const pool = [...UPGRADE_POOL];
+  const out: string[] = [];
+  for (let i = 0; i < 3 && pool.length; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    out.push(pool.splice(idx, 1)[0].id);
+  }
+  return out;
+}
+
+function applyUpgrade(hero: HeroEntity, upgradeId: string) {
+  switch (upgradeId) {
+    case 'dmg_up':    hero.damage = Math.floor(hero.damage * 1.10); break;
+    case 'speed_up':  hero.speed = Math.floor(hero.speed * 1.15); break;
+    case 'hp_up':     hero.maxHp += 100; hero.hp = Math.min(hero.maxHp, hero.hp + 100); break;
+    case 'armor_up':  hero.armor += 5; break;
+    case 'regen_up':  (hero as any).regen = ((hero as any).regen || 0) + 3; break;
+    case 'mana_up':   hero.maxMana += 50; hero.mana = Math.min(hero.maxMana, hero.mana + 50); break;
+    case 'cdr':
+      for (const a of hero.abilities) a.cooldown = Math.max(5, Math.floor(a.cooldown * 0.90));
+      break;
+    case 'ability_tier': {
+      let lowest = hero.abilities[0];
+      for (const a of hero.abilities) if ((a.tier || 1) < (lowest.tier || 1)) lowest = a;
+      if (lowest && (lowest.tier || 1) < (lowest.maxTier || 5)) {
+        lowest.tier = (lowest.tier || 1) + 1;
+        lowest.damage = Math.floor(lowest.damage * 1.15);
+      }
+      break;
+    }
+  }
+}
+
+function broadcastToAgent(agentId: string, msg: object) {
+  // We don't track ws→agentId, so broadcast to everyone with the target
+  // agentId in the payload; the client filters on its own agentId.
+  const payload = JSON.stringify({ ...msg, targetAgentId: agentId });
+  for (const ws of clients) {
+    if (ws.readyState === 1) { try { ws.send(payload); } catch {} }
+  }
+}
+
+function offerWaveUpgrades() {
+  const deadline = Date.now() + 8000;
+  for (const hero of state.heroes.values()) {
+    if (!hero.alive || !hero.agentId) continue; // bot heroes skip
+    const choices = rollUpgradeChoices();
+    pendingUpgradeOffers.set(hero.id, { choices, deadline, agentId: hero.agentId });
+    broadcastToAgent(hero.agentId, {
+      type: 'wave_upgrade_offer',
+      heroId: hero.id,
+      choices: choices.map(id => ({ id, label: UPGRADE_POOL.find(u => u.id === id)?.label || id })),
+      deadline,
+    });
+  }
+}
+
+function resolveExpiredUpgradeOffers() {
+  const now = Date.now();
+  for (const [heroId, offer] of pendingUpgradeOffers.entries()) {
+    if (now < offer.deadline) continue;
+    const hero = state.heroes.get(heroId);
+    if (hero && hero.alive) {
+      applyUpgrade(hero, offer.choices[0]); // auto-pick first
+      broadcastToAgent(offer.agentId, {
+        type: 'wave_upgrade_applied', heroId, upgradeId: offer.choices[0], auto: true,
+      });
+    }
+    pendingUpgradeOffers.delete(heroId);
+  }
+}
+
 function spawnWave() {
   state.waveCount++;
+  offerWaveUpgrades();
   const scaling = 1 + state.waveCount * 0.03;
 
   // Era progression: Bronze → Silver → Gold → Platinum → Diamond
@@ -1757,6 +1853,7 @@ const POSTGAME_DELAY_MS = 30_000;
 
 function gameTick() {
   if (paused) return;
+  resolveExpiredUpgradeOffers(); // auto-pick any upgrade offers that timed out
   if (state.winner) {
     if (state.winnerAt && Date.now() - state.winnerAt >= POSTGAME_DELAY_MS) {
       console.log(`[MATCH] Auto-restarting after ${POSTGAME_DELAY_MS / 1000}s post-game delay`);
@@ -2216,10 +2313,27 @@ function broadcast() {
 }
 
 // ─── REST API ────────────────────────────────────────────────────────────────
+// Per-IP registration throttle — 1 new agent per IP per 30s
+const REGISTER_IP_COOLDOWN_MS = 30 * 1000;
+const registerIpCooldown = new Map<string, number>();
+
 app.post('/api/agents/register', (req, res) => {
   const { agentId, name, faction, heroClass } = req.body;
   if (!agentId || !name || !faction || !heroClass) {
     return res.status(400).json({ error: 'Missing required fields: agentId, name, faction, heroClass' });
+  }
+  // IP throttle — derive from X-Forwarded-For (Railway/proxied) or socket
+  const ipRaw = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  // Only throttle on NEW registrations; re-registration of existing agentId skips throttle
+  const alreadyRegistered = [...state.heroes.values()].some(h => h.agentId === agentId)
+    || joinQueue.some(q => q.agentId === agentId);
+  if (!alreadyRegistered) {
+    const last = registerIpCooldown.get(ipRaw) || 0;
+    const waitMs = REGISTER_IP_COOLDOWN_MS - (Date.now() - last);
+    if (waitMs > 0) {
+      return res.status(429).json({ error: `Rate limited. Try again in ${Math.ceil(waitMs / 1000)}s.`, retryAfterMs: waitMs });
+    }
+    registerIpCooldown.set(ipRaw, Date.now());
   }
   if (!['alliance', 'horde'].includes(faction)) {
     return res.status(400).json({ error: 'Faction must be alliance or horde' });
@@ -2570,6 +2684,35 @@ app.get('/api/shop', (_req, res) => {
 });
 
 // ─── Betting API ──────────────────────────────────────────────────────────────
+// ─── Wave upgrade choice endpoint ────────────────────────────────────────────
+app.post('/api/choose_upgrade', (req, res) => {
+  const { agentId, choiceId } = req.body || {};
+  if (!agentId || !choiceId) return res.status(400).json({ error: 'Missing agentId or choiceId' });
+  const hero = [...state.heroes.values()].find(h => h.agentId === agentId && h.alive);
+  if (!hero) return res.status(404).json({ error: 'No active hero for this agent' });
+  const offer = pendingUpgradeOffers.get(hero.id);
+  if (!offer) return res.status(400).json({ error: 'No pending upgrade offer' });
+  if (!offer.choices.includes(choiceId)) return res.status(400).json({ error: 'Choice not in offered set' });
+  applyUpgrade(hero, choiceId);
+  pendingUpgradeOffers.delete(hero.id);
+  broadcastToAgent(agentId, { type: 'wave_upgrade_applied', heroId: hero.id, upgradeId: choiceId });
+  res.json({ success: true, upgradeId: choiceId });
+});
+
+// ─── Bet-lock state ──────────────────────────────────────────────────────────
+// Bets close when first tower falls OR 90s into a match, whichever first.
+const BET_LOCK_SECONDS = 90;
+
+function areBetsLocked(): boolean {
+  if (state.winner) return true;
+  if ((state.time || 0) > BET_LOCK_SECONDS * 1000) return true;
+  // First tower fallen? Scan for any destroyed tower structure.
+  for (const s of state.structures.values()) {
+    if ((s.structureType === 'tower_t1' || s.structureType === 'tower_t2') && !s.alive) return true;
+  }
+  return false;
+}
+
 app.post('/api/bet', (req, res) => {
   const { name, faction, amount } = req.body;
   if (!name || !faction || !amount) {
@@ -2582,8 +2725,11 @@ app.post('/api/bet', (req, res) => {
   if (isNaN(betAmount) || betAmount <= 0) {
     return res.status(400).json({ error: 'Amount must be a positive number' });
   }
-  if (state.winner) {
-    return res.status(400).json({ error: 'Bets are locked — match is over' });
+  if (areBetsLocked()) {
+    return res.status(400).json({
+      error: 'Bets are locked — first tower fell or match is > 90s old',
+      locked: true,
+    });
   }
 
   const bet: Bet = {

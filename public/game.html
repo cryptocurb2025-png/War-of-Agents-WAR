@@ -3097,9 +3097,25 @@ function pUpdate() {
   // BIG dark wasteland fill (palette dirt, darkened and desaturated ~15%)
   graphics.fillStyle(0x221818, 1);
   graphics.fillRect(-2000, -2000, MAP_W + 4000, MAP_H + 4000);
-  // Alliance side — grass #1E3A2F darkened ~15% toward gray
+  // Alliance side — grass #1E3A2F darkened ~15% toward gray.
+  // Stop short of centerline so the blend band can fade between factions.
+  const blendHalf = 320; // width each side of centerline that blends
   graphics.fillStyle(0x1A3128, 1);
-  graphics.fillRect(-2000, -2000, halfW + 2000, MAP_H + 4000);
+  graphics.fillRect(-2000, -2000, halfW - blendHalf + 2000, MAP_H + 4000);
+  // Faction transition band — stacked vertical strips cross-fading grass→dirt
+  const bandStrips = 24;
+  for (let i = 0; i < bandStrips; i++) {
+    const t = i / (bandStrips - 1); // 0..1
+    const sx = halfW - blendHalf + t * (blendHalf * 2);
+    const sw = (blendHalf * 2) / bandStrips + 1;
+    // Grass alpha fades out, dirt alpha fades in (over the already-drawn dirt base)
+    graphics.fillStyle(0x1A3128, 1 - t);
+    graphics.fillRect(sx, -2000, sw, MAP_H + 4000);
+  }
+
+  // Subtle brightness variation — a few very-faint warm/cool patches
+  drawAmbientPatches();
+
   // Terrain grain — low-opacity speckle over grass + dirt for depth
   drawTerrainNoise(-200, -200, halfW + 200, MAP_H + 400, true);         // Alliance grass
   drawTerrainNoise(halfW, -200, MAP_W - halfW + 200, MAP_H + 400, false); // Horde dirt
@@ -3107,6 +3123,9 @@ function pUpdate() {
   // Environmental props — rocks, tufts, cracks. Placed off-lane only.
   drawEnvProps(-200, -200, halfW + 200, MAP_H + 400, true);
   drawEnvProps(halfW, -200, MAP_W - halfW + 200, MAP_H + 400, false);
+
+  // Soft fog/cloud overlays — sparse, very low opacity, drifting
+  drawFogOverlays(Date.now());
 
   // Lane rendering — base fill, vertical gradient (center lighter, edges darker),
   // noise grain, wear cracks, and crisp dark borders. Called per-lane.
@@ -4514,6 +4533,41 @@ function renderSprite(id, texKey, entity, t, isHero) {
   bar.fill.setFillStyle(barColor);
   bar.lvl.setPosition(newX, newY - 72);
   bar.lvl.setText(entity.level !== undefined ? `${entity.level}` : '');
+}
+
+// ─── Ambient brightness patches — wide soft circles, very subtle ──
+function drawAmbientPatches() {
+  const rand = (seed) => { const s = Math.sin(seed * 7331 + 2269) * 92831; return s - Math.floor(s); };
+  // 6 patches spread across the map — half warm, half cool
+  for (let i = 0; i < 6; i++) {
+    const px = rand(i + 101) * MAP_W;
+    const py = rand(i * 3 + 101) * MAP_H;
+    const r  = 260 + rand(i * 5 + 101) * 220;
+    const warm = rand(i * 7 + 101) < 0.5;
+    // Very soft falloff: 3 concentric circles
+    const col = warm ? 0x5A3A20 : 0x204038;
+    graphics.fillStyle(col, 0.03);
+    graphics.fillCircle(px, py, r);
+    graphics.fillStyle(col, 0.025);
+    graphics.fillCircle(px, py, r * 1.35);
+  }
+}
+
+// ─── Fog/cloud overlays — sparse, drifting, very faint ──
+function drawFogOverlays(nowMs) {
+  const rand = (seed) => { const s = Math.sin(seed * 13499 + 7919) * 60199; return s - Math.floor(s); };
+  const driftT = (nowMs || 0) * 0.00004; // very slow drift
+  for (let i = 0; i < 5; i++) {
+    const baseX = rand(i + 301) * MAP_W;
+    const baseY = rand(i * 7 + 301) * MAP_H;
+    const drift = Math.sin(driftT + i) * 80;
+    const r = 300 + rand(i * 11 + 301) * 260;
+    // Two overlapping soft ellipses for a cloud-like silhouette
+    graphics.fillStyle(0xB0A898, 0.035);
+    graphics.fillEllipse(baseX + drift, baseY, r * 2, r * 0.8);
+    graphics.fillStyle(0xB0A898, 0.025);
+    graphics.fillEllipse(baseX + drift + r * 0.4, baseY - r * 0.15, r * 1.3, r * 0.55);
+  }
 }
 
 // ─── Terrain grain — low-opacity speckle, seeded, grass vs dirt ──

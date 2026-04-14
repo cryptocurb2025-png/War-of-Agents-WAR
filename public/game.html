@@ -2285,7 +2285,8 @@ ws.onmessage = (e) => {
         if (myHeroId) {
           if (evt.sourceId === myHeroId) {
             if (evt.type === 'ability_heal') sfxHeal();
-            else if (evt.type === 'ability_hit' && evt.damage) { sfxAbilityHit(); triggerShake(evt.aoe ? 12 : 6); }
+            else if (evt.type === 'ability_hit' && evt.damage) { sfxAbilityByEffect(evt.effect); triggerShake(evt.aoe ? 12 : 6); }
+            else if (evt.type === 'ability_hit' && evt.effect) { sfxAbilityByEffect(evt.effect); }
             else if (evt.type === 'auto_attack') triggerShake(3);
           }
           // Took damage — bigger shake
@@ -2317,7 +2318,12 @@ function playTone(freq, dur, vol, type) {
   osc.start(); osc.stop(audioCtx.currentTime + dur);
 }
 
-function sfxAttack() { playTone(200, 0.08, 0.06, 'sawtooth'); }
+function sfxAttack() {
+  // Slight pitch + volume variation so repeated attacks don't feel mechanical
+  const pitch = 180 + Math.random() * 60;
+  const vol = 0.045 + Math.random() * 0.025;
+  playTone(pitch, 0.06 + Math.random() * 0.04, vol, 'sawtooth');
+}
 function sfxKill() { playTone(600, 0.15, 0.1, 'square'); playTone(800, 0.2, 0.08, 'sine'); }
 function sfxGold() { playTone(1200, 0.1, 0.05, 'sine'); setTimeout(() => playTone(1500, 0.1, 0.04, 'sine'), 80); }
 function sfxDeath() { playTone(100, 0.3, 0.08, 'sawtooth'); }
@@ -2329,17 +2335,57 @@ function sfxWave()  { playTone(500, 0.1, 0.06, 'triangle'); setTimeout(() => pla
 function sfxLevelUp() { playTone(660, 0.12, 0.07, 'triangle'); setTimeout(() => playTone(880, 0.12, 0.07, 'triangle'), 90); setTimeout(() => playTone(1175, 0.25, 0.08, 'triangle'), 180); setTimeout(() => playTone(1320, 0.35, 0.09, 'sine'), 280); }
 // UI click — soft short tick for buttons/hotkeys
 function sfxClick() { playTone(1400, 0.04, 0.03, 'triangle'); setTimeout(() => playTone(2200, 0.03, 0.015, 'sine'), 20); }
+// UI hover — extremely short subtle tick
+function sfxHover() { playTone(1800, 0.025, 0.012, 'sine'); }
+// Per-effect ability sounds
+function sfxStun()     { playTone(220, 0.08, 0.07, 'square'); setTimeout(() => playTone(140, 0.15, 0.06, 'sawtooth'), 60); }
+function sfxSlow()     { playTone(900, 0.12, 0.05, 'sine'); setTimeout(() => playTone(700, 0.15, 0.05, 'sine'), 70); setTimeout(() => playTone(500, 0.2, 0.045, 'sine'), 160); }
+function sfxBurn()     { for (let i=0;i<4;i++) setTimeout(()=>playTone(900+Math.random()*600, 0.04, 0.03, 'sawtooth'), i*40); }
+function sfxDash()     { playTone(600, 0.06, 0.05, 'sawtooth'); setTimeout(() => playTone(1200, 0.06, 0.04, 'sine'), 40); }
+function sfxBuff()     { playTone(520, 0.1, 0.05, 'triangle'); setTimeout(() => playTone(780, 0.12, 0.05, 'triangle'), 80); }
+// Dispatch by effect type
+function sfxAbilityByEffect(effect) {
+  switch (effect) {
+    case 'stun':        sfxStun(); break;
+    case 'slow':
+    case 'ultimate_slow': sfxSlow(); break;
+    case 'burn':        sfxBurn(); break;
+    case 'dash':
+    case 'teleport':    sfxDash(); break;
+    case 'armor_buff':
+    case 'team_buff':
+    case 'tower_buff':
+    case 'invuln':
+    case 'transform':   sfxBuff(); break;
+    default:            sfxAbilityHit();
+  }
+}
 // Delegate: any button/hotkey/clickable UI element plays a soft click.
 // Canvas/game-area clicks are skipped so attack clicks don't click-bleed.
+const UI_SEL = 'button, .hk-slot, .hud-btn, .tut-btn, [role="button"], a[onclick], .chat-minimize, #king-banner';
 document.addEventListener('click', (ev) => {
   const el = ev.target;
   if (!el || !el.closest) return;
-  // Skip clicks on the game canvas / entity canvas — those are game input
   if (el.closest('#game-container') || el.closest('#entity-canvas') || el.tagName === 'CANVAS') return;
-  // Match interactive UI elements
-  if (el.closest('button, .hk-slot, .hud-btn, .tut-btn, [role="button"], a[onclick], .chat-minimize, #king-banner')) {
-    sfxClick();
-  }
+  if (el.closest(UI_SEL)) sfxClick();
+}, true);
+// Hover feedback — throttled so moving across the HUD doesn't spam
+let _lastHoverAt = 0;
+let _lastHoverEl = null;
+document.addEventListener('mouseover', (ev) => {
+  const el = ev.target;
+  if (!el || !el.closest) return;
+  if (el.closest('#game-container') || el.closest('#entity-canvas') || el.tagName === 'CANVAS') return;
+  const hit = el.closest(UI_SEL);
+  if (!hit || hit === _lastHoverEl) return;
+  const now = Date.now();
+  if (now - _lastHoverAt < 80) return; // ≥80ms between hover ticks
+  _lastHoverAt = now;
+  _lastHoverEl = hit;
+  sfxHover();
+}, true);
+document.addEventListener('mouseout', (ev) => {
+  if (ev.target === _lastHoverEl) _lastHoverEl = null;
 }, true);
 
 // ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────

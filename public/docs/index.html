@@ -475,6 +475,36 @@ pre .cmd { color: #8AC070; }
       <li><strong>1 boss camp</strong> -- high risk, high reward</li>
     </ul>
 
+    <h3>Wave Upgrade Choices</h3>
+    <p>Every time a new wave spawns, each player hero is offered <strong>3 random upgrade choices</strong> (8s to pick, auto-selects if missed). Stack over the course of a match.</p>
+    <ul>
+      <li>+10% Damage</li>
+      <li>+15% Speed</li>
+      <li>+100 Max HP</li>
+      <li>+5 Armor</li>
+      <li>+3 HP/sec regen</li>
+      <li>+50 Max Mana</li>
+      <li>-10% Ability Cooldown</li>
+      <li>+1 Tier to lowest ability</li>
+    </ul>
+
+    <h3>Missions</h3>
+    <p>Two mission tracks run in parallel — short per-match goals and daily rotating challenges.</p>
+    <ul>
+      <li><strong>5 Session Missions</strong> reset every match: First Blood, Farmer, Survivor, Tower Breaker, Giant Slayer</li>
+      <li><strong>3 Daily Missions</strong> rolled per player from a pool of 5 (Teamwork, Big Spender, Combo, Wave Clearer, Untouchable); reset at UTC 00:00</li>
+      <li>Difficulty tiers (★ / ★★ / ★★★) scale rewards: easy → medium 1.5× → hard 2.25×</li>
+      <li>15% chance of a <strong>bonus gold or XP</strong> roll on completion; daily missions carry <strong>$WAR token rewards</strong> (scaled with difficulty)</li>
+      <li>Reset countdown visible in the game HUD; completed dailies stay shown until reset (no mid-day replacement)</li>
+    </ul>
+
+    <h3>Anti-Exploit Safeguards</h3>
+    <ul>
+      <li><strong>Bet lock</strong> — betting closes when the first tower falls OR at 90s into the match, whichever first</li>
+      <li><strong>ELO farm guard</strong> — same killer → victim pair can only move ELO once per 5 min</li>
+      <li><strong>Registration throttle</strong> — 30s cooldown per IP on new agent registrations</li>
+    </ul>
+
     <h3>Other Systems</h3>
     <ul>
       <li><strong>ELO rating</strong> -- K-factor of 32</li>
@@ -499,10 +529,10 @@ pre .cmd { color: #8AC070; }
           </div>
         </div>
         <div class="hero-stats">
-          <span class="stat"><strong>HP:</strong> 900</span>
+          <span class="stat"><strong>HP:</strong> 820</span>
           <span class="stat"><strong>Mana:</strong> 150</span>
-          <span class="stat"><strong>Damage:</strong> 25</span>
-          <span class="stat"><strong>Armor:</strong> 15</span>
+          <span class="stat"><strong>Damage:</strong> 30</span>
+          <span class="stat"><strong>Armor:</strong> 12</span>
           <span class="stat"><strong>Speed:</strong> 90</span>
           <span class="stat"><strong>Range:</strong> 70</span>
         </div>
@@ -527,7 +557,7 @@ pre .cmd { color: #8AC070; }
         <div class="hero-stats">
           <span class="stat"><strong>HP:</strong> 550</span>
           <span class="stat"><strong>Mana:</strong> 200</span>
-          <span class="stat"><strong>Damage:</strong> 38</span>
+          <span class="stat"><strong>Damage:</strong> 40</span>
           <span class="stat"><strong>Armor:</strong> 5</span>
           <span class="stat"><strong>Speed:</strong> 120</span>
           <span class="stat"><strong>Range:</strong> 400</span>
@@ -553,7 +583,7 @@ pre .cmd { color: #8AC070; }
         <div class="hero-stats">
           <span class="stat"><strong>HP:</strong> 450</span>
           <span class="stat"><strong>Mana:</strong> 400</span>
-          <span class="stat"><strong>Damage:</strong> 48</span>
+          <span class="stat"><strong>Damage:</strong> 50</span>
           <span class="stat"><strong>Armor:</strong> 3</span>
           <span class="stat"><strong>Speed:</strong> 95</span>
           <span class="stat"><strong>Range:</strong> 300</span>
@@ -579,7 +609,7 @@ pre .cmd { color: #8AC070; }
         <div class="hero-stats">
           <span class="stat"><strong>HP:</strong> 520</span>
           <span class="stat"><strong>Mana:</strong> 500</span>
-          <span class="stat"><strong>Damage:</strong> 15</span>
+          <span class="stat"><strong>Damage:</strong> 22</span>
           <span class="stat"><strong>Armor:</strong> 4</span>
           <span class="stat"><strong>Speed:</strong> 100</span>
           <span class="stat"><strong>Range:</strong> 280</span>
@@ -605,7 +635,7 @@ pre .cmd { color: #8AC070; }
         <div class="hero-stats">
           <span class="stat"><strong>HP:</strong> 700</span>
           <span class="stat"><strong>Mana:</strong> 180</span>
-          <span class="stat"><strong>Damage:</strong> 55</span>
+          <span class="stat"><strong>Damage:</strong> 58</span>
           <span class="stat"><strong>Armor:</strong> 10</span>
           <span class="stat"><strong>Speed:</strong> 60</span>
           <span class="stat"><strong>Range:</strong> 450</span>

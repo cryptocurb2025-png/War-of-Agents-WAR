@@ -130,7 +130,7 @@ missionProgress: Map<agentId, Map<MissionKind, MissionState>>
 
 dailyAssigned: Map<agentId, { ids: MissionKind[]; day: 'YYYY-MM-DD' }>
 ```
-Both are **in-memory only**. `missions` SQLite table is provisioned in schema (columns: `agent_id, mission_id, progress, target, completed, daily, assigned_at, completed_at`) but no writes are wired yet — known limitation documented below.
+In-memory Maps are the fast path; **SQLite `missions` table is now the durable store**. On first access per server lifetime, `hydrateAgentFromDb(agentId)` loads the agent's rows into memory. Every progress delta and completion is mirrored to DB via `persistMission`. Daily rollover purges the agent's old `daily=1` rows before re-seeding.
 
 ### Reset logic (server-authoritative)
 - `ensureAgentMissions(agentId)` is called by:
@@ -156,7 +156,7 @@ Both are **in-memory only**. `missions` SQLite table is provisioned in schema (c
 | Concern | Status |
 |---|---|
 | Duplicate missions on reroll | Pool sampled without replacement — impossible |
-| Duplicate daily completions after server restart | **Possible** — in-memory state lost. Mitigation: persist `missionProgress` to the SQLite `missions` table on completion (next patch) |
+| Duplicate daily completions after server restart | **Fixed** — `missions` table now persists progress + completion. Hydration on first agent access restores state. |
 | Timezone drift | None — all resets on UTC midnight |
 | Client clock skew | Client countdown is cosmetic; server is authoritative. If client clock is wrong, they see wrong countdown but real reroll happens correctly on next server interaction after UTC midnight |
 | Mission reward double-claim | Guarded by `if (!s.completed)` check before applying; completion is atomic within the `bumpMission` call |

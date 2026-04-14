@@ -355,6 +355,9 @@ const DB_SCHEMA = `
 `;
 
 // Prepared statements — initialized after DB is ready
+let stmtUpsertMission: any;
+let stmtGetMissionsByAgent: any;
+let stmtDeleteDailyMissionsForAgent: any;
 let stmtInsertAgent: any;
 let stmtUpsertLeaderboard: any;
 let stmtUpdateStats: any;
@@ -385,6 +388,9 @@ function initStatements() {
   stmtInsertSnapshot = prepareStmt(`INSERT INTO replay_snapshots (match_id, tick, snapshot, timestamp) VALUES (?, ?, ?, ?)`);
   stmtGetMatches = prepareStmt(`SELECT * FROM matches ORDER BY started_at DESC LIMIT 50`);
   stmtGetReplaySnapshots = prepareStmt(`SELECT tick, snapshot, timestamp FROM replay_snapshots WHERE match_id=? ORDER BY tick ASC`);
+  stmtUpsertMission = prepareStmt(`INSERT INTO missions (agent_id, mission_id, progress, target, completed, daily, assigned_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(agent_id, mission_id) DO UPDATE SET progress=excluded.progress, completed=excluded.completed, completed_at=excluded.completed_at`);
+  stmtGetMissionsByAgent = prepareStmt(`SELECT mission_id, progress, target, completed, daily, assigned_at, completed_at FROM missions WHERE agent_id=?`);
+  stmtDeleteDailyMissionsForAgent = prepareStmt(`DELETE FROM missions WHERE agent_id=? AND daily=1`);
 }
 
 // ─── ELO Rating System ─────────────────────────────────────────────────────
@@ -464,7 +470,47 @@ function utcDay(): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 }
 
+// Agents whose persisted mission rows have been hydrated this process lifetime
+const hydratedAgents = new Set<string>();
+
+function hydrateAgentFromDb(agentId: string) {
+  if (hydratedAgents.has(agentId)) return;
+  hydratedAgents.add(agentId);
+  if (!stmtGetMissionsByAgent) return;
+  try {
+    const rows = stmtGetMissionsByAgent.all(agentId) as Array<{
+      mission_id: string; progress: number; target: number; completed: number; daily: number;
+    }>;
+    if (!missionProgress.has(agentId)) missionProgress.set(agentId, new Map());
+    const m = missionProgress.get(agentId)!;
+    const todayDaily: MissionKind[] = [];
+    for (const r of rows) {
+      const id = r.mission_id as MissionKind;
+      const def = MISSION_DEFS.find(d => d.id === id);
+      if (!def) continue;
+      m.set(id, {
+        id, progress: r.progress, target: r.target,
+        completed: r.completed === 1, daily: r.daily === 1,
+      });
+      if (r.daily === 1) todayDaily.push(id);
+    }
+    if (todayDaily.length) dailyAssigned.set(agentId, { ids: todayDaily, day: utcDay() });
+  } catch (e) { /* ignore — first-run schemas may race */ }
+}
+
+function persistMission(agentId: string, state: MissionState) {
+  if (!stmtUpsertMission) return;
+  try {
+    stmtUpsertMission.run(
+      agentId, state.id, state.progress, state.target,
+      state.completed ? 1 : 0, state.daily ? 1 : 0,
+      Date.now(), state.completed ? Date.now() : null,
+    );
+  } catch (e) { /* ignore */ }
+}
+
 function ensureAgentMissions(agentId: string) {
+  hydrateAgentFromDb(agentId);
   if (!missionProgress.has(agentId)) missionProgress.set(agentId, new Map());
   const m = missionProgress.get(agentId)!;
   // Session missions: reset if not present or completed (one-shot per match is handled via match reset)
@@ -484,14 +530,17 @@ function ensureAgentMissions(agentId: string) {
       ids.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     }
     dailyAssigned.set(agentId, { ids, day: today });
-    // Clear any previously assigned daily entries that aren't in the new set
+    // Purge yesterday's daily rows in DB, then re-seed fresh dailies
+    try { if (stmtDeleteDailyMissionsForAgent) stmtDeleteDailyMissionsForAgent.run(agentId); } catch {}
     for (const id of DAILY_POOL_IDS) {
       if (!ids.includes(id)) m.delete(id);
     }
     for (const id of ids) {
       const def = MISSION_DEFS.find(d => d.id === id)!;
       if (!m.has(id) || m.get(id)!.completed) {
-        m.set(id, { id, progress: 0, target: def.target, completed: false, daily: true });
+        const fresh: MissionState = { id, progress: 0, target: def.target, completed: false, daily: true };
+        m.set(id, fresh);
+        persistMission(agentId, fresh);
       }
     }
   }
@@ -507,6 +556,7 @@ function bumpMission(agentId: string | undefined, id: MissionKind, delta: number
   s.progress = Math.min(s.target, s.progress + delta);
   if (s.progress !== before) {
     broadcastToAgent(agentId, { type: 'mission_progress', missionId: id, progress: s.progress, target: s.target });
+    persistMission(agentId, s); // durability across restarts
   }
   if (!s.completed && s.progress >= s.target) {
     s.completed = true;
@@ -533,6 +583,7 @@ function bumpMission(agentId: string | undefined, id: MissionKind, delta: number
       hero.gold += totalGold;
       (hero as any).xp = ((hero as any).xp || 0) + totalXp;
     }
+    persistMission(agentId, s); // durability for completed mission
     broadcastToAgent(agentId, {
       type: 'mission_completed',
       missionId: id,

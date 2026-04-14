@@ -3100,19 +3100,11 @@ function pUpdate() {
   // Alliance side — grass #1E3A2F darkened ~15% toward gray
   graphics.fillStyle(0x1A3128, 1);
   graphics.fillRect(-2000, -2000, halfW + 2000, MAP_H + 4000);
-  // Lane roads — slightly brighter than terrain but tonally closer than before
-  graphics.fillStyle(0x8A7454, 1);
-  graphics.fillRect(-200, 400, MAP_W + 400, 200);  // top
-  graphics.fillRect(-200, 1040, MAP_W + 400, 320); // mid
-  graphics.fillRect(-200, 1800, MAP_W + 400, 200); // bot
-  // Lane edge lines — crisp borders for readability
-  graphics.lineStyle(2, 0x3A2D1A, 0.7);
-  graphics.lineBetween(-200, 400, MAP_W + 200, 400);
-  graphics.lineBetween(-200, 600, MAP_W + 200, 600);
-  graphics.lineBetween(-200, 1040, MAP_W + 200, 1040);
-  graphics.lineBetween(-200, 1360, MAP_W + 200, 1360);
-  graphics.lineBetween(-200, 1800, MAP_W + 200, 1800);
-  graphics.lineBetween(-200, 2000, MAP_W + 200, 2000);
+  // Lane rendering — base fill, vertical gradient (center lighter, edges darker),
+  // noise grain, wear cracks, and crisp dark borders. Called per-lane.
+  drawLane(-200, 400, MAP_W + 400, 200);   // top
+  drawLane(-200, 1040, MAP_W + 400, 320);  // mid
+  drawLane(-200, 1800, MAP_W + 400, 200);  // bot
 
   // (debug markers removed)
 
@@ -4514,6 +4506,68 @@ function renderSprite(id, texKey, entity, t, isHero) {
   bar.fill.setFillStyle(barColor);
   bar.lvl.setPosition(newX, newY - 72);
   bar.lvl.setText(entity.level !== undefined ? `${entity.level}` : '');
+}
+
+// ─── Draw a single lane with gradient, grain, wear, and borders ──
+function drawLane(x, y, w, h) {
+  // Base flat fill
+  graphics.fillStyle(0x8A7454, 1);
+  graphics.fillRect(x, y, w, h);
+  // Vertical gradient — lighter center, darker edges. Fake with stacked bands.
+  const bands = 8;
+  for (let i = 0; i < bands; i++) {
+    const t = i / (bands - 1); // 0..1
+    // Distance from center (0 at center, 1 at edges)
+    const dCenter = Math.abs(t - 0.5) * 2;
+    if (dCenter > 0.05) {
+      // Darken edges — more toward the top/bottom
+      graphics.fillStyle(0x000000, dCenter * 0.18);
+      const by = y + t * h;
+      graphics.fillRect(x, by, w, h / bands + 1);
+    } else {
+      // Subtle highlight at center line
+      graphics.fillStyle(0xFFE8C0, 0.04);
+      const by = y + t * h;
+      graphics.fillRect(x, by, w, h / bands + 1);
+    }
+  }
+  // Noise/grain — cheap pseudo-random speckle, seeded by position so it's stable
+  const rand = (seed) => { const s = Math.sin(seed * 9301 + 49297) * 233280; return s - Math.floor(s); };
+  const grainDensity = Math.floor((w * h) / 1200);
+  for (let i = 0; i < grainDensity; i++) {
+    const gx = x + rand(i + y) * w;
+    const gy = y + rand(i * 7 + y) * h;
+    const shade = rand(i * 13 + y * 3);
+    if (shade < 0.5) {
+      graphics.fillStyle(0x000000, 0.10 + shade * 0.08);
+      graphics.fillRect(gx, gy, 1.5, 1.5);
+    } else {
+      graphics.fillStyle(0xD8B888, 0.05 + (shade - 0.5) * 0.1);
+      graphics.fillRect(gx, gy, 1.2, 1.2);
+    }
+  }
+  // Wear cracks — a handful of short jagged lines running along lane length
+  const nCracks = Math.max(3, Math.floor(w / 600));
+  graphics.lineStyle(1, 0x2A1E10, 0.35);
+  for (let i = 0; i < nCracks; i++) {
+    const cxStart = x + rand(i + h) * (w - 120);
+    const cyStart = y + h * 0.25 + rand(i * 3 + h) * h * 0.5;
+    let px = cxStart, py = cyStart;
+    const segs = 4 + Math.floor(rand(i * 5) * 3);
+    for (let s = 0; s < segs; s++) {
+      const nx = px + 12 + rand(i * 11 + s) * 22;
+      const ny = py + (rand(i * 17 + s) - 0.5) * 10;
+      graphics.lineBetween(px, py, nx, ny);
+      px = nx; py = ny;
+    }
+  }
+  // Darker borders top + bottom
+  graphics.fillStyle(0x2A1E10, 0.55);
+  graphics.fillRect(x, y, w, 3);
+  graphics.fillRect(x, y + h - 3, w, 3);
+  graphics.lineStyle(2, 0x3A2B18, 0.75);
+  graphics.lineBetween(x, y, x + w, y);
+  graphics.lineBetween(x, y + h, x + w, y + h);
 }
 
 // ─── Draw Structures (still graphics-based for detail) ───────────

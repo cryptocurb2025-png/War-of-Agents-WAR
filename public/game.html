@@ -2034,6 +2034,21 @@ function addSystemChat(text) {
 let abilityEffects = []; // visual FX from combat events
 
 function spawnAbilityEffect(evt) {
+  // Caster glow + scale-bounce on any ability resolution
+  if ((evt.type === 'ability_hit' || evt.type === 'ability_heal') && evt.sourceId && gameState) {
+    const src = (gameState.heroes || []).find(h => h.id === evt.sourceId && h.alive);
+    if (src) {
+      const isA = src.faction === 'alliance';
+      const col = evt.type === 'ability_heal' ? 0x44FF88
+                : evt.damage ? (isA ? 0xFFD47A : 0xFF9966)
+                : (isA ? 0x88BBFF : 0xE24B4A);
+      abilityEffects.push({ type: 'cast_glow', x: src.x, y: src.y, age: 0, maxAge: 14, color: col });
+      // Trigger hero scale-bounce (consumed in entity-canvas hero draw)
+      if (!window._castBounce) window._castBounce = {};
+      window._castBounce[src.id] = { age: 0, maxAge: 6 };
+    }
+  }
+
   // Auto-attack slash/arrow effect — small but satisfying
   if (evt.type === 'auto_attack') {
     if (phaserScene && evt.damage) {
@@ -2077,6 +2092,11 @@ function spawnAbilityEffect(evt) {
         }).setOrigin(0.5).setDepth(92);
         phaserScene.tweens.add({ targets: lbl, y: evt.y - 110, alpha: 0, duration: 1500, onComplete: () => lbl.destroy() });
       }
+    }
+    // AoE telegraph — dashed warning circle contracting to impact (0.4s)
+    if (evt.aoe) {
+      const radius = Math.min(180, Math.max(60, Number(evt.aoe) || 100));
+      abilityEffects.push({ type: 'aoe_telegraph', x: evt.x, y: evt.y, age: 0, maxAge: 8, color: 0xFF5522, radius });
     }
     // Impact flash
     abilityEffects.push({ type: 'hit_flash', x: evt.x, y: evt.y, age: 0, maxAge: 15, color: evt.aoe ? 0xFF6600 : 0xFF2222 });
@@ -4084,6 +4104,37 @@ function pUpdate() {
       graphics.strokeCircle(fx.x, fx.y, radius);
       graphics.fillStyle(fx.color, alpha * 0.08);
       graphics.fillCircle(fx.x, fx.y, radius);
+    } else if (fx.type === 'aoe_telegraph') {
+      // Warning circle that shrinks inward to the impact point
+      const r = (fx.radius || 100) * (1 - prog * 0.6);
+      // Pulsing dashed outline
+      const seg = 12, gap = 8;
+      const circ = Math.PI * 2 * r;
+      const nDash = Math.max(6, Math.floor(circ / (seg + gap)));
+      for (let i = 0; i < nDash; i++) {
+        const a0 = (i / nDash) * Math.PI * 2 + fx.age * 0.15;
+        const a1 = a0 + (seg / circ) * Math.PI * 2;
+        graphics.lineStyle(3, fx.color, (1 - prog) * 0.9);
+        graphics.beginPath();
+        graphics.arc(fx.x, fx.y, r, a0, a1);
+        graphics.strokePath();
+      }
+      // Red floor tint
+      graphics.fillStyle(fx.color, (1 - prog) * 0.15);
+      graphics.fillCircle(fx.x, fx.y, r);
+    } else if (fx.type === 'cast_glow') {
+      // Caster glow pulse — bell curve of alpha, grows then shrinks
+      const bell = Math.sin(prog * Math.PI);
+      graphics.fillStyle(fx.color, bell * 0.28);
+      graphics.fillCircle(fx.x, fx.y, 28 + bell * 18);
+      graphics.fillStyle(fx.color, bell * 0.5);
+      graphics.fillCircle(fx.x, fx.y, 12 + bell * 8);
+      // Vertical rising sparks for clarity
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + fx.age * 0.35;
+        graphics.fillStyle(fx.color, bell * 0.7);
+        graphics.fillCircle(fx.x + Math.cos(a) * 16, fx.y + Math.sin(a) * 10 - prog * 18, 2);
+      }
     } else if (fx.type === 'stun_stars') {
       // Yellow stars circling above target
       for (let i = 0; i < 3; i++) {

@@ -2091,6 +2091,16 @@ function spawnAbilityEffect(evt) {
     } else if (evt.effect === 'slow') {
       abilityEffects.push({ type: 'slow_ice', x: evt.x, y: evt.y, age: 0, maxAge: 25 });
     }
+  } else if (evt.type === 'ability_hit' && evt.damage === 0 && evt.targetId && evt.targetId !== evt.sourceId) {
+    // Ability landed but dealt zero (immune/invuln/absorbed) — never silent
+    if (phaserScene) {
+      const txt = phaserScene.add.text(evt.x, evt.y - 40, 'IMMUNE', {
+        fontSize: '14px', fontFamily: 'Cinzel', color: '#DDDDDD', fontStyle: 'bold',
+        stroke: '#000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(92);
+      phaserScene.tweens.add({ targets: txt, y: evt.y - 80, alpha: 0, duration: 900, onComplete: () => txt.destroy() });
+    }
+    abilityEffects.push({ type: 'hit_flash', x: evt.x, y: evt.y, age: 0, maxAge: 10, color: 0xCCCCCC });
   } else if (evt.type === 'ability_hit' && evt.effect) {
     // Buff/utility effects (no damage)
     if (evt.effect === 'dash' || evt.effect === 'teleport') {
@@ -3972,6 +3982,22 @@ function pUpdate() {
     }
   }
   prevHpMap = newHpMap;
+
+  // ─── FLOATING MANA SPEND ───────────────────────────────────
+  if (!window._prevManaMap) window._prevManaMap = {};
+  for (const h of gs.heroes) {
+    const prev = window._prevManaMap[h.id];
+    // Only show when mana drops by a chunky amount (a cast, not regen tick variance)
+    if (prev !== undefined && h.mana < prev - 4 && phaserScene) {
+      const spent = Math.round(prev - h.mana);
+      const txt = phaserScene.add.text(h.x - 24, h.y - 48, `-${spent} MP`, {
+        fontSize: '13px', fontFamily: 'Cinzel', color: '#66AAFF', fontStyle: 'bold',
+        stroke: '#001133', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(91);
+      phaserScene.tweens.add({ targets: txt, y: h.y - 95, alpha: 0, duration: 900, onComplete: () => txt.destroy() });
+    }
+    window._prevManaMap[h.id] = h.mana;
+  }
 
   // ─── FLOATING GOLD NUMBERS ─────────────────────────────────
   if (!window._prevGoldMap) window._prevGoldMap = {};

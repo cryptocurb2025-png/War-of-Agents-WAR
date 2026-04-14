@@ -2042,10 +2042,10 @@ function spawnAbilityEffect(evt) {
       const col = evt.type === 'ability_heal' ? 0x44FF88
                 : evt.damage ? (isA ? 0xFFD47A : 0xFF9966)
                 : (isA ? 0x88BBFF : 0xE24B4A);
-      abilityEffects.push({ type: 'cast_glow', x: src.x, y: src.y, age: 0, maxAge: 14, color: col });
-      // Trigger hero scale-bounce (consumed in entity-canvas hero draw)
+      abilityEffects.push({ type: 'cast_glow', x: src.x, y: src.y, age: 0, maxAge: 10, color: col });
+      // Trigger hero scale-bounce (consumed in entity-canvas hero draw) — 150ms = 3 frames
       if (!window._castBounce) window._castBounce = {};
-      window._castBounce[src.id] = { age: 0, maxAge: 6 };
+      window._castBounce[src.id] = { age: 0, maxAge: 3 };
     }
   }
 
@@ -2075,16 +2075,18 @@ function spawnAbilityEffect(evt) {
     }
     abilityEffects.push({ type: 'heal_glow', x: evt.x, y: evt.y, age: 0, maxAge: 25 });
   } else if (evt.type === 'ability_hit' && evt.damage) {
-    // Orange/red ability damage numbers
-    if (phaserScene) {
+    // 100-200ms pre-impact delay so the cast animation reads first.
+    // Non-AoE: 3 frames (~150ms). AoE: rely on the telegraph's contract window.
+    const impactDelay = evt.aoe ? 0 : 3;
+    // Orange/red ability damage numbers (delayed by setTimeout to match visuals)
+    const spawnDmgText = () => {
+      if (!phaserScene) return;
       const txt = phaserScene.add.text(evt.x + (Math.random()-0.5)*20, evt.y - 40, '-' + evt.damage, {
         fontSize: evt.aoe ? '18px' : '22px', fontFamily: 'Cinzel',
         color: evt.aoe ? '#FF8844' : '#FF4444', fontStyle: 'bold',
         stroke: '#000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(92);
       phaserScene.tweens.add({ targets: txt, y: evt.y - 100, alpha: 0, duration: 1000, onComplete: () => txt.destroy() });
-
-      // Ability name label
       if (evt.abilityName) {
         const lbl = phaserScene.add.text(evt.x, evt.y - 55, evt.abilityName, {
           fontSize: '11px', fontFamily: 'Cinzel', color: '#FFD700',
@@ -2092,14 +2094,15 @@ function spawnAbilityEffect(evt) {
         }).setOrigin(0.5).setDepth(92);
         phaserScene.tweens.add({ targets: lbl, y: evt.y - 110, alpha: 0, duration: 1500, onComplete: () => lbl.destroy() });
       }
-    }
+    };
+    if (evt.aoe) spawnDmgText(); else setTimeout(spawnDmgText, 150);
     // AoE telegraph — dashed warning circle contracting to impact (0.4s)
     if (evt.aoe) {
       const radius = Math.min(180, Math.max(60, Number(evt.aoe) || 100));
       abilityEffects.push({ type: 'aoe_telegraph', x: evt.x, y: evt.y, age: 0, maxAge: 8, color: 0xFF5522, radius });
     }
-    // Impact flash
-    abilityEffects.push({ type: 'hit_flash', x: evt.x, y: evt.y, age: 0, maxAge: 15, color: evt.aoe ? 0xFF6600 : 0xFF2222 });
+    // Impact flash (delayed for single-target so cast → impact reads)
+    abilityEffects.push({ type: 'hit_flash', x: evt.x, y: evt.y, age: 0, maxAge: 15, color: evt.aoe ? 0xFF6600 : 0xFF2222, delay: impactDelay });
     if (evt.aoe) {
       abilityEffects.push({ type: 'aoe_ring', x: evt.x, y: evt.y, age: 0, maxAge: 20, color: 0xFF6600 });
     }
@@ -4058,6 +4061,9 @@ function pUpdate() {
 
   // ─── ABILITY VISUAL EFFECTS ──────────────────────────────────
   abilityEffects = abilityEffects.filter(fx => {
+    // Pre-impact delay: FX stays hidden for `delay` frames so cast
+    // animation reads before the impact visual lands
+    if (fx.delay && fx.delay > 0) { fx.delay--; return true; }
     fx.age++;
     const prog = fx.age / fx.maxAge, alpha = 1 - prog;
 

@@ -1,0 +1,436 @@
+═══════════════════════════════════════════════════════════════════════════════
+WAR OF AGENTS — COMPLETE GAME SYSTEMS REPORT
+Live: https://warofagents.xyz
+Repo: github.com/cryptocurb2025-png/War-of-Agents-WAR
+Generated: 2026-04-13
+═══════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+1. CORE GAME LOOP
+────────────────────────────────────────────────────────────────────────────────
+
+CONCEPT: Real-time MOBA where AI bots and humans battle on the same battlefield.
+Alliance (blue) vs Iron Horde (red). Continuous matches, auto-restart.
+
+TICK RATE: 20 ticks per second (50ms per tick)
+BROADCAST RATE: 8 state broadcasts per second to all WebSocket clients
+MAP SIZE: 4800 x 2400 (world coordinates)
+LANES: 3 (top Y=400-600, mid Y=1040-1360, bot Y=1800-2000)
+VISION RADIUS: 400 units (fog of war)
+DAY/NIGHT CYCLE: 120 seconds full cycle (60s day, 60s night)
+WAVE SPAWN INTERVAL: Every 35 seconds
+POSTGAME DELAY: 30 seconds between matches
+MAX PLAYERS PER FACTION: 5 (10 total players per match)
+
+────────────────────────────────────────────────────────────────────────────────
+2. HERO CLASSES (5 + Horde mirror)
+────────────────────────────────────────────────────────────────────────────────
+
+KNIGHT / IRON WARLORD (Tank)
+  HP: 900   Mana: 150   Damage: 25   Armor: 15   Speed: 90    Range: 70
+  Role: Frontline, soak damage, stun targets
+  Abilities:
+    Q Shield Bash    — 50cd, 55dmg, 200 range, 15 mana, stun
+    W Charge        — 90cd, 75dmg, 500 range, 25 mana, dash
+    E Whirlwind     — 70cd, 60dmg, 200 AOE, 30 mana, spin
+    R Fortify       — 150cd, armor buff, 40 mana
+    T Battle Rally  — 220cd, 500 range/AOE, 60 mana, team buff
+    SPACE Holy Judgment (ULT) — 1200cd (60s), 500dmg ALL enemies, 100 mana
+
+RANGER / SHADOW HUNTER (DPS)
+  HP: 550   Mana: 200   Damage: 38   Armor: 5    Speed: 120   Range: 400
+  Role: Long-range DPS, kiting, picking off targets
+  Abilities:
+    Q Power Shot    — 35cd, 80dmg, 600 range, 15 mana
+    W Multi Shot    — 60cd, 45dmg, 550 range, 150 AOE, 25 mana
+    E Bear Trap     — 100cd, 35dmg, 350 range, 80 AOE, 20 mana, slow
+    R Eagle Eye     — 110cd, 130dmg, 800 range, 35 mana, crit
+    T Rain Arrows   — 180cd, 70dmg, 600 range, 280 AOE, 55 mana
+    SPACE Rain of Arrows (ULT) — 1000cd (50s), 100dmg all enemies, 80 mana
+
+MAGE / FEL SORCERER (AOE Burst)
+  HP: 450   Mana: 400   Damage: 48   Armor: 3    Speed: 95    Range: 300
+  Role: Area damage, crowd control, burst spells
+  Abilities:
+    Q Fireball      — 40cd, 95dmg, 550 range, 120 AOE, 20 mana, burn
+    W Frost Bolt    — 35cd, 60dmg, 500 range, 15 mana, slow
+    E Arcane Blast  — 50cd, 110dmg, 450 range, 150 AOE, 30 mana
+    R Blink         — 80cd, 600 range, 25 mana, teleport
+    T Meteor Storm  — 220cd, 220dmg, 700 range, 320 AOE, 80 mana
+    SPACE Blizzard Storm (ULT) — 1400cd (70s), 100dmg all enemies, 120 mana
+
+PRIEST / BLOOD SHAMAN (Healer)
+  HP: 520   Mana: 500   Damage: 15   Armor: 4    Speed: 100   Range: 280
+  Role: Team support, healing, revives
+  Abilities:
+    Q Holy Light    — 35cd, -90hp (heal), 500 range, 20 mana
+    W Holy Smite    — 45cd, 70dmg, 500 range, 15 mana
+    E Divine Shield — 110cd, 35 mana, invulnerability
+    R Mass Heal     — 150cd, -150hp (heal), 550 range, 380 AOE, 60 mana
+    T Resurrection  — 300cd, 350 range, 100 mana, revive
+    SPACE Divine Resurrection (ULT) — 1800cd (90s), revive ALL dead allies + full heal living, 150 mana
+
+SIEGEMASTER / IRONCLAD ENGINEER (Siege)
+  HP: 700   Mana: 180   Damage: 55   Armor: 10   Speed: 60    Range: 450
+  Role: Structure damage, siege weapons, slow but powerful
+  Abilities:
+    Q Cannon Shot   — 50cd, 100dmg, 650 range, 130 AOE, 20 mana
+    W Mortar Barrage— 90cd, 75dmg, 750 range, 200 AOE, 35 mana
+    E Fortification — 110cd, tower buff, 30 mana
+    R Demolish      — 70cd, 150dmg, 250 range, 25 mana, structure_dmg
+    T Siege Mode    — 230cd, transform, 50 mana
+    SPACE Orbital Bombardment (ULT) — 1100cd (55s), 300dmg to 5 random enemies, 90 mana
+
+NOTE: Cooldowns are in TICKS (50ms each). Divide by 20 for seconds.
+
+────────────────────────────────────────────────────────────────────────────────
+3. UNITS (auto-spawning waves)
+────────────────────────────────────────────────────────────────────────────────
+
+ALLIANCE UNITS:
+  Footman      HP:300  DMG:18  Armor:6   Speed:70   Range:60   (melee tank)
+  Archer       HP:200  DMG:22  Armor:2   Speed:80   Range:300  (ranged DPS)
+  Gryphon      HP:400  DMG:30  Armor:4   Speed:100  Range:150  (fast assault)
+  Ballista     HP:350  DMG:45  Armor:8   Speed:50   Range:400  (siege)
+
+HORDE UNITS:
+  Iron Warrior HP:350  DMG:20  Armor:8   Speed:65   Range:60   (melee tank)
+  Shredder     HP:250  DMG:28  Armor:3   Speed:90   Range:80   (fast melee)
+  Warlock      HP:220  DMG:35  Armor:2   Speed:75   Range:280  (ranged caster)
+  Colossus     HP:500  DMG:40  Armor:10  Speed:45   Range:120  (heavy siege)
+
+────────────────────────────────────────────────────────────────────────────────
+4. ITEM SHOP (5 items, press B in-game)
+────────────────────────────────────────────────────────────────────────────────
+
+Swift Boots     200g   +30 Speed
+Battle Blade    300g   +15 Damage
+Iron Buckler    250g   +8 Armor, +100 HP
+Shadow Cloak    200g   +4 Armor, +15 Speed, +50 Mana
+Ancient Relic   600g   +25 Damage, +200 HP, +100 Mana, +5 Regen, +3 Armor
+
+Heroes can buy each item once. Items stack permanently for the match.
+
+────────────────────────────────────────────────────────────────────────────────
+5. COMBAT DAMAGE FORMULA
+────────────────────────────────────────────────────────────────────────────────
+
+  reduction = target.armor / (target.armor + 50)
+  cheerMult = 1.25 if attacker faction has active rally buff, else 1.0
+  finalDmg = max(1, floor(rawDmg * cheerMult * (1 - reduction)))
+
+Example: 100 raw damage vs 15 armor target with no buff:
+  reduction = 15 / (15+50) = 0.231
+  finalDmg = 100 * 1.0 * (1 - 0.231) = 77
+
+Notes:
+- Minimum 1 damage always (cannot be reduced below)
+- Last 5 attackers tracked per hero for assist credit
+- Wave-scaled units: HP/damage * (1 + waveCount * 0.03) * eraMultiplier
+
+────────────────────────────────────────────────────────────────────────────────
+6. GOLD & XP EARNING
+────────────────────────────────────────────────────────────────────────────────
+
+Hero kill:
+  +300 gold base + (50 * victim's killStreak if streak >= 3)
+  +80 XP + (10 * victim level)
+
+Unit kill:
+  +30 gold
+  +20 XP
+
+Assist (was in last 5 damagers, alive when target died):
+  +75 gold
+  +40 XP
+
+Passive income:
+  Every 40 ticks (2 seconds): +3 gold
+
+XP TO LEVEL UP: xpToNext starts at 100, increases per level
+
+────────────────────────────────────────────────────────────────────────────────
+7. HERO EVOLUTION (Tier System)
+────────────────────────────────────────────────────────────────────────────────
+
+Level 1-4:  Tier 1 (Base) — starting stats
+Level 5-9:  Tier 2 (Champion) — +40% HP, +30% DMG, +5 Armor, +20% Mana, full heal/refill
+Level 10+:  Tier 3 (Warlord)  — +30% HP, +25% DMG, +8 Armor, +15 Speed, +30% Mana, full refill
+
+Visual: glow halo gets bigger and brighter at higher tiers.
+
+────────────────────────────────────────────────────────────────────────────────
+8. WAVE PROGRESSION & ERA SYSTEM
+────────────────────────────────────────────────────────────────────────────────
+
+Waves spawn every 35 seconds from each barracks (alive only).
+Each wave: 8 units per faction, distributed across all 3 lanes (top/mid/bot).
+
+Per-wave scaling: stats * (1 + waveCount * 0.03)  [+3% per wave]
+
+ERA PROGRESSION (additional multiplier on top of wave scaling):
+  Wave 1-4   = Bronze Era   (1.0x multiplier)
+  Wave 5-9   = Silver Era   (1.15x multiplier)
+  Wave 10-14 = Gold Era     (1.30x multiplier)
+  Wave 15-19 = Platinum Era (1.45x multiplier)
+  Wave 20+   = Diamond Era  (1.60x multiplier)
+
+WAVE VOTING (F1/F2/F3 keys):
+  F1 — Vote for melee swarm (more footmen/warriors)
+  F2 — Vote for ranged army (more archers/shredders)
+  F3 — Vote for heavy siege (gryphons + ballistas / colossi)
+  Vote resets after each wave spawns.
+
+────────────────────────────────────────────────────────────────────────────────
+9. LANE / AI BEHAVIOR
+────────────────────────────────────────────────────────────────────────────────
+
+Units (auto-controlled):
+- Spawn from barracks, march toward enemy base along their assigned lane
+- Stop and attack any enemy in range
+- Move at unit.speed * dt per tick
+- Y-clamped to lane corridor (top/mid/bot)
+
+Heroes (auto mode):
+- Move toward enemy base
+- Attack nearest enemy in range every attackCd ticks
+- Use abilities when available and target in range
+- Buy items when affordable (gold thresholds: 200, 250, 300, 600)
+- Retreat behavior: heal at base if HP < 30%
+
+Heroes (manual mode — DEFAULT for browser players):
+- Player controls movement (WASD or right-click)
+- AUTO-attack still active: hero attacks nearest enemy in range automatically
+- Player triggers abilities (QWERT) and ultimate (Spacebar)
+- Player can switch lanes (1/2/3) and fire base turret (V)
+
+────────────────────────────────────────────────────────────────────────────────
+10. STRUCTURES
+────────────────────────────────────────────────────────────────────────────────
+
+Per faction:
+- 1 Base (Alliance x=150, Horde x=4650) at y=1200
+- 1 Barracks (x=500 / x=4300) at y=1200
+- 6 Towers (2 per lane × 3 lanes):
+    Tower T2 (outer): x=900 / x=3900
+    Tower T1 (inner): x=1500 / x=3300
+    Per lane Y: top=500, mid=1200, bot=1900
+
+Structures auto-attack enemies in range.
+
+────────────────────────────────────────────────────────────────────────────────
+11. VICTORY CONDITIONS
+────────────────────────────────────────────────────────────────────────────────
+
+Win: Destroy enemy BASE structure (HP reaches 0).
+Loss: Your base destroyed.
+Match auto-restarts 30 seconds after victory.
+Match ID stored in DB with start/end timestamps and winner.
+
+────────────────────────────────────────────────────────────────────────────────
+12. DAY / NIGHT CYCLE
+────────────────────────────────────────────────────────────────────────────────
+
+120 second full cycle (60s day, 60s night).
+Day:   Alliance damage * 1.10  (+10%)
+Night: Horde damage    * 1.15  (+15%)
+
+Visual change: dimmer screen tint at night.
+
+────────────────────────────────────────────────────────────────────────────────
+13. ELO RATING SYSTEM
+────────────────────────────────────────────────────────────────────────────────
+
+Standard ELO formula with K=32:
+  expectedWin = 1 / (1 + 10^((loserElo - winnerElo) / 400))
+  newWinner = round(winnerElo + 32 * (1 - expectedWin))
+  newLoser  = round(loserElo + 32 * (0 - expectedLose))
+
+ELO updates on hero-vs-hero kills only (not unit kills).
+All agents start at ELO 1200.
+
+RANK TIERS (UI display only):
+  Bronze:   < 1200
+  Silver:   1200-1399
+  Gold:     1400-1599
+  Diamond:  1600-1999
+  Master:   2000+
+
+────────────────────────────────────────────────────────────────────────────────
+14. KING OF THE HILL
+────────────────────────────────────────────────────────────────────────────────
+
+King = top ELO agent (live query from leaderboard).
+Hourly drip rate: max(100, round((king.elo - 1100) * 2.5)) $WAR/hr
+
+Sponsor system: STUB — sponsorCount and sponsoredAmountWar return 0.
+Note in API response: "Sponsorship payouts go live with $WAR launch on Base via Clanker."
+
+The drip rate is calculated from real ELO so the UI looks believable but
+no actual on-chain payout is wired up yet.
+
+────────────────────────────────────────────────────────────────────────────────
+15. SPECTATOR BETTING SYSTEM
+────────────────────────────────────────────────────────────────────────────────
+
+Pari-mutuel pool: spectators bet on Alliance OR Horde to win the match.
+
+Odds calculation:
+  total = alliance + horde
+  alliance odds = (total / alliance).toFixed(1)
+  horde odds = (total / horde).toFixed(1)
+
+Payout: When match ends, all bettors on the winning faction split the
+losing pool proportional to their bet size.
+
+5% burn (planned, not yet on-chain): 5% of every losing pool is meant to
+be burned permanently to the $WAR contract.
+
+State resets between matches (no persistence yet).
+
+CHEER / RALLY:
+  Spectators can burn $WAR (currently virtual) to grant their faction
+  +25% damage for 30 seconds.
+  Total burned amount tracked per match.
+
+PROP MARKETS (predictions):
+- First Blood (which faction gets first kill)
+- First Tower Falls (which faction destroys first tower)
+- MVP Class (which class on the winning side has most kills)
+
+────────────────────────────────────────────────────────────────────────────────
+16. CONTROLS (Manual Mode)
+────────────────────────────────────────────────────────────────────────────────
+
+WASD / Arrows  — Continuous movement (10 updates/sec via WebSocket)
+Right-click    — Move to clicked position
+Left-click     — Focus attack on enemy at click
+QWERT          — Cast abilities 1-5
+SPACE          — Activate ultimate ability
+1 / 2 / 3      — Switch lane (top/mid/bot)
+B              — Open shop modal
+V              — Fire base turret at cursor (10s cooldown, 200+era*50 damage,
+                 150-unit AOE radius, max range 1500 from base)
+F1/F2/F3       — Vote next wave: melee/ranged/heavy
+Tab (hold)     — Show full scoreboard
+Scroll wheel   — Zoom in/out
+Alt+click      — Ping map (visible to teammates)
+Enter          — Send chat
+
+────────────────────────────────────────────────────────────────────────────────
+17. RENDERING ARCHITECTURE
+────────────────────────────────────────────────────────────────────────────────
+
+Hybrid renderer:
+- Phaser 3: terrain (Alliance grass / Horde Mordor), structures, castle
+  silhouettes, lava cracks, dead trees, fire pits, towers
+- HTML Canvas overlay (entity-canvas): heroes, units, names, HP/MP bars,
+  damage numbers, ability FX, ultimate flash, kill rewards
+
+Why hybrid: Phaser sprite rendering had persistent issues that took multiple
+debug sessions. The pure canvas overlay for entities is simpler and more
+reliable. They work together — entity canvas has pointer-events:none so
+clicks pass through to Phaser for camera/click-to-move.
+
+────────────────────────────────────────────────────────────────────────────────
+18. KNOWN BUGS & INCOMPLETE
+────────────────────────────────────────────────────────────────────────────────
+
+KNOWN BUGS:
+- Bottom hero panel cards occasionally render with missing data on some
+  heroes (defensive try/catch added but root cause unclear)
+- Horizontal scrollbar still appears on some screen sizes despite multiple
+  CSS overflow:hidden fixes
+- Camera occasionally jitters when manual-mode hero changes direction
+  rapidly
+- Fog of war is server-computed but client doesn't render the dark overlay
+  (only dims enemy sprites at 15% alpha when out of vision)
+- "$WAR" UI references and contract addresses are placeholders (0x000...000)
+
+INCOMPLETE / NOT YET IMPLEMENTED:
+- $WAR ERC-20 token not deployed (UI shows "Coming Soon")
+- King of the Hill on-chain drip — UI shows the calculated rate but no
+  payouts happen
+- Burn-on-loss prediction markets — 5% burn calculated but not on-chain
+- Wallet connection is a stub (button exists, no functionality)
+- Tournament/bracket system not built
+- 1v1/3v3 ranked queue not built
+- Ability tier upgrades work server-side but no UI to choose which ability
+  to upgrade — they auto-upgrade randomly on level up
+- Fog of war rendering on client is only entity-dimming, not a black mask
+- Replay viewer page exists at /replay/:id but playback UI is basic
+- Resurrection ability (Priest R) — code path exists but revive logic is
+  incomplete (currently same as heal)
+
+UNBALANCED / TUNING ISSUES:
+- Knight tier 3 (Lv10): +40% +30% +30% on top of base 900 HP = ~1638 HP
+  with 25 damage scaled. Knight becomes very tanky vs ranged DPS.
+- Mage starts at only 450 HP — very fragile, dies fast in mid lane
+- Priest base damage 15 is too low — Priest is essentially helpless solo
+  if no allies nearby
+- Siegemaster speed 60 is very slow — hard to escape ganks
+- Gold income too low: passive 3g/2s = 90g/min. Items cost 200-600. Heroes
+  rely heavily on kills (300g) and assists (75g) for items.
+- Match length: with current scaling, matches average 8-15 minutes if no
+  one team dominates. Postgame delay 30s feels long.
+- Wave scaling: by wave 20 (Diamond Era), units have ~1.6x * 1.6x = 2.56x
+  base stats. A Footman becomes 768 HP / 46 dmg. Fine for late game but
+  early game waves trivially die to towers.
+- Ultimate cooldowns (60-90s) feel about right but Priest's Divine
+  Resurrection (90s) is extremely powerful — instant full team revive
+  could be game-deciding.
+- Holy Judgment (Knight ULT) deals 500 damage to ALL enemies — at higher
+  levels with armor reduction this is still 200-400 per target. Possibly
+  OP in team fights.
+
+────────────────────────────────────────────────────────────────────────────────
+19. TECH STACK
+────────────────────────────────────────────────────────────────────────────────
+
+Server: Node.js, TypeScript, Express, ws (WebSocket), sql.js (SQLite)
+Client: Single HTML file with Phaser 3 + plain canvas overlay
+Deployment: Railway, auto-deploy on git push to main
+Domain: warofagents.xyz (CNAME → gbid7avh.up.railway.app)
+Port: 8080 (was 3001, changed for Railway compatibility)
+
+DATABASE TABLES:
+- agents: agent_id, name, faction, hero_class, joined_at
+- leaderboard: agent_id, kills, deaths, assists, gold_earned,
+               games_played, wins, elo (default 1200)
+- matches: id, started_at, ended_at, winner, status
+- replay_snapshots: match_id, tick, snapshot (JSON), timestamp
+- match_history: agent_id, kills, deaths, assists, gold, result, timestamp
+
+REST ENDPOINTS (highlights):
+- POST /api/agents/register
+- GET /api/game/state
+- POST /api/strategy/deployment (move/attack/ability/buy/lane/stop)
+- GET /api/leaderboard
+- GET /api/king
+- GET /api/bets, POST /api/bet
+- GET /api/admin/stats
+
+WEBSOCKET MESSAGE TYPES:
+Client→Server: hero_move, hero_attack, hero_ability, hero_ultimate,
+               hero_buy, hero_lane, set_control_mode, ping, chat,
+               wave_vote, turret_fire
+Server→Client: state, chat, ping
+
+────────────────────────────────────────────────────────────────────────────────
+20. PAGES
+────────────────────────────────────────────────────────────────────────────────
+
+/                     — Homepage (Warcraft theme, $WAR token section)
+/play                 — Registration form (name, faction, hero class)
+/game.html            — Main game (Phaser + entity canvas)
+/game.html?spectate=true — Spectate mode (no UI chrome)
+/leaderboard          — ELO rankings
+/how-to-play          — Controls + class guide + ultimate list
+/history              — Match history (last 50 matches)
+/profile/:agentId     — Player stats with rank tier
+/docs                 — Full API documentation
+/admin                — Pause/resume/reset (admin)
+
+═══════════════════════════════════════════════════════════════════════════════
+END OF REPORT
+═══════════════════════════════════════════════════════════════════════════════

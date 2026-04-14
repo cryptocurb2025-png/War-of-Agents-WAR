@@ -6225,16 +6225,21 @@ function updatePlayerControls() {
   };
 
   // Floating damage numbers
-  const _dmgFloats = []; // {x, y, text, color, age}
-  const _goldParticles = []; // {x, y, vx, vy, age, maxAge}
-  const _abilityFX = []; // {x, y, type, color, age, maxAge}
+  const _dmgFloats = []; // {x, y, dmg, kind, age, bounce}
+  const _goldParticles = [];
+  const _abilityFX = [];
 
   // Screen shake
   let _shakeX = 0, _shakeY = 0, _shakeTimer = 0;
   function triggerEntityShake(amount) { _shakeTimer = Math.max(_shakeTimer, 10); _shakeX = Math.max(_shakeX, amount); _shakeY = Math.max(_shakeY, amount); }
 
-  // Damage flash
-  const _dmgFlash = {}; // entityId -> frames remaining
+  // Combat clarity systems
+  const _dmgFlash = {};       // entityId → red flash frames (existing)
+  const _hitFlash = {};       // entityId → white flash frames (new)
+  const _hpDisplay = {};      // entityId → animated HP %
+  const _hpBarFlash = {};     // entityId → yellow bar flash frames
+  const _lastHpPct = {};      // entityId → previous HP % for damage detection
+  const _hitParticles = [];   // {x, y, vx, vy, age, maxAge, color}
 
   // Level-up effects
   const _prevLevels = {};
@@ -6277,12 +6282,24 @@ function updatePlayerControls() {
       const prev = window._prevEntityHP[e.id];
       if (prev !== undefined && e.hp < prev) {
         const dmg = prev - e.hp;
-        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, text: '-' + dmg, color: '#FF4444', age: 0 });
-        _dmgFlash[e.id] = 4; // flash for 4 frames
+        const isCrit = dmg > (e.maxHp || 100) * 0.15;
+        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, dmg, kind: isCrit ? 'crit' : 'normal', age: 0, bounce: isCrit ? 8 : 0 });
+        _dmgFlash[e.id] = 4;
+        _hitFlash[e.id] = 2;          // white sprite flash on hit
+        _hpBarFlash[e.id] = 3;        // yellow HP bar flash (150ms)
+        // Hit particle burst (6 particles)
+        const myF = localStorage.getItem('woa_faction');
+        const isAlly = e.faction === myF;
+        const partColor = isAlly ? '#88CCFF' : '#FFAA88';
+        for (let i = 0; i < 6; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = 2 + Math.random() * 2;
+          _hitParticles.push({ x: e.x * scaleX, y: e.y * scaleY, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 1, age: 0, maxAge: 10, color: partColor });
+        }
         if (playerAgentId && e.agentId === playerAgentId) triggerEntityShake(3);
       } else if (prev !== undefined && e.hp > prev && e.alive) {
         const heal = e.hp - prev;
-        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, text: '+' + heal, color: '#44FF44', age: 0 });
+        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, dmg: heal, kind: 'heal', age: 0, bounce: 0 });
       }
       // Gold burst when entity dies
       if (e.hp <= 0 && prev > 0) {
@@ -6294,7 +6311,7 @@ function updatePlayerControls() {
           });
         }
         // Show +GOLD text
-        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 30, text: '+GOLD', color: '#FFD700', age: 0 });
+        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 30, kind: 'gold', text: '+GOLD', age: 0, bounce: 0 });
       }
       window._prevEntityHP[e.id] = e.hp;
     }
@@ -6427,10 +6444,14 @@ function updatePlayerControls() {
       const isMine = playerAgentId && hero.agentId === playerAgentId;
       const s = (1 + (hero.level - 1) * 0.05) * Math.max(scaleX / 0.15, 0.6); // 5% bigger per level
 
-      // Player hero glow — tiny marker dot at feet
+      // Player hero — gold pulse ring at feet
       if (isMine) {
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
-        ctx.beginPath(); ctx.arc(x, y + 14*s, 3, 0, Math.PI * 2); ctx.fill();
+        const pulse = 0.4 + Math.sin(Date.now() * 0.005) * 0.25;
+        ctx.fillStyle = `rgba(255, 215, 0, ${0.15 + pulse * 0.1})`;
+        ctx.beginPath(); ctx.arc(x, y + 14*s, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = `rgba(255, 215, 0, ${pulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(x, y + 14*s, 8 + pulse * 2, 0, Math.PI * 2); ctx.stroke();
       }
 
       // ── Draw character sprite based on class ──
@@ -6543,7 +6564,23 @@ function updatePlayerControls() {
       }
       ctx.restore();
 
-      // Damage flash overlay
+      // Team outline (ally green / enemy red, not for player)
+      if (!isMine) {
+        const myF = localStorage.getItem('woa_faction') || 'alliance';
+        const isAlly = hero.faction === myF;
+        ctx.strokeStyle = isAlly ? 'rgba(68,204,102,0.6)' : 'rgba(255,68,68,0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x - 12*s, y - 18*s, 24*s, 36*s);
+      }
+
+      // White hit flash (separate from red damage flash)
+      if (_hitFlash[hero.id] > 0) {
+        ctx.fillStyle = `rgba(255,255,255,${_hitFlash[hero.id] / 3 * 0.5})`;
+        ctx.fillRect(x - 12*s, y - 18*s, 24*s, 36*s);
+        _hitFlash[hero.id]--;
+      }
+
+      // Damage flash overlay (red)
       if (_dmgFlash[hero.id] > 0) {
         _dmgFlash[hero.id]--;
         ctx.fillStyle = 'rgba(255,0,0,0.3)';
@@ -6587,17 +6624,35 @@ function updatePlayerControls() {
       // Level badge (small)
       ctx.fillStyle = '#C8960C'; ctx.font = '9px sans-serif';
       ctx.textBaseline = 'top'; ctx.fillText('Lv' + hero.level, x, y + 16*s + 2);
-      // HP bar (compact)
+      // HP bar — 2x thicker (6px), smooth lerp animation, yellow flash on damage
       const hpPct = hero.hp / hero.maxHp;
-      const barW = Math.max(18, 16*s);
-      ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, y+16*s+12, barW, 3);
+      const barW = Math.max(22, 18*s);
+      const barY = y + 16*s + 12;
+      const H = 6;
+      // Smooth lerp the displayed HP toward the actual
+      const lastDisp = _hpDisplay[hero.id] ?? hpPct;
+      _hpDisplay[hero.id] = lastDisp + (hpPct - lastDisp) * 0.15;
+      const dispPct = _hpDisplay[hero.id];
+      // bg
+      ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, barY, barW, H);
+      // damage trail (yellow) — when displayed > actual
+      if (dispPct > hpPct + 0.005) {
+        ctx.fillStyle = '#FFCC44'; ctx.fillRect(x-barW/2, barY, barW * dispPct, H);
+      }
+      // current HP
       ctx.fillStyle = hpPct > 0.5 ? '#44CC44' : hpPct > 0.25 ? '#CCAA22' : '#CC3322';
-      ctx.fillRect(x-barW/2, y+16*s+12, barW*hpPct, 3);
-      // MP bar
+      ctx.fillRect(x-barW/2, barY, barW * hpPct, H);
+      // damage flash overlay
+      if (_hpBarFlash[hero.id] > 0) {
+        ctx.fillStyle = `rgba(255,255,100,${_hpBarFlash[hero.id]/3 * 0.7})`;
+        ctx.fillRect(x-barW/2, barY, barW, H);
+        _hpBarFlash[hero.id]--;
+      }
+      // MP bar (also slightly thicker)
       if (hero.maxMana > 0) {
         const mpPct = hero.mana / hero.maxMana;
-        ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, y+16*s+16, barW, 2);
-        ctx.fillStyle = '#4488EE'; ctx.fillRect(x-barW/2, y+16*s+16, barW*mpPct, 2);
+        ctx.fillStyle = '#0A0A0A'; ctx.fillRect(x-barW/2, barY+H+1, barW, 3);
+        ctx.fillStyle = '#4488EE'; ctx.fillRect(x-barW/2, barY+H+1, barW*mpPct, 3);
       }
       // Kill streak (small)
       if (hero.killStreak >= 3) {
@@ -6652,27 +6707,82 @@ function updatePlayerControls() {
       ctx.fillText((hero.displayName || hero.heroClass).substring(0, 8), x, y - 18*s);
     });
 
-    // ─── Floating damage/heal numbers ───────────────────────
+    // ─── Floating combat text (tiered: normal/crit/heal) ───
     for (let i = _dmgFloats.length - 1; i >= 0; i--) {
       const d = _dmgFloats[i];
       d.age++;
-      if (d.age > 30) { _dmgFloats.splice(i, 1); continue; } // 1.5 seconds at 20fps
-      const progress = d.age / 30;
-      ctx.globalAlpha = Math.min(1, 2 - progress * 2); // full opacity first half, fade second half
-      const isCrit = parseInt(d.text.replace(/[^0-9]/g, '')) > 80;
-      const isHeal = d.text.startsWith('+');
-      ctx.fillStyle = isCrit ? '#FFD700' : d.color;
-      ctx.font = `bold ${isCrit ? 18 : (isHeal ? 13 : 15)}px sans-serif`;
+      if (d.age > 12) { _dmgFloats.splice(i, 1); continue; } // 0.6s at 20fps
+      const p = d.age / 12;
+      ctx.globalAlpha = Math.min(1, 1.5 - p * 1.5);
+      const yOff = -p * 30 - (d.bounce || 0) * Math.sin(p * Math.PI);
+      let text, fillColor, font;
+      if (d.kind === 'crit') {
+        text = '-' + d.dmg; fillColor = '#FF3333';
+        font = 'bold 19px sans-serif';
+      } else if (d.kind === 'heal') {
+        text = '+' + d.dmg; fillColor = '#44FF66';
+        font = 'bold 13px sans-serif';
+      } else if (d.kind === 'gold') {
+        text = d.text || '+GOLD'; fillColor = '#FFD700';
+        font = 'bold 12px sans-serif';
+      } else {
+        text = '-' + d.dmg; fillColor = '#FFFFFF';
+        font = 'bold 13px sans-serif';
+      }
+      ctx.font = font;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      // Stroke for readability
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2;
-      ctx.strokeText(d.text, d.x, d.y - d.age * 1.2);
-      ctx.fillText(d.text, d.x, d.y - d.age * 1.2);
+      ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
+      ctx.strokeText(text, d.x, d.y + yOff);
+      ctx.fillStyle = fillColor;
+      ctx.fillText(text, d.x, d.y + yOff);
       ctx.globalAlpha = 1;
     }
     while (_dmgFloats.length > 60) _dmgFloats.shift();
+
+    // ─── Target line from player hero to nearest enemy ─────
+    if (playerAgentId && gameState && gameState.heroes) {
+      const myHero = gameState.heroes.find(h => h.agentId === playerAgentId && h.alive);
+      if (myHero) {
+        // Find nearest enemy in range
+        let target = null, bestD = (myHero.range || 300) + 50;
+        const myF = myHero.faction;
+        const checkList = [...(gameState.heroes || []), ...(gameState.units || []), ...(gameState.structures || [])];
+        for (const e of checkList) {
+          if (!e.alive || e.faction === myF) continue;
+          const dx = e.x - myHero.x, dy = e.y - myHero.y;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if (d < bestD) { bestD = d; target = e; }
+        }
+        if (target) {
+          const sx = myHero.x * scaleX, sy = myHero.y * scaleY;
+          const tx = target.x * scaleX, ty = target.y * scaleY;
+          ctx.strokeStyle = 'rgba(255,80,80,0.45)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(tx, ty); ctx.stroke();
+          ctx.setLineDash([]);
+          // Target ring
+          const ringPulse = 0.5 + Math.sin(Date.now() * 0.008) * 0.3;
+          ctx.strokeStyle = `rgba(255,80,80,${ringPulse})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(tx, ty, 14, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+    }
+
+    // ─── Hit particle bursts ────────────────────────────────
+    for (let i = _hitParticles.length - 1; i >= 0; i--) {
+      const p = _hitParticles[i];
+      p.x += p.vx; p.y += p.vy; p.vy += 0.3;
+      p.age++;
+      if (p.age > p.maxAge) { _hitParticles.splice(i, 1); continue; }
+      ctx.globalAlpha = 1 - p.age / p.maxAge;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    while (_hitParticles.length > 80) _hitParticles.shift();
 
     // Gold coin particles
     for (let i = _goldParticles.length - 1; i >= 0; i--) {

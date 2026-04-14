@@ -343,7 +343,9 @@ const DB_SCHEMA = `
   );
   CREATE TABLE IF NOT EXISTS agent_meta (
     agent_id TEXT PRIMARY KEY,
-    war_balance INTEGER DEFAULT 0,
+    war_balance INTEGER DEFAULT 0,      -- current spendable Reward Points (NOT a blockchain token)
+    lifetime_earned INTEGER DEFAULT 0,  -- cumulative Reward Points ever granted (for analytics)
+    lifetime_spent INTEGER DEFAULT 0,   -- cumulative Reward Points ever spent
     meta_dmg INTEGER DEFAULT 0,
     meta_hp INTEGER DEFAULT 0,
     meta_gold INTEGER DEFAULT 0,
@@ -400,7 +402,7 @@ function initStatements() {
   stmtGetMatches = prepareStmt(`SELECT * FROM matches ORDER BY started_at DESC LIMIT 50`);
   stmtGetReplaySnapshots = prepareStmt(`SELECT tick, snapshot, timestamp FROM replay_snapshots WHERE match_id=? ORDER BY tick ASC`);
   stmtGetMeta = prepareStmt(`SELECT * FROM agent_meta WHERE agent_id=?`);
-  stmtUpsertMeta = prepareStmt(`INSERT OR REPLACE INTO agent_meta (agent_id, war_balance, meta_dmg, meta_hp, meta_gold, meta_xp, unlocked_classes) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  stmtUpsertMeta = prepareStmt(`INSERT OR REPLACE INTO agent_meta (agent_id, war_balance, lifetime_earned, lifetime_spent, meta_dmg, meta_hp, meta_gold, meta_xp, unlocked_classes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   stmtUpsertMission = prepareStmt(`INSERT INTO missions (agent_id, mission_id, progress, target, completed, daily, assigned_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(agent_id, mission_id) DO UPDATE SET progress=excluded.progress, completed=excluded.completed, completed_at=excluded.completed_at`);
   stmtGetMissionsByAgent = prepareStmt(`SELECT mission_id, progress, target, completed, daily, assigned_at, completed_at FROM missions WHERE agent_id=?`);
   stmtDeleteDailyMissionsForAgent = prepareStmt(`DELETE FROM missions WHERE agent_id=? AND daily=1`);
@@ -436,7 +438,7 @@ function updateEloOnKill(killerAgentId: string, victimAgentId: string) {
 
 // ─── Meta Progression ───────────────────────────────────────────────────────
 // Persistent token-spend upgrades, hero unlocks, and per-match rerolls.
-// Balanced so active play generates ~10-80 $WAR/day from missions + wins;
+// Balanced so active play generates ~10-80 RP/day from missions + wins;
 // meaningful upgrades cost hundreds to thousands — net spend >> earn late.
 
 const META_STATS = ['dmg', 'hp', 'gold', 'xp'] as const;
@@ -460,9 +462,14 @@ const HERO_UNLOCK_COSTS: Record<HeroClass, number> = {
 // Reroll costs within a single match — escalates
 const REROLL_COSTS = [50, 100, 200]; // 1st / 2nd / 3rd; caps at 3 per run
 
+// MetaProfile.war_balance is "Reward Points" — an internal placeholder
+// balance. Not a blockchain token. No trading, no withdrawal. When RP
+// launches on-chain, this column becomes the initial off-chain snapshot.
 interface MetaProfile {
   agent_id: string;
   war_balance: number;
+  lifetime_earned: number;
+  lifetime_spent: number;
   meta_dmg: number;
   meta_hp: number;
   meta_gold: number;
@@ -472,17 +479,19 @@ interface MetaProfile {
 
 function getMeta(agentId: string): MetaProfile {
   if (!stmtGetMeta) {
-    return { agent_id: agentId, war_balance: 0, meta_dmg: 0, meta_hp: 0, meta_gold: 0, meta_xp: 0, unlocked_classes: ['knight', 'ranger'] };
+    return { agent_id: agentId, war_balance: 0, lifetime_earned: 0, lifetime_spent: 0, meta_dmg: 0, meta_hp: 0, meta_gold: 0, meta_xp: 0, unlocked_classes: ['knight', 'ranger'] };
   }
   const row = stmtGetMeta.get(agentId) as any;
   if (!row) {
-    const fresh: MetaProfile = { agent_id: agentId, war_balance: 0, meta_dmg: 0, meta_hp: 0, meta_gold: 0, meta_xp: 0, unlocked_classes: ['knight', 'ranger'] };
-    try { stmtUpsertMeta.run(agentId, 0, 0, 0, 0, 0, 'knight,ranger'); } catch {}
+    const fresh: MetaProfile = { agent_id: agentId, war_balance: 0, lifetime_earned: 0, lifetime_spent: 0, meta_dmg: 0, meta_hp: 0, meta_gold: 0, meta_xp: 0, unlocked_classes: ['knight', 'ranger'] };
+    try { stmtUpsertMeta.run(agentId, 0, 0, 0, 0, 0, 0, 0, 'knight,ranger'); } catch {}
     return fresh;
   }
   return {
     agent_id: row.agent_id,
     war_balance: row.war_balance || 0,
+    lifetime_earned: row.lifetime_earned || 0,
+    lifetime_spent: row.lifetime_spent || 0,
     meta_dmg: row.meta_dmg || 0,
     meta_hp: row.meta_hp || 0,
     meta_gold: row.meta_gold || 0,
@@ -494,7 +503,7 @@ function getMeta(agentId: string): MetaProfile {
 function saveMeta(m: MetaProfile) {
   if (!stmtUpsertMeta) return;
   try {
-    stmtUpsertMeta.run(m.agent_id, m.war_balance, m.meta_dmg, m.meta_hp, m.meta_gold, m.meta_xp, m.unlocked_classes.join(','));
+    stmtUpsertMeta.run(m.agent_id, m.war_balance, m.lifetime_earned, m.lifetime_spent, m.meta_dmg, m.meta_hp, m.meta_gold, m.meta_xp, m.unlocked_classes.join(','));
   } catch {}
 }
 
@@ -502,8 +511,18 @@ function grantWar(agentId: string, amount: number, reason: string) {
   if (!agentId || amount <= 0) return;
   const m = getMeta(agentId);
   m.war_balance += amount;
+  m.lifetime_earned += amount;
   saveMeta(m);
-  broadcastToAgent(agentId, { type: 'war_granted', amount, balance: m.war_balance, reason });
+  broadcastToAgent(agentId, { type: 'rp_granted', amount, balance: m.war_balance, lifetimeEarned: m.lifetime_earned, reason });
+}
+
+function spendWar(agentId: string, amount: number): boolean {
+  const m = getMeta(agentId);
+  if (m.war_balance < amount) return false;
+  m.war_balance -= amount;
+  m.lifetime_spent += amount;
+  saveMeta(m);
+  return true;
 }
 
 // Apply permanent meta bonuses to a hero at spawn time
@@ -534,7 +553,7 @@ interface MissionDef {
   target: number;
   rewardGold: number;
   rewardXp: number;
-  rewardToken?: number; // hook for future $WAR
+  rewardToken?: number; // hook for future RP
   difficulty: 'easy' | 'medium' | 'hard';
   category: 'session' | 'daily';
 }
@@ -543,7 +562,7 @@ interface MissionDef {
 //   easy   → base
 //   medium → 1.5x
 //   hard   → 2.25x
-// Daily missions additionally include a $WAR token amount.
+// Daily missions additionally include a RP token amount.
 const MISSION_DEFS: MissionDef[] = [
   // Session
   { id: 'first_blood',   label: 'First Blood',   description: 'Score the first hero kill',       target: 1,   rewardGold: 150, rewardXp: 60,  difficulty: 'easy',   category: 'session' },
@@ -684,7 +703,7 @@ function bumpMission(agentId: string | undefined, id: MissionKind, delta: number
       hero.gold += totalGold;
       (hero as any).xp = ((hero as any).xp || 0) + totalXp;
     }
-    // Mission $WAR reward — credits the persistent meta balance
+    // Mission RP reward — credits the persistent meta balance
     if (def.rewardToken && def.rewardToken > 0) {
       grantWar(agentId, def.rewardToken, `Mission: ${def.label}`);
     }
@@ -867,13 +886,13 @@ const bettingState: BettingState = {
 // ─── In-match prop markets (off-chain stub layer) ──────────────────────────
 // Each match has additional markets that resolve on specific in-game events.
 // These pools live in memory and "settle" symbolically — the on-chain payout
-// goes live with $WAR launch. The pools render in the spectator UI so the
+// goes live with RP launch. The pools render in the spectator UI so the
 // value prop is visible.
 interface PropMarket {
   id: string;
   label: string;
   options: string[];
-  pools: Record<string, number>; // option -> total $WAR staked
+  pools: Record<string, number>; // option -> total RP staked
   resolved: boolean;
   winner: string | null;
 }
@@ -888,11 +907,11 @@ function resetPropMarkets() {
 resetPropMarkets();
 
 // Cheer-to-burn buff state. Each cheer grants a 30-second damage+speed buff
-// to the receiving faction's heroes. The "burn" is symbolic until $WAR launches.
+// to the receiving faction's heroes. The "burn" is symbolic until RP launches.
 interface CheerBuff {
   faction: Faction;
   expiresAt: number;
-  totalBurned: number; // running total of $WAR burned via cheers (stub number)
+  totalBurned: number; // running total of RP burned via cheers (stub number)
 }
 const cheerBuffs: { alliance: CheerBuff | null; horde: CheerBuff | null } = {
   alliance: null,
@@ -1327,7 +1346,7 @@ function claimHeroSlot(agentId: string, name: string, faction: Faction, heroClas
   if (!bot) return null;
   state.heroes.delete(bot.id);
   const playerHero = createHero(faction, heroClass, agentId, 'mid', name);
-  applyMetaBonuses(playerHero, agentId); // permanent upgrades from $WAR spend
+  applyMetaBonuses(playerHero, agentId); // permanent upgrades from RP spend
   state.heroes.set(playerHero.id, playerHero);
   bumpHeartbeat(agentId);
   return playerHero;
@@ -1539,7 +1558,7 @@ function onKill(killerId: string, victim: Entity) {
         bumpMission(h.agentId, 'no_deaths', 1);
       }
     }
-    // $WAR victory bonus to every player on the winning faction
+    // RP victory bonus to every player on the winning faction
     for (const h of state.heroes.values()) {
       if (h.agentId && h.faction === state.winner) {
         grantWar(h.agentId, 50, 'Match victory');
@@ -2709,13 +2728,13 @@ app.post('/api/agents/register', (req, res) => {
   if (!['knight', 'ranger', 'mage', 'priest', 'siegemaster'].includes(heroClass)) {
     return res.status(400).json({ error: 'Invalid heroClass' });
   }
-  // Hero unlock gate — premium classes require $WAR via /api/meta/unlock_hero
+  // Hero unlock gate — premium classes require RP via /api/meta/unlock_hero
   {
     const meta = getMeta(agentId);
     if (!meta.unlocked_classes.includes(heroClass)) {
       const cost = HERO_UNLOCK_COSTS[heroClass as HeroClass];
       return res.status(402).json({
-        error: `Hero "${heroClass}" is locked. Unlock for ${cost} $WAR via POST /api/meta/unlock_hero.`,
+        error: `Hero "${heroClass}" is locked. Unlock for ${cost} RP via POST /api/meta/unlock_hero.`,
         locked: true, cost,
       });
     }
@@ -2963,8 +2982,8 @@ app.post('/api/props/bet', (req, res) => {
   res.json({ success: true, marketId, option, amount: amt, newTotal: market.pools[option] });
 });
 
-// Cheer-to-burn — pay $WAR to grant your faction a 30-second damage buff.
-// The "burn" is symbolic until $WAR launches; the in-game buff is real.
+// Cheer-to-burn — pay RP to grant your faction a 30-second damage buff.
+// The "burn" is symbolic until RP launches; the in-game buff is real.
 app.post('/api/cheer', (req, res) => {
   const { faction, amount } = req.body;
   if (!faction || !amount) return res.status(400).json({ error: 'faction and amount required' });
@@ -2988,7 +3007,7 @@ app.post('/api/cheer', (req, res) => {
     secondsRemaining: Math.ceil((expiresAt - Date.now()) / 1000),
     totalFactionBurned: totalBurned,
     totalWarBurned,
-    note: 'Burn is symbolic until $WAR launches via Clanker. The in-game damage buff is real.',
+    note: 'Burn is symbolic until RP launches via Clanker. The in-game damage buff is real.',
   });
 });
 
@@ -3009,7 +3028,7 @@ app.get('/api/cheer/status', (_req, res) => {
 
 // King of the Hill — top ELO agent. Stub hourly drip rate is shown so the
 // utility story is visible in-game even though the actual on-chain payout
-// will not be wired up until $WAR launches via Clanker.
+// will not be wired up until RP launches via Clanker.
 app.get('/api/king', (_req, res) => {
   const rows: any[] = stmtGetLeaderboard.all();
   if (!rows.length) {
@@ -3039,7 +3058,7 @@ app.get('/api/king', (_req, res) => {
     hourlyDripWar,
     sponsorCount: 0,
     sponsoredAmountWar: 0,
-    note: 'Sponsorship payouts go live with $WAR launch on Base via Clanker.',
+    note: 'Sponsorship payouts go live with RP launch on Base via Clanker.',
   });
 });
 
@@ -3065,13 +3084,19 @@ app.get('/api/shop', (_req, res) => {
 
 // ─── Betting API ──────────────────────────────────────────────────────────────
 // ─── Meta Progression Endpoints ──────────────────────────────────────────────
+// Reward Points (RP) profile — placeholder in-game currency.
+// NOT a blockchain token. No trading or withdrawal exposed.
 app.get('/api/meta/profile', (req, res) => {
   const agentId = String(req.query.agentId || '').trim();
   if (!agentId) return res.status(400).json({ error: 'agentId required' });
   const m = getMeta(agentId);
   res.json({
     agentId: m.agent_id,
-    warBalance: m.war_balance,
+    rewardPoints: {
+      balance: m.war_balance,
+      lifetimeEarned: m.lifetime_earned,
+      lifetimeSpent: m.lifetime_spent,
+    },
     stats: {
       dmg:  { level: m.meta_dmg,  bonusPct: Math.round(metaBonusPercent(m.meta_dmg) * 100),  nextCost: metaStatCost(m.meta_dmg) },
       hp:   { level: m.meta_hp,   bonusPct: Math.round(metaBonusPercent(m.meta_hp)  * 100),  nextCost: metaStatCost(m.meta_hp) },
@@ -3081,6 +3106,7 @@ app.get('/api/meta/profile', (req, res) => {
     unlockedClasses: m.unlocked_classes,
     unlockCosts: HERO_UNLOCK_COSTS,
     maxLevel: META_MAX_LEVEL,
+    disclaimer: 'Reward Points are an internal placeholder balance. Not a blockchain token. No trading or withdrawal.',
   });
 });
 
@@ -3094,10 +3120,13 @@ app.post('/api/meta/buy_stat', (req, res) => {
   const curr = m[key];
   if (curr >= META_MAX_LEVEL) return res.status(400).json({ error: 'Max level reached' });
   const cost = metaStatCost(curr);
-  if (m.war_balance < cost) return res.status(400).json({ error: `Need ${cost} $WAR (have ${m.war_balance})` });
-  m.war_balance -= cost;
-  m[key] = curr + 1;
-  saveMeta(m);
+  if (!spendWar(agentId, cost)) return res.status(400).json({ error: `Need ${cost} RP (have ${m.war_balance})` });
+  // Re-read after spend to sync level change
+  const m2 = getMeta(agentId);
+  m2[key] = curr + 1;
+  saveMeta(m2);
+  m.war_balance = m2.war_balance;
+  m[key] = m2[key];
   res.json({
     success: true, stat, newLevel: m[key],
     nextCost: metaStatCost(m[key]), warBalance: m.war_balance,
@@ -3119,11 +3148,11 @@ app.post('/api/meta/unlock_hero', (req, res) => {
     saveMeta(m);
     return res.json({ success: true, unlocked: m.unlocked_classes, warBalance: m.war_balance });
   }
-  if (m.war_balance < cost) return res.status(400).json({ error: `Need ${cost} $WAR (have ${m.war_balance})` });
-  m.war_balance -= cost;
-  m.unlocked_classes.push(heroClass);
-  saveMeta(m);
-  res.json({ success: true, unlocked: m.unlocked_classes, warBalance: m.war_balance, spent: cost });
+  if (!spendWar(agentId, cost)) return res.status(400).json({ error: `Need ${cost} RP (have ${m.war_balance})` });
+  const m2 = getMeta(agentId);
+  m2.unlocked_classes.push(heroClass);
+  saveMeta(m2);
+  res.json({ success: true, unlocked: m2.unlocked_classes, rewardBalance: m2.war_balance, spent: cost });
 });
 
 app.post('/api/meta/reroll_upgrade', (req, res) => {
@@ -3137,9 +3166,7 @@ app.post('/api/meta/reroll_upgrade', (req, res) => {
   if (used >= REROLL_COSTS.length) return res.status(400).json({ error: 'Max rerolls this match' });
   const cost = REROLL_COSTS[used];
   const m = getMeta(agentId);
-  if (m.war_balance < cost) return res.status(400).json({ error: `Need ${cost} $WAR (have ${m.war_balance})` });
-  m.war_balance -= cost;
-  saveMeta(m);
+  if (!spendWar(agentId, cost)) return res.status(400).json({ error: `Need ${cost} RP (have ${m.war_balance})` });
   matchRerolls.set(agentId, used + 1);
   // Re-roll the offered choices
   const newChoices = rollUpgradeChoices();
@@ -3154,7 +3181,7 @@ app.post('/api/meta/reroll_upgrade', (req, res) => {
   });
   res.json({
     success: true, rerolled: true, nextCost: REROLL_COSTS[used + 1] ?? null,
-    warBalance: m.war_balance, rerollsUsed: used + 1,
+    rewardBalance: getMeta(agentId).war_balance, rerollsUsed: used + 1,
   });
 });
 
@@ -3441,7 +3468,7 @@ fetch('/api/profile/' + encodeURIComponent(agentId)).then(r => r.json()).then(d 
          return '<div class="match"><div><span class="id">' + m.id + '</span> &middot; ' + win + '</div><a href="/replay/' + m.id + '">Replay &rarr;</a></div>';
        }).join(''))
     + '</div>'
-    + '<div class="reward-note">Reward distribution and verified-handle attribution roll out with the $WAR launch on Base via Clanker.</div>'
+    + '<div class="reward-note">Reward distribution and verified-handle attribution roll out with the RP launch on Base via Clanker.</div>'
     + '</div>';
   document.getElementById('content').innerHTML = html;
 });
@@ -3835,11 +3862,11 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 <h3>Daily Missions (3 random, reset at UTC 00:00)</h3>
 <table>
 <tr><th>Mission</th><th>Goal</th><th>Reward</th></tr>
-<tr><td>⭐ Big Spender</td><td>Spend 1200g in shop</td><td>250g · 100 XP · 3 $WAR</td></tr>
-<tr><td>⭐⭐ Teamwork</td><td>Earn 5 assists</td><td>380g · 150 XP · 5 $WAR</td></tr>
-<tr><td>⭐⭐ Combo</td><td>Land 25 ability hits</td><td>400g · 160 XP · 5 $WAR</td></tr>
-<tr><td>⭐⭐ Wave Clearer</td><td>Clear 60 minions total</td><td>520g · 210 XP · 7 $WAR</td></tr>
-<tr><td>⭐⭐⭐ Untouchable</td><td>Win a match without dying</td><td>700g · 350 XP · 10 $WAR</td></tr>
+<tr><td>⭐ Big Spender</td><td>Spend 1200g in shop</td><td>250g · 100 XP · 3 RP</td></tr>
+<tr><td>⭐⭐ Teamwork</td><td>Earn 5 assists</td><td>380g · 150 XP · 5 RP</td></tr>
+<tr><td>⭐⭐ Combo</td><td>Land 25 ability hits</td><td>400g · 160 XP · 5 RP</td></tr>
+<tr><td>⭐⭐ Wave Clearer</td><td>Clear 60 minions total</td><td>520g · 210 XP · 7 RP</td></tr>
+<tr><td>⭐⭐⭐ Untouchable</td><td>Win a match without dying</td><td>700g · 350 XP · 10 RP</td></tr>
 </table>
 <p><strong>Bonus roll:</strong> 15% chance on completion for an extra +40-120g or +20-60 XP drop. Harder missions have bigger bonuses.</p>
 <p>A countdown in the HUD shows when dailies refresh. Completed dailies stay visible (strikethrough) until UTC reset — no mid-day replacement.</p>
@@ -3855,8 +3882,9 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 <h2>Advanced Guide</h2>
 <p style="color:#8A7A5A;font-style:italic;font-size:0.85rem">Once you have the basics, three things separate good players from great ones.</p>
 
-<h3>1. Token Usage</h3>
-<p><strong>What $WAR is for:</strong></p>
+<h3>1. Reward Points (RP)</h3>
+<p style="color:#8A7A5A;font-size:0.78rem;font-style:italic">Reward Points are an <strong>internal progression currency</strong> during testing. They are not a blockchain token. You can't trade them or withdraw them. When the real token launches, balances will convert over.</p>
+<p><strong>What RP is for:</strong></p>
 <ul>
 <li>Unlock new hero classes (Mage, Priest, Siegemaster)</li>
 <li>Buy permanent stat upgrades that carry across every match</li>
@@ -3864,11 +3892,11 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 </ul>
 <p><strong>How to earn it:</strong></p>
 <ul>
-<li>Daily missions — 3-10 $WAR each</li>
-<li>Match wins — 50 $WAR per victory</li>
+<li>Daily missions — 3-10 RP each</li>
+<li>Match wins — 50 RP per victory</li>
 <li>Completed milestones — bigger missions pay bigger rewards</li>
 </ul>
-<p><strong>Spend wisely:</strong> $WAR comes in slowly. A single Siegemaster unlock costs 5000 — that's months of casual play, or weeks of focused daily-mission completion. Decide what you want most: a new hero, a stronger one, or extra rerolls during runs.</p>
+<p><strong>Spend wisely:</strong> RP comes in slowly. A Siegemaster unlock costs 5000 RP — that's weeks of focused daily-mission completion. Decide what you want most: a new hero, a stronger one, or extra rerolls during runs.</p>
 
 <h3>2. Meta Upgrades</h3>
 <p>Meta upgrades are <strong>permanent boosts</strong> you keep across every match. Unlike wave-upgrades (which reset each run), these stack with everything you do.</p>
@@ -3883,7 +3911,7 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 <p><strong>Tips:</strong></p>
 <ul>
 <li>Don't dump everything into damage — a balanced build (some HP, some gold gain) usually outperforms a glass cannon</li>
-<li>+Gold Gain pays for itself: more gold means better items in every match, which means more wins, which means more $WAR</li>
+<li>+Gold Gain pays for itself: more gold means better items in every match, which means more wins, which means more RP</li>
 <li>The first 3 levels of any upgrade are cheap. Spread early, then specialize</li>
 </ul>
 
@@ -3898,9 +3926,9 @@ code{background:#0d0d1a;padding:2px 6px;border-radius:3px;font-size:0.78rem;colo
 <li><strong>Watch the missions panel.</strong> If you're 1 kill away from First Blood, push for it. If you're at 18/20 minions for Farmer, finish the wave before pushing tower.</li>
 </ul>
 
-<h2>$WAR Token</h2>
-<p>Earn $WAR by winning matches, placing smart bets, and completing daily missions. Bet on match outcomes. Sponsor the King of the Hill.</p>
-<p>Token details: <a href="/#token">View on homepage</a></p>
+<h2>Reward Points (RP)</h2>
+<p>Earn Reward Points by winning matches, placing smart bets, and completing daily missions. Spend RP to unlock heroes, buy permanent stat upgrades, and reroll wave-upgrade choices.</p>
+<p style="font-size:0.78rem;color:#8A7A5A;font-style:italic">Reward Points are an internal balance for progression testing. They are not a blockchain token — no trading, no withdrawal. When the $WAR token launches on-chain, balances will convert over.</p>
 
 <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #C8960C22">
 <a href="/play" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#C8960C,#A07A08);color:#0A0804;border-radius:4px;font-weight:900;letter-spacing:2px">PLAY NOW</a>
@@ -4556,6 +4584,9 @@ function gameLoop() {
 (async () => {
   await initDB();
   db.run(DB_SCHEMA);
+  // Migrations — add columns that may not exist on older DBs
+  try { db.run(`ALTER TABLE agent_meta ADD COLUMN lifetime_earned INTEGER DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE agent_meta ADD COLUMN lifetime_spent INTEGER DEFAULT 0`); } catch {}
   initStatements();
 
   initStructures();

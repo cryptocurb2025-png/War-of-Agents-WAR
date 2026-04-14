@@ -2212,13 +2212,33 @@ ws.onmessage = (e) => {
         triggerShake(10);
       }
       if (gameState.kills.length === 0) _firstBloodAnnounced = false;
-      // Kill rampage announcements via combat events
+      // Kill-streak tracking per killer — client-side window
+      if (!window._killStreaks) window._killStreaks = {}; // killerId → [timestamps]
+      const STREAK_WINDOW_MS = 8000; // 8s consecutive kills
+      // Kill rampage + multi-kill announcements via combat events
       for (const k of gameState.kills.slice(_announcedKills.size)) {
         const kid = k.tick + ':' + k.killerId + ':' + k.victimId;
         if (_announcedKills.has(kid)) continue;
         _announcedKills.add(kid);
-        if (k.isRampage) {
-          const kname = k.killerName || k.killerClass;
+        const kname = (k.killerName || k.killerClass || 'unknown');
+        // Update streak timestamps
+        const now = Date.now();
+        const arr = (window._killStreaks[k.killerId] = window._killStreaks[k.killerId] || []);
+        arr.push(now);
+        while (arr.length && (now - arr[0]) > STREAK_WINDOW_MS) arr.shift();
+        const streak = arr.length;
+        // Multi-kill banners — double/triple/quad in rapid succession
+        if (streak === 2) {
+          announceEvent('DOUBLE KILL', 'rampage');
+          addSystemChat(kname + ' — Double Kill!');
+        } else if (streak === 3) {
+          announceEvent('TRIPLE KILL', 'rampage');
+          addSystemChat(kname + ' — Triple Kill!');
+        } else if (streak >= 4) {
+          announceEvent(kname.toUpperCase() + ' IS RAMPAGING', 'rampage');
+          addSystemChat('RAMPAGE! ' + kname + ' is unstoppable!');
+        } else if (k.isRampage) {
+          // Server-reported rampage (kill-streak counter on the hero)
           announceEvent(kname.toUpperCase() + ' IS RAMPAGING', 'rampage');
           addSystemChat('RAMPAGE! ' + kname + ' is on fire!');
         }

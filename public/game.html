@@ -7064,33 +7064,55 @@ function updatePlayerControls() {
     }
     while (_dmgFloats.length > 60) _dmgFloats.shift();
 
-    // ─── Target line from player hero to nearest enemy ─────
+    // ─── Target indicator (player hero only) ─────────────────
+    // Ring UNDER the target, colored red for enemy / green for ally.
+    // Uses explicit player target first, falls back to nearest enemy.
     if (playerAgentId && gameState && gameState.heroes) {
       const myHero = gameState.heroes.find(h => h.agentId === playerAgentId && h.alive);
       if (myHero) {
-        // Find nearest enemy in range
-        let target = null, bestD = (myHero.range || 300) + 50;
         const myF = myHero.faction;
-        const checkList = [...(gameState.heroes || []), ...(gameState.units || []), ...(gameState.structures || [])];
-        for (const e of checkList) {
-          if (!e.alive || e.faction === myF) continue;
-          const dx = e.x - myHero.x, dy = e.y - myHero.y;
-          const d = Math.sqrt(dx*dx + dy*dy);
-          if (d < bestD) { bestD = d; target = e; }
+        const pool = [...(gameState.heroes || []), ...(gameState.units || []), ...(gameState.structures || [])];
+        let target = null;
+        // 1) Explicit selection
+        if (typeof currentTargetId !== 'undefined' && currentTargetId) {
+          target = pool.find(e => e.id === currentTargetId && e.alive) || null;
         }
-        if (target) {
+        // 2) Fallback: nearest enemy in attack range
+        if (!target) {
+          let bestD = (myHero.range || 300) + 50;
+          for (const e of pool) {
+            if (!e.alive || e.faction === myF || e.id === myHero.id) continue;
+            const dx = e.x - myHero.x, dy = e.y - myHero.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            if (d < bestD) { bestD = d; target = e; }
+          }
+        }
+        if (target && target.id !== myHero.id) {
+          const isAlly = target.faction === myF;
+          const ringCol = isAlly ? '90,220,110' : '255,70,70';
           const sx = myHero.x * scaleX, sy = myHero.y * scaleY;
           const tx = target.x * scaleX, ty = target.y * scaleY;
-          ctx.strokeStyle = 'rgba(255,80,80,0.45)';
+          // Thin dashed line from player → target
+          ctx.strokeStyle = `rgba(${ringCol},0.5)`;
           ctx.lineWidth = 1.5;
           ctx.setLineDash([6, 4]);
           ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(tx, ty); ctx.stroke();
           ctx.setLineDash([]);
-          // Target ring
-          const ringPulse = 0.5 + Math.sin(Date.now() * 0.008) * 0.3;
-          ctx.strokeStyle = `rgba(255,80,80,${ringPulse})`;
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(tx, ty, 14, 0, Math.PI * 2); ctx.stroke();
+          // Ground ring under target — flattened ellipse, pulsing
+          const pulse = 0.55 + Math.sin(Date.now() * 0.008) * 0.35;
+          const ringY = ty + 14;
+          const rx = 20, ry = 6;
+          // Soft glow under
+          ctx.fillStyle = `rgba(${ringCol},${0.15 * pulse})`;
+          ctx.beginPath(); ctx.ellipse(tx, ringY, rx + 4, ry + 2, 0, 0, Math.PI*2); ctx.fill();
+          // Main ring
+          ctx.strokeStyle = `rgba(${ringCol},${pulse})`;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.ellipse(tx, ringY, rx, ry, 0, 0, Math.PI*2); ctx.stroke();
+          // Inner darker contour for contrast on any background
+          ctx.strokeStyle = `rgba(0,0,0,0.5)`;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.ellipse(tx, ringY, rx, ry, 0, 0, Math.PI*2); ctx.stroke();
         }
       }
     }

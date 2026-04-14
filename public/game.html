@@ -3104,6 +3104,10 @@ function pUpdate() {
   drawTerrainNoise(-200, -200, halfW + 200, MAP_H + 400, true);         // Alliance grass
   drawTerrainNoise(halfW, -200, MAP_W - halfW + 200, MAP_H + 400, false); // Horde dirt
 
+  // Environmental props — rocks, tufts, cracks. Placed off-lane only.
+  drawEnvProps(-200, -200, halfW + 200, MAP_H + 400, true);
+  drawEnvProps(halfW, -200, MAP_W - halfW + 200, MAP_H + 400, false);
+
   // Lane rendering — base fill, vertical gradient (center lighter, edges darker),
   // noise grain, wear cracks, and crisp dark borders. Called per-lane.
   drawLane(-200, 400, MAP_W + 400, 200);   // top
@@ -4541,6 +4545,61 @@ function drawTerrainNoise(x, y, w, h, isGrass) {
     const col = isGrass ? 0x2E4838 : 0x3A2828;
     graphics.fillStyle(col, 0.08);
     graphics.fillCircle(tx, ty, 3);
+  }
+}
+
+// ─── Environmental props (rocks, tufts, cracks) — sparse, off-lane ──
+function drawEnvProps(x, y, w, h, isGrass) {
+  const rand = (seed) => { const s = Math.sin(seed * 12347 + 8831) * 47123; return s - Math.floor(s); };
+  // Sparse: ~1 prop per 18000 px² (small map gets ~300 across the half)
+  const n = Math.floor((w * h) / 18000);
+  const seedBase = isGrass ? 4211 : 9137;
+  // Lane Y bands to avoid (gameplay areas)
+  const laneBands = [[400, 600], [1040, 1360], [1800, 2000]];
+  const inLane = (py) => laneBands.some(([a, b]) => py >= a - 20 && py <= b + 20);
+  for (let i = 0; i < n; i++) {
+    const px = x + rand(i + seedBase) * w;
+    const py = y + rand(i * 17 + seedBase) * h;
+    if (inLane(py)) continue; // keep lanes clean
+    const kind = rand(i * 29 + seedBase);
+    if (kind < 0.45) {
+      // Rock — dark gray ellipse with slight highlight
+      const size = 3 + rand(i * 41 + seedBase) * 4;
+      graphics.fillStyle(0x000000, 0.25);
+      graphics.fillEllipse(px + 1, py + 1, size * 2.1, size * 0.9); // shadow
+      graphics.fillStyle(0x4A4640, 1);
+      graphics.fillEllipse(px, py, size * 2, size * 0.85);
+      graphics.fillStyle(0x6A6460, 0.6);
+      graphics.fillEllipse(px - size * 0.3, py - size * 0.2, size * 0.9, size * 0.3);
+    } else if (kind < 0.75 && isGrass) {
+      // Grass tuft cluster — 3-4 small dark-green blades
+      const blades = 3 + Math.floor(rand(i * 47) * 2);
+      for (let b = 0; b < blades; b++) {
+        const bx = px + (rand(i * 53 + b) - 0.5) * 8;
+        const by = py + (rand(i * 59 + b) - 0.5) * 4;
+        graphics.fillStyle(0x2E5A3E, 0.7);
+        graphics.fillTriangle(bx, by + 3, bx - 1.5, by - 2, bx + 1.5, by - 2);
+      }
+    } else if (kind < 0.75 && !isGrass) {
+      // Horde-side: dry brush clump
+      graphics.fillStyle(0x6A4A2A, 0.55);
+      graphics.fillCircle(px, py, 2 + rand(i * 61) * 2);
+      graphics.fillStyle(0x3A2614, 0.7);
+      graphics.fillRect(px - 3, py + 1, 6, 1);
+    } else {
+      // Minor crack — short jagged line
+      const clen = 8 + rand(i * 67 + seedBase) * 16;
+      const ang = rand(i * 71) * Math.PI * 2;
+      graphics.lineStyle(1, 0x1A1008, 0.45);
+      const segs = 2 + Math.floor(rand(i * 73) * 3);
+      let cx = px, cy = py;
+      for (let s = 0; s < segs; s++) {
+        const dx = Math.cos(ang + (rand(i * 79 + s) - 0.5) * 0.8) * (clen / segs);
+        const dy = Math.sin(ang + (rand(i * 83 + s) - 0.5) * 0.8) * (clen / segs);
+        graphics.lineBetween(cx, cy, cx + dx, cy + dy);
+        cx += dx; cy += dy;
+      }
+    }
   }
 }
 

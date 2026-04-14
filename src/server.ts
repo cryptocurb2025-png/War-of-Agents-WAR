@@ -454,11 +454,12 @@ function createAbilities(heroClass: HeroClass): Ability[] {
 
 function heroBaseStats(hc: HeroClass): { hp: number; mana: number; damage: number; armor: number; speed: number; range: number } {
   const s: Record<HeroClass, any> = {
-    knight:      { hp: 900, mana: 150, damage: 25, armor: 15, speed: 90,  range: 70 },
-    ranger:      { hp: 550, mana: 200, damage: 38, armor: 5,  speed: 120, range: 400 },
-    mage:        { hp: 450, mana: 400, damage: 48, armor: 3,  speed: 95,  range: 300 },
-    priest:      { hp: 520, mana: 500, damage: 15, armor: 4,  speed: 100, range: 280 },
-    siegemaster: { hp: 700, mana: 180, damage: 55, armor: 10, speed: 60,  range: 450 },
+    // TTK-tuned baselines. Knight & Priest were the main pacing offenders.
+    knight:      { hp: 820, mana: 150, damage: 30, armor: 12, speed: 90,  range: 70 },
+    ranger:      { hp: 550, mana: 200, damage: 40, armor: 5,  speed: 120, range: 400 },
+    mage:        { hp: 450, mana: 400, damage: 50, armor: 3,  speed: 95,  range: 300 },
+    priest:      { hp: 520, mana: 500, damage: 22, armor: 4,  speed: 100, range: 280 },
+    siegemaster: { hp: 700, mana: 180, damage: 58, armor: 10, speed: 60,  range: 450 },
   };
   return s[hc];
 }

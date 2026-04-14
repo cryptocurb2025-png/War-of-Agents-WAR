@@ -2327,6 +2327,20 @@ function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTon
 function sfxTower() { playTone(80, 0.5, 0.12, 'sawtooth'); playTone(140, 0.4, 0.1, 'square'); setTimeout(() => playTone(60, 0.3, 0.09, 'sawtooth'), 120); }
 function sfxWave()  { playTone(500, 0.1, 0.06, 'triangle'); setTimeout(() => playTone(700, 0.1, 0.06, 'triangle'), 90); setTimeout(() => playTone(900, 0.18, 0.07, 'triangle'), 180); }
 function sfxLevelUp() { playTone(660, 0.12, 0.07, 'triangle'); setTimeout(() => playTone(880, 0.12, 0.07, 'triangle'), 90); setTimeout(() => playTone(1175, 0.25, 0.08, 'triangle'), 180); setTimeout(() => playTone(1320, 0.35, 0.09, 'sine'), 280); }
+// UI click — soft short tick for buttons/hotkeys
+function sfxClick() { playTone(1400, 0.04, 0.03, 'triangle'); setTimeout(() => playTone(2200, 0.03, 0.015, 'sine'), 20); }
+// Delegate: any button/hotkey/clickable UI element plays a soft click.
+// Canvas/game-area clicks are skipped so attack clicks don't click-bleed.
+document.addEventListener('click', (ev) => {
+  const el = ev.target;
+  if (!el || !el.closest) return;
+  // Skip clicks on the game canvas / entity canvas — those are game input
+  if (el.closest('#game-container') || el.closest('#entity-canvas') || el.tagName === 'CANVAS') return;
+  // Match interactive UI elements
+  if (el.closest('button, .hk-slot, .hud-btn, .tut-btn, [role="button"], a[onclick], .chat-minimize, #king-banner')) {
+    sfxClick();
+  }
+}, true);
 
 // ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────
 

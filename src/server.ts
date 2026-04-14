@@ -341,6 +341,17 @@ const DB_SCHEMA = `
     timestamp INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
   );
+  CREATE TABLE IF NOT EXISTS missions (
+    agent_id TEXT NOT NULL,
+    mission_id TEXT NOT NULL,
+    progress INTEGER DEFAULT 0,
+    target INTEGER NOT NULL,
+    completed INTEGER DEFAULT 0,
+    daily INTEGER DEFAULT 0,
+    assigned_at INTEGER,
+    completed_at INTEGER,
+    PRIMARY KEY (agent_id, mission_id)
+  );
 `;
 
 // Prepared statements — initialized after DB is ready
@@ -402,6 +413,140 @@ function updateEloOnKill(killerAgentId: string, victimAgentId: string) {
   const { newWinner, newLoser } = calculateElo(killerRow.elo, victimRow.elo);
   stmtUpdateElo.run(newWinner, killerAgentId);
   stmtUpdateElo.run(Math.max(0, newLoser), victimAgentId);
+}
+
+// ─── Mission System ──────────────────────────────────────────────────────────
+type MissionKind =
+  | 'first_blood' | 'tower_breaker' | 'survivor' | 'farmer' | 'giant_slayer'
+  | 'assist_ace' | 'spender' | 'no_deaths' | 'ability_chain' | 'wave_clearer';
+
+interface MissionDef {
+  id: MissionKind;
+  label: string;
+  description: string;
+  target: number;
+  rewardGold: number;
+  rewardXp: number;
+  rewardToken?: number; // hook for future $WAR
+  category: 'session' | 'daily';
+}
+
+const MISSION_DEFS: MissionDef[] = [
+  // Session (auto-assigned every match)
+  { id: 'first_blood',   label: 'First Blood',   description: 'Score the first hero kill',       target: 1,  rewardGold: 150, rewardXp: 60,  category: 'session' },
+  { id: 'tower_breaker', label: 'Tower Breaker', description: 'Destroy an enemy tower',           target: 1,  rewardGold: 250, rewardXp: 100, category: 'session' },
+  { id: 'survivor',      label: 'Survivor',      description: 'Stay alive for 180 seconds',       target: 180, rewardGold: 200, rewardXp: 80, category: 'session' },
+  { id: 'farmer',        label: 'Farmer',        description: 'Kill 20 minions',                  target: 20, rewardGold: 180, rewardXp: 60,  category: 'session' },
+  { id: 'giant_slayer',  label: 'Giant Slayer',  description: 'Kill a hero 3+ levels above you',  target: 1,  rewardGold: 300, rewardXp: 150, category: 'session' },
+  // Daily rotation pool (3 randomly chosen at UTC reset)
+  { id: 'assist_ace',    label: 'Teamwork',      description: 'Earn 5 assists',                   target: 5,  rewardGold: 300, rewardXp: 120, rewardToken: 5, category: 'daily' },
+  { id: 'spender',       label: 'Big Spender',   description: 'Spend 1200 gold in shop',          target: 1200, rewardGold: 200, rewardXp: 100, rewardToken: 4, category: 'daily' },
+  { id: 'no_deaths',     label: 'Untouchable',   description: 'Win a match without dying',        target: 1,  rewardGold: 400, rewardXp: 200, rewardToken: 8, category: 'daily' },
+  { id: 'ability_chain', label: 'Combo',         description: 'Land 25 ability hits',             target: 25, rewardGold: 250, rewardXp: 100, rewardToken: 4, category: 'daily' },
+  { id: 'wave_clearer',  label: 'Wave Clearer',  description: 'Clear 3 full waves of minions',    target: 60, rewardGold: 350, rewardXp: 140, rewardToken: 6, category: 'daily' },
+];
+
+const SESSION_MISSION_IDS: MissionKind[] = ['first_blood', 'tower_breaker', 'survivor', 'farmer', 'giant_slayer'];
+const DAILY_POOL_IDS: MissionKind[] = ['assist_ace', 'spender', 'no_deaths', 'ability_chain', 'wave_clearer'];
+
+interface MissionState { id: MissionKind; progress: number; target: number; completed: boolean; daily: boolean; }
+const missionProgress = new Map<string, Map<MissionKind, MissionState>>(); // agentId → id → state
+const dailyAssigned = new Map<string, { ids: MissionKind[]; day: string }>(); // agentId → {ids, YYYY-MM-DD UTC}
+
+function utcDay(): string {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+}
+
+function ensureAgentMissions(agentId: string) {
+  if (!missionProgress.has(agentId)) missionProgress.set(agentId, new Map());
+  const m = missionProgress.get(agentId)!;
+  // Session missions: reset if not present or completed (one-shot per match is handled via match reset)
+  for (const id of SESSION_MISSION_IDS) {
+    if (!m.has(id)) {
+      const def = MISSION_DEFS.find(d => d.id === id)!;
+      m.set(id, { id, progress: 0, target: def.target, completed: false, daily: false });
+    }
+  }
+  // Daily: assign 3 random ones per UTC day
+  const today = utcDay();
+  const assigned = dailyAssigned.get(agentId);
+  if (!assigned || assigned.day !== today) {
+    const pool = [...DAILY_POOL_IDS];
+    const ids: MissionKind[] = [];
+    while (ids.length < 3 && pool.length) {
+      ids.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    dailyAssigned.set(agentId, { ids, day: today });
+    // Clear any previously assigned daily entries that aren't in the new set
+    for (const id of DAILY_POOL_IDS) {
+      if (!ids.includes(id)) m.delete(id);
+    }
+    for (const id of ids) {
+      const def = MISSION_DEFS.find(d => d.id === id)!;
+      if (!m.has(id) || m.get(id)!.completed) {
+        m.set(id, { id, progress: 0, target: def.target, completed: false, daily: true });
+      }
+    }
+  }
+}
+
+function bumpMission(agentId: string | undefined, id: MissionKind, delta: number = 1) {
+  if (!agentId) return;
+  ensureAgentMissions(agentId);
+  const m = missionProgress.get(agentId)!;
+  const s = m.get(id);
+  if (!s || s.completed) return;
+  const before = s.progress;
+  s.progress = Math.min(s.target, s.progress + delta);
+  if (s.progress !== before) {
+    broadcastToAgent(agentId, { type: 'mission_progress', missionId: id, progress: s.progress, target: s.target });
+  }
+  if (!s.completed && s.progress >= s.target) {
+    s.completed = true;
+    const def = MISSION_DEFS.find(d => d.id === id)!;
+    // Apply rewards to active hero
+    const hero = [...state.heroes.values()].find(h => h.agentId === agentId && h.alive);
+    if (hero) {
+      hero.gold += def.rewardGold;
+      (hero as any).xp = ((hero as any).xp || 0) + def.rewardXp;
+    }
+    broadcastToAgent(agentId, {
+      type: 'mission_completed',
+      missionId: id,
+      label: def.label,
+      rewardGold: def.rewardGold,
+      rewardXp: def.rewardXp,
+      rewardToken: def.rewardToken || 0,
+    });
+  }
+}
+
+function missionsForAgent(agentId: string) {
+  ensureAgentMissions(agentId);
+  const m = missionProgress.get(agentId)!;
+  const out: any[] = [];
+  for (const [, s] of m) {
+    const def = MISSION_DEFS.find(d => d.id === s.id);
+    if (!def) continue;
+    out.push({
+      id: s.id, label: def.label, description: def.description,
+      progress: s.progress, target: s.target, completed: s.completed,
+      daily: s.daily,
+      rewardGold: def.rewardGold, rewardXp: def.rewardXp, rewardToken: def.rewardToken || 0,
+    });
+  }
+  return out;
+}
+
+// Session missions reset on match end
+function resetSessionMissions() {
+  for (const [, m] of missionProgress) {
+    for (const id of SESSION_MISSION_IDS) {
+      const s = m.get(id);
+      if (s) { s.progress = 0; s.completed = false; }
+    }
+  }
 }
 
 // ─── Item Shop ───────────────────────────────────────────────────────────────
@@ -1147,6 +1292,18 @@ function onKill(killerId: string, victim: Entity) {
         updateEloOnKill(kHero.agentId, vHero.agentId);
       }
 
+      // Mission hooks: first hero kill of the match, giant slayer, assists
+      if (kHero.agentId) {
+        bumpMission(kHero.agentId, 'first_blood', 1);
+        if (vHero.level >= kHero.level + 3) bumpMission(kHero.agentId, 'giant_slayer', 1);
+      }
+      for (const dmgId of vHero.lastDamagedBy) {
+        if (dmgId !== kHero.id) {
+          const assister = state.heroes.get(dmgId);
+          if (assister && assister.agentId) bumpMission(assister.agentId, 'assist_ace', 1);
+        }
+      }
+
       // Resolve First Blood prop market
       const firstBlood = propMarkets.find(p => p.id === 'first_blood' && !p.resolved);
       if (firstBlood) {
@@ -1160,8 +1317,17 @@ function onKill(killerId: string, victim: Entity) {
       const kHero = killer as HeroEntity;
       kHero.gold += 30;
       kHero.xp += 20;
+      // Mission: farmer + wave_clearer
+      if (kHero.agentId) {
+        bumpMission(kHero.agentId, 'farmer', 1);
+        bumpMission(kHero.agentId, 'wave_clearer', 1);
+      }
     }
   } else if ((victim as Structure).structureType === 'tower_t1' || (victim as Structure).structureType === 'tower_t2') {
+    // Mission: tower_breaker — award the last-hit hero's agent (if any)
+    if (killer && killer.type === 'hero' && (killer as HeroEntity).agentId) {
+      bumpMission((killer as HeroEntity).agentId!, 'tower_breaker', 1);
+    }
     // Resolve First Tower Falls prop market — the *attacker's* faction wins
     const firstTower = propMarkets.find(p => p.id === 'first_tower' && !p.resolved);
     if (firstTower) {
@@ -1183,6 +1349,12 @@ function onKill(killerId: string, victim: Entity) {
     // Game over
     state.winner = victim.faction === 'alliance' ? 'horde' : 'alliance';
     state.winnerAt = Date.now();
+    // Mission: Untouchable — win without dying (daily)
+    for (const h of state.heroes.values()) {
+      if (h.agentId && h.faction === state.winner && h.deaths === 0) {
+        bumpMission(h.agentId, 'no_deaths', 1);
+      }
+    }
     try {
       stmtEndMatch.run(Date.now(), state.winner, currentMatchId);
     } catch (_e) { /* ignore */ }
@@ -1472,6 +1644,10 @@ function playerHeroTick(hero: HeroEntity, dt: number) {
 
   // Passive gold (same as bot)
   if (state.tick % 40 === 0) hero.gold += 3;
+  // Mission: Survivor — +1 sec every 20 ticks while alive
+  if (state.tick % 20 === 0 && hero.alive && hero.agentId) {
+    bumpMission(hero.agentId, 'survivor', 1);
+  }
 
   // Tick ability cooldowns
   for (const ab of hero.abilities) {
@@ -1710,6 +1886,7 @@ function castPlayerAbility(hero: HeroEntity, ab: Ability, targetId?: string): { 
           effect: ab.effect, aoe: true,
           x: Math.round(e.pos.x), y: Math.round(e.pos.y),
         });
+        if (hero.agentId) bumpMission(hero.agentId, 'ability_chain', 1);
       }
     }
     state.projectiles.push({
@@ -1732,6 +1909,7 @@ function castPlayerAbility(hero: HeroEntity, ab: Ability, targetId?: string): { 
       abilityName: ab.name, damage: actualDmg, effect: ab.effect,
       x: Math.round(target.pos.x), y: Math.round(target.pos.y),
     });
+    if (hero.agentId) bumpMission(hero.agentId, 'ability_chain', 1);
     return { success: true, damage: actualDmg, targets: 1 };
   }
 }
@@ -2525,6 +2703,7 @@ app.post('/api/strategy/deployment', (req, res) => {
     if (item.stats.armor) hero.armor += item.stats.armor;
     if (item.stats.speed) hero.speed += item.stats.speed;
     if (item.stats.mana) { hero.maxMana += item.stats.mana; hero.mana += item.stats.mana; }
+    if (hero.agentId) bumpMission(hero.agentId, 'spender', item.cost);
     return res.json({ success: true, item: item.name, goldRemaining: hero.gold });
   }
 
@@ -2684,6 +2863,13 @@ app.get('/api/shop', (_req, res) => {
 });
 
 // ─── Betting API ──────────────────────────────────────────────────────────────
+// ─── Missions endpoint ───────────────────────────────────────────────────────
+app.get('/api/missions', (req, res) => {
+  const agentId = String(req.query.agentId || '').trim();
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  res.json({ missions: missionsForAgent(agentId) });
+});
+
 // ─── Wave upgrade choice endpoint ────────────────────────────────────────────
 app.post('/api/choose_upgrade', (req, res) => {
   const { agentId, choiceId } = req.body || {};
@@ -2778,6 +2964,8 @@ app.get('/api/matches/:id/replay', (req, res) => {
 
 // ─── Admin Panel Routes ─────────────────────────────────────────────────────
 function resetGame() {
+  // Reset session-scoped mission progress (dailies persist)
+  resetSessionMissions();
   // Capture player heroes still in the active match — they should persist
   // across the reset rather than being silently dropped back into the void.
   const carryOverPlayers = [...state.heroes.values()]

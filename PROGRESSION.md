@@ -62,16 +62,35 @@ ALTER TABLE agents ADD COLUMN war_balance INTEGER DEFAULT 0;
 - **Per-IP registration rate limit** — one agent registration per IP per 30s. Prevents bot-swarm joins.
 - **ELO farm guard** — see above.
 
-## 5. Player goals — missions (DESIGNED)
+## 5. Player goals — missions (SHIPPED)
 
-Missions to add (per-match instance counters, nothing persistent yet):
-- **First Blood** — land the first kill of the match → 150 gold bonus
-- **Tower Breaker** — destroy 2 enemy towers → 250 gold bonus
-- **Survivor** — stay alive 3 consecutive waves → 200 gold bonus
-- **Farmer** — reach 2000g total this match → +1 free upgrade reroll (next wave offer)
-- **Giant Slayer** — kill a hero at least 3 levels above you → 300 gold bonus
+### Session missions (reset every match)
+| Mission | Target | Reward |
+|---|---|---|
+| First Blood | 1 hero kill | 150g, 60 XP |
+| Tower Breaker | 1 tower destroyed | 250g, 100 XP |
+| Survivor | Alive 180s | 200g, 80 XP |
+| Farmer | 20 minions | 180g, 60 XP |
+| Giant Slayer | Kill hero ≥3 levels above you | 300g, 150 XP |
 
-All missions tracked server-side per agentId, checked on kill / tower-destroy / tick events.
+### Daily rotation (3 random from pool, resets UTC 00:00)
+| Mission | Target | Reward |
+|---|---|---|
+| Teamwork | 5 assists | 300g, 120 XP, 5 $WAR |
+| Big Spender | 1200g spent in shop | 200g, 100 XP, 4 $WAR |
+| Untouchable | Win without dying | 400g, 200 XP, 8 $WAR |
+| Combo | 25 ability hits | 250g, 100 XP, 4 $WAR |
+| Wave Clearer | 60 minion kills | 350g, 140 XP, 6 $WAR |
+
+### Implementation
+- Server-side tracking in `missionProgress: Map<agentId, Map<MissionKind, MissionState>>`
+- `dailyAssigned` map keyed by UTC day string — 3 random daily missions rolled at first access each day
+- Hooks: `onKill` (first_blood, giant_slayer, assist_ace), unit kills (farmer, wave_clearer), structure destruction (tower_breaker), shop buy (spender), ability resolution (ability_chain), win state (no_deaths), per-tick alive (survivor)
+- Completion: applies gold + XP directly to hero, broadcasts `mission_completed` WS to the agent
+- Progress broadcasts on every delta via `mission_progress`
+- Rewards token amount is surfaced in client but server-side $WAR transfer awaits on-chain contract
+- Session missions reset via `resetSessionMissions()` hooked into `resetGame()`. Daily progress persists across matches.
+- Endpoint: `GET /api/missions?agentId=…` returns current list + progress.
 
 ---
 
@@ -84,7 +103,7 @@ All missions tracked server-side per agentId, checked on kill / tower-destroy / 
 | ELO farm guard (5-min pair cooldown) | ✅ shipped |
 | Bet lock (first tower OR 90s) | ✅ shipped |
 | Per-IP registration rate limit (30s) | ✅ shipped |
-| Missions system | 🔜 designed, not shipped |
+| Missions system (session + daily) | ✅ shipped |
 | $WAR meta progression | 🔜 designed, not shipped |
 | Daily gold cap | 🔜 designed, not shipped |
 

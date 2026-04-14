@@ -1704,6 +1704,10 @@
 
 <!-- ─── EVENT ANNOUNCEMENT ────────────────────────────── -->
 <div id="event-announce"></div>
+<div id="missions-panel" style="position:fixed;top:70px;left:12px;z-index:90;background:linear-gradient(180deg,rgba(14,10,4,0.9),rgba(8,4,2,0.94));border:1px solid rgba(200,150,12,0.5);border-radius:4px;padding:8px 10px;min-width:220px;max-width:260px;font-family:'Cinzel',serif;color:#C8B070;font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,0.6);display:none">
+  <div style="color:#FACC15;font-size:12px;font-weight:900;letter-spacing:2px;margin-bottom:6px;text-align:center;border-bottom:1px solid rgba(200,150,12,0.3);padding-bottom:4px">MISSIONS</div>
+  <div id="missions-list" style="display:flex;flex-direction:column;gap:6px"></div>
+</div>
 <div id="upgrade-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:180;background:linear-gradient(180deg,rgba(16,10,4,0.96),rgba(8,4,2,0.98));border:2px solid #C8960C;border-radius:6px;padding:20px 24px 16px;min-width:480px;box-shadow:0 0 80px rgba(200,150,12,0.4),0 6px 24px rgba(0,0,0,0.9);font-family:'Cinzel',serif">
   <div style="text-align:center;color:#FACC15;font-size:20px;font-weight:900;letter-spacing:3px;margin-bottom:4px">WAVE UPGRADE</div>
   <div id="upgrade-timer" style="text-align:center;color:#8A7A5A;font-size:11px;margin-bottom:14px">Choose one · <span id="upgrade-seconds">8</span>s</div>
@@ -2177,6 +2181,21 @@ ws.onmessage = (e) => {
     return;
   }
   if (msg.type === 'chat') { addChatMsg(msg.name, msg.text); return; }
+  if (msg.type === 'mission_progress') {
+    if (msg.targetAgentId && msg.targetAgentId === playerAgentId) {
+      updateMissionProgress(msg.missionId, msg.progress, msg.target);
+    }
+    return;
+  }
+  if (msg.type === 'mission_completed') {
+    if (msg.targetAgentId && msg.targetAgentId === playerAgentId) {
+      announceEvent('✓ ' + (msg.label || 'MISSION').toUpperCase() + ' COMPLETE', 'king');
+      addSystemChat('Mission: ' + (msg.label || 'complete') + ' · +' + (msg.rewardGold || 0) + 'g / +' + (msg.rewardXp || 0) + ' XP' + (msg.rewardToken ? ' / +' + msg.rewardToken + ' $WAR' : ''));
+      try { if (typeof sfxLevelUp === 'function') sfxLevelUp(); } catch {}
+      fetchMissions(); // refresh panel
+    }
+    return;
+  }
   if (msg.type === 'wave_upgrade_offer') {
     if (msg.targetAgentId && msg.targetAgentId === playerAgentId) showUpgradeModal(msg.choices, msg.deadline);
     return;
@@ -2368,6 +2387,52 @@ function sfxAbilityHit() { playTone(350, 0.1, 0.07, 'square'); playTone(500, 0.0
 function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTone(1000, 0.12, 0.05, 'sine'), 80); setTimeout(() => playTone(1200, 0.1, 0.04, 'sine'), 160); }
 function sfxTower() { playTone(80, 0.5, 0.12, 'sawtooth'); playTone(140, 0.4, 0.1, 'square'); setTimeout(() => playTone(60, 0.3, 0.09, 'sawtooth'), 120); }
 function sfxWave()  { playTone(500, 0.1, 0.06, 'triangle'); setTimeout(() => playTone(700, 0.1, 0.06, 'triangle'), 90); setTimeout(() => playTone(900, 0.18, 0.07, 'triangle'), 180); }
+// ─── Missions HUD ────────────────────────────────────────────────────────────
+let _missionsCache = [];
+async function fetchMissions() {
+  if (!playerAgentId) return;
+  try {
+    const r = await fetch('/api/missions?agentId=' + encodeURIComponent(playerAgentId));
+    const j = await r.json();
+    _missionsCache = j.missions || [];
+    renderMissions();
+  } catch (e) { /* ignore */ }
+}
+function updateMissionProgress(id, progress, target) {
+  const m = _missionsCache.find(x => x.id === id);
+  if (m) { m.progress = progress; m.target = target; renderMissions(); }
+}
+function renderMissions() {
+  const list = document.getElementById('missions-list');
+  const panel = document.getElementById('missions-panel');
+  if (!list || !panel) return;
+  if (!_missionsCache.length || !playerAgentId) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  // Sort: active first, then completed
+  const sorted = [..._missionsCache].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  list.innerHTML = sorted.map(m => {
+    const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
+    const barColor = m.completed ? '#22C55E' : (m.daily ? '#F97316' : '#3B82F6');
+    const labelStyle = m.completed ? 'color:#22C55E;text-decoration:line-through;opacity:0.6' : 'color:#FACC15';
+    const tokenBadge = m.rewardToken ? `<span style="color:#C8960C;font-size:9px">·$WAR ${m.rewardToken}</span>` : '';
+    const dailyBadge = m.daily ? '<span style="color:#F97316;font-size:8px;margin-left:4px">DAILY</span>' : '';
+    return `
+      <div style="border-left:2px solid ${barColor};padding-left:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="${labelStyle};font-size:10px;font-weight:700;letter-spacing:0.5px">${m.label}${dailyBadge}</span>
+          <span style="color:#8A7A5A;font-size:9px">${m.progress}/${m.target}</span>
+        </div>
+        <div style="color:#706050;font-size:9px;margin:1px 0 2px">${m.description}</div>
+        <div style="height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${barColor};transition:width 0.3s"></div>
+        </div>
+        <div style="color:#8A7A5A;font-size:9px;margin-top:2px">+${m.rewardGold}g · +${m.rewardXp} XP ${tokenBadge}</div>
+      </div>`;
+  }).join('');
+}
+// Poll on load + every 30s as fallback (WS push handles live updates)
+setInterval(fetchMissions, 30000);
+
 // ─── Wave upgrade modal ──────────────────────────────────────────────────────
 let _upgradeTimer = null;
 function showUpgradeModal(choices, deadline) {
@@ -6187,6 +6252,9 @@ if (IS_SPECTATE) {
 
 // ─── Player Controls — Dota-style keyboard system ─────────────────
 const playerAgentId = IS_SPECTATE ? null : (urlParams.get('player') || localStorage.getItem('woa_agentId'));
+// Initial missions fetch once identity is known
+if (playerAgentId && typeof fetchMissions === 'function') { setTimeout(() => fetchMissions(), 500); }
+else if (playerAgentId) { setTimeout(() => { try { fetchMissions(); } catch {} }, 1500); }
 const ITEMS = [
   {id:'boots',name:'Boots',cost:200,key:'1'},
   {id:'sword',name:'Sword',cost:300,key:'2'},

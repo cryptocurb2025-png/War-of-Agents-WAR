@@ -3074,10 +3074,10 @@ function pUpdate() {
   const halfW = MAP_W / 2;
 
   // BIG dark wasteland fill first (darker for contrast)
-  graphics.fillStyle(0x1A0F06, 1);
+  graphics.fillStyle(0x130A04, 1);
   graphics.fillRect(-2000, -2000, MAP_W + 4000, MAP_H + 4000);
   // Alliance side — darker green (recedes, lanes pop against it)
-  graphics.fillStyle(0x1F4D14, 1);
+  graphics.fillStyle(0x163A0F, 1);
   graphics.fillRect(-2000, -2000, halfW + 2000, MAP_H + 4000);
   // Lane roads — LIGHTER sand color so they stand out
   graphics.fillStyle(0x8A7548, 1);
@@ -3107,8 +3107,8 @@ function pUpdate() {
   const ALL_LANES = [{y:400,h:200},{y:1040,h:320},{y:1800,h:200}];
 
   // === GROUND BASE — darkened for contrast vs lanes ===
-  const allianceGround = era >= 3 ? 0x153A0F : (era >= 2 ? 0x1A4612 : 0x1F4D14);
-  const hordeGround    = era >= 3 ? 0x100702 : (era >= 2 ? 0x140A04 : 0x1A0F06);
+  const allianceGround = era >= 3 ? 0x103008 : (era >= 2 ? 0x143A0C : 0x163A0F);
+  const hordeGround    = era >= 3 ? 0x080400 : (era >= 2 ? 0x0E0602 : 0x130A04);
 
   // BIG dark Mordor fill first
   graphics.fillStyle(hordeGround, 1);
@@ -6639,11 +6639,38 @@ function updatePlayerControls() {
         const isWide = (t === 'ballista' || t === 'colossus');
         const sz = isLarge ? us * 1.6 : us;
 
-        // Ground shadow under unit (adds depth against lane floor)
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.beginPath();
-        ctx.ellipse(x, cy + 6*sz, (isWide ? 8 : 5)*sz, (isLarge ? 2.4 : 1.8)*sz, 0, 0, Math.PI*2);
-        ctx.fill();
+        // Ground shadow under unit — soft layered ellipses for depth
+        const shadowW = (isWide ? 9 : 5.5) * sz;
+        const shadowH = (isLarge ? 2.6 : 2.0) * sz;
+        const shadowY = cy + 6.5 * sz; // slight downward offset from sprite base
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.beginPath(); ctx.ellipse(x, shadowY, shadowW * 1.35, shadowH * 1.35, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.38)';
+        ctx.beginPath(); ctx.ellipse(x, shadowY, shadowW, shadowH, 0, 0, Math.PI*2); ctx.fill();
+
+        // ── Team-colored outline silhouette (behind sprite) ──
+        // Ally/enemy from player perspective when faction is known
+        const myF_u = (typeof playerAgentId !== 'undefined' && playerAgentId && gameState)
+          ? (localStorage.getItem('woa_faction') || (gameState.heroes.find(h => h.agentId === playerAgentId) || {}).faction)
+          : null;
+        const isAlly_u = myF_u ? (u.faction === myF_u) : false;
+        const outlineCol = myF_u
+          ? (isAlly_u ? 'rgba(80,220,120,0.75)' : 'rgba(255,80,80,0.8)')
+          : (isA ? 'rgba(80,150,240,0.75)' : 'rgba(230,80,80,0.8)');
+        ctx.fillStyle = outlineCol;
+        // Per-type silhouette bbox, 2-3px wider than body
+        const pad = 2.2;
+        if (t === 'ballista') {
+          ctx.fillRect(x - 6*sz - pad, cy - 5*sz - pad, 12*sz + pad*2, 10*sz + pad*2);
+        } else if (t === 'colossus') {
+          ctx.fillRect(x - 7*sz - pad, cy - 9*sz - pad, 14*sz + pad*2, 18*sz + pad*2);
+        } else if (t === 'gryphon' || t === 'au_gryphon' || t === 'hu_gryphon') {
+          ctx.beginPath();
+          ctx.ellipse(x, cy, 11*sz + pad, 5*sz + pad, 0, 0, Math.PI*2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(x - 3*sz - pad, cy - 8*sz - pad, 6*sz + pad*2, 15*sz + pad*2);
+        }
 
         if (t === 'ballista') {
           // Ballista — wide mechanical

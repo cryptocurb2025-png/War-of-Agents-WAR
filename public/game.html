@@ -97,7 +97,9 @@
     flex: 1;
     display: flex;
     position: relative;
-    overflow: hidden;
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+    max-width: 100vw;
   }
 
   #game-container {
@@ -1428,7 +1430,7 @@
 <!-- ─── MAIN GAME AREA ───────────────────────────────── -->
 <div id="main-area">
   <div id="game-container"></div>
-  <canvas id="entity-canvas" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;pointer-events:none;z-index:5;display:block"></canvas>
+  <canvas id="entity-canvas" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;pointer-events:none;z-index:5;display:block;max-width:100%;max-height:100%"></canvas>
   <div id="kill-feed">
     <div id="kill-feed-header">COMBAT LOG</div>
   </div>
@@ -1967,10 +1969,23 @@ function addChatMsg(name, text, faction) {
   div.scrollTop = div.scrollHeight;
   while (div.children.length > 30) div.removeChild(div.firstChild);
 }
+const _systemChatHistory = new Map(); // text → last shown timestamp
 function addSystemChat(text) {
+  const now = Date.now();
+  const last = _systemChatHistory.get(text);
+  // 3-second cooldown per message text — prevents spam
+  if (last && now - last < 3000) return;
+  _systemChatHistory.set(text, now);
+  // Cleanup old entries
+  if (_systemChatHistory.size > 50) {
+    for (const [k, v] of _systemChatHistory) {
+      if (now - v > 30000) _systemChatHistory.delete(k);
+    }
+  }
   const div = document.getElementById('chat-messages');
+  if (!div) return;
   const msg = document.createElement('div');
-  msg.dataset.ts = Date.now();
+  msg.dataset.ts = now;
   msg.innerHTML = `<span class="chat-system">${text}</span>`;
   div.appendChild(msg);
   div.scrollTop = div.scrollHeight;
@@ -2216,7 +2231,7 @@ function calcZoom(canvasW, canvasH) {
 const config = {
   type: Phaser.CANVAS,
   parent: 'game-container',
-  backgroundColor: '#0d0d1a',
+  backgroundColor: '#2A1A0A',
   scene: { preload: pPreload, create: pCreate, update: pUpdate },
   render: { antialias: false, pixelArt: true },
   banner: false,
@@ -2688,7 +2703,7 @@ function pCreate() {
   console.log('[PHASER] create started, preloadOk:', window._phaserPreloadOk);
   phaserScene = this;
   cam = this.cameras.main;
-  cam.setBackgroundColor('#0d0d1a');
+  cam.setBackgroundColor('#2A1A0A');
   // Extended bounds to prevent black edges (terrain draws beyond map)
   cam.setBounds(-500, -500, MAP_W + 1000, MAP_H + 1000);
 
@@ -2972,12 +2987,13 @@ function pUpdate() {
 
   const halfW = MAP_W / 2;
 
-  // Alliance side terrain — lush green
-  graphics.fillStyle(0x2A6A1A, 1);
-  graphics.fillRect(-1000, -1000, halfW + 1000, MAP_H + 2000);
-  // Horde side terrain — dark Mordor wasteland
+  // BIG dark wasteland fill first (covers entire camera area)
   graphics.fillStyle(0x2A1A0A, 1);
-  graphics.fillRect(halfW, -1000, MAP_W + 1000 - halfW, MAP_H + 2000);
+  graphics.fillRect(-2000, -2000, MAP_W + 4000, MAP_H + 4000);
+  // Alliance side overlay — lush green (only left half)
+  graphics.fillStyle(0x2A6A1A, 1);
+  graphics.fillRect(-2000, -2000, halfW + 2000, MAP_H + 4000);
+  // Horde side stays dark Mordor brown
   // Lane roads (all 3)
   graphics.fillStyle(0x5A4A2A, 1);
   graphics.fillRect(-200, 400, MAP_W + 400, 200);  // top
@@ -3001,12 +3017,12 @@ function pUpdate() {
   const allianceGround = era >= 3 ? 0x1E5A12 : (era >= 2 ? 0x246818 : 0x2A6A1A);
   const hordeGround = era >= 3 ? 0x1A0A04 : (era >= 2 ? 0x251208 : 0x2A1A0A);
 
-  // Alliance side
-  graphics.fillStyle(allianceGround, 1);
-  graphics.fillRect(-1000, -1000, halfW + 1000, MAP_H + 2000);
-  // Horde side — dark Mordor
+  // BIG dark Mordor fill first to cover all camera area
   graphics.fillStyle(hordeGround, 1);
-  graphics.fillRect(halfW, -1000, MAP_W + 1000 - halfW, MAP_H + 2000);
+  graphics.fillRect(-2000, -2000, MAP_W + 4000, MAP_H + 4000);
+  // Alliance overlay on left half only
+  graphics.fillStyle(allianceGround, 1);
+  graphics.fillRect(-2000, -2000, halfW + 2000, MAP_H + 4000);
 
   // ═══ HORDE WASTELAND DECORATIONS ═══
   // Lava cracks (orange glowing fissures)
@@ -4198,7 +4214,7 @@ function renderSprite(id, texKey, entity, t, isHero) {
 
     // Glow ring — 60% smaller (scale 1.2 instead of 3), opacity 0.2
     const glowKey = isA ? 'glow_blue' : 'glow_red';
-    sp._glow = phaserScene.add.image(entity.x, clampedY + 40, glowKey).setDepth(9).setScale(1.2).setAlpha(0.2);
+    sp._glow = phaserScene.add.image(entity.x, clampedY + 40, glowKey).setDepth(9).setScale(0.5).setAlpha(0.2);
 
     // Name label — bot heroes show class, player heroes show display name in gold
     const classNames = { footman:'Knight', ironwarrior:'Knight', archer:'Ranger', shredder:'Ranger',
@@ -4235,8 +4251,8 @@ function renderSprite(id, texKey, entity, t, isHero) {
   // Tier evolution glow — bigger/brighter at higher tiers
   const tier = entity.tier || 1;
   if (tier >= 2 && sp._glow) {
-    sp._glow.setScale(1.2 + (tier - 1) * 0.4);
-    sp._glow.setAlpha(0.2 + (tier - 1) * 0.15);
+    sp._glow.setScale(0.5 + (tier - 1) * 0.15);
+    sp._glow.setAlpha(0.2);
   }
   // Tier 3 golden ring
   if (tier >= 3 && isHero && typeof graphics !== 'undefined') {
@@ -6411,12 +6427,10 @@ function updatePlayerControls() {
       const isMine = playerAgentId && hero.agentId === playerAgentId;
       const s = (1 + (hero.level - 1) * 0.05) * Math.max(scaleX / 0.15, 0.6); // 5% bigger per level
 
-      // Player hero glow — tight, subtle
+      // Player hero glow — tiny marker dot at feet
       if (isMine) {
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
-        ctx.beginPath(); ctx.arc(x, y + 14*s, 6, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(x, y + 14*s, 8, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+        ctx.beginPath(); ctx.arc(x, y + 14*s, 3, 0, Math.PI * 2); ctx.fill();
       }
 
       // ── Draw character sprite based on class ──

@@ -3026,18 +3026,25 @@ function pUpdate() {
 
   const halfW = MAP_W / 2;
 
-  // BIG dark wasteland fill first (covers entire camera area)
-  graphics.fillStyle(0x2A1A0A, 1);
+  // BIG dark wasteland fill first (darker for contrast)
+  graphics.fillStyle(0x1A0F06, 1);
   graphics.fillRect(-2000, -2000, MAP_W + 4000, MAP_H + 4000);
-  // Alliance side overlay — lush green (only left half)
-  graphics.fillStyle(0x2A6A1A, 1);
+  // Alliance side — darker green (recedes, lanes pop against it)
+  graphics.fillStyle(0x1F4D14, 1);
   graphics.fillRect(-2000, -2000, halfW + 2000, MAP_H + 4000);
-  // Horde side stays dark Mordor brown
-  // Lane roads (all 3)
-  graphics.fillStyle(0x5A4A2A, 1);
+  // Lane roads — LIGHTER sand color so they stand out
+  graphics.fillStyle(0x8A7548, 1);
   graphics.fillRect(-200, 400, MAP_W + 400, 200);  // top
   graphics.fillRect(-200, 1040, MAP_W + 400, 320); // mid
   graphics.fillRect(-200, 1800, MAP_W + 400, 200); // bot
+  // Lane edge lines — crisp borders for readability
+  graphics.lineStyle(2, 0x3A2D1A, 0.7);
+  graphics.lineBetween(-200, 400, MAP_W + 200, 400);
+  graphics.lineBetween(-200, 600, MAP_W + 200, 600);
+  graphics.lineBetween(-200, 1040, MAP_W + 200, 1040);
+  graphics.lineBetween(-200, 1360, MAP_W + 200, 1360);
+  graphics.lineBetween(-200, 1800, MAP_W + 200, 1800);
+  graphics.lineBetween(-200, 2000, MAP_W + 200, 2000);
 
   // (debug markers removed)
 
@@ -3052,11 +3059,11 @@ function pUpdate() {
   // 3 lanes matching server: top(400-600), mid(1040-1360), bot(1800-2000)
   const ALL_LANES = [{y:400,h:200},{y:1040,h:320},{y:1800,h:200}];
 
-  // === GROUND BASE — split between Alliance (green) and Horde (Mordor) ===
-  const allianceGround = era >= 3 ? 0x1E5A12 : (era >= 2 ? 0x246818 : 0x2A6A1A);
-  const hordeGround = era >= 3 ? 0x1A0A04 : (era >= 2 ? 0x251208 : 0x2A1A0A);
+  // === GROUND BASE — darkened for contrast vs lanes ===
+  const allianceGround = era >= 3 ? 0x153A0F : (era >= 2 ? 0x1A4612 : 0x1F4D14);
+  const hordeGround    = era >= 3 ? 0x100702 : (era >= 2 ? 0x140A04 : 0x1A0F06);
 
-  // BIG dark Mordor fill first to cover all camera area
+  // BIG dark Mordor fill first
   graphics.fillStyle(hordeGround, 1);
   graphics.fillRect(-2000, -2000, MAP_W + 4000, MAP_H + 4000);
   // Alliance overlay on left half only
@@ -3165,7 +3172,8 @@ function pUpdate() {
   }
 
   // === LANE ROADS (all 3 lanes) — evolve with era ===
-  const roadColors = [0x5A4A2A, 0x5A5040, 0x606058, 0x4A4040];
+  // Lighter sand colors so lanes stand out from dark ground
+  const roadColors = [0x8A7548, 0x8A7C58, 0x909088, 0x7A6A60];
   const roadColor = roadColors[Math.min(era-1, 3)];
   for (const lane of ALL_LANES) {
     graphics.fillStyle(roadColor, 1);
@@ -4723,28 +4731,47 @@ function drawStructure(s, t, isNight) {
   } else {
     // TOWERS — draw as square tower shapes, NOT circles
     const r = s.tier === 2 ? 28 : 22;
+    // Ground shadow under tower
+    graphics.fillStyle(0x000000, 0.45);
+    graphics.fillEllipse(s.x, s.y + r + 4, r * 2.2, r * 0.7);
+    // Pulsing faction glow halo (distinguishes towers from units)
+    const towerPulse = 0.5 + Math.sin(t * 0.04 + s.x * 0.01) * 0.5;
+    graphics.fillStyle(primary, 0.08 + towerPulse * 0.06);
+    graphics.fillCircle(s.x, s.y, r * 3);
+    graphics.fillStyle(primary, 0.14 + towerPulse * 0.08);
+    graphics.fillCircle(s.x, s.y, r * 1.9);
     // Range ring (subtle)
-    graphics.lineStyle(1, primary, 0.04);
+    graphics.lineStyle(1, primary, 0.06);
     graphics.strokeCircle(s.x, s.y, s.tier === 2 ? 350 : 300);
     // Tower body — square with battlements
     graphics.fillStyle(dark, 0.95);
     graphics.fillRect(s.x - r, s.y - r, r * 2, r * 2);
     graphics.fillStyle(primary, 0.8);
     graphics.fillRect(s.x - r + 4, s.y - r + 4, r * 2 - 8, r * 2 - 8);
+    // Inner highlight (top-left) for dimensionality
+    graphics.fillStyle(0xffffff, 0.12);
+    graphics.fillRect(s.x - r + 4, s.y - r + 4, r * 2 - 8, 4);
+    graphics.fillRect(s.x - r + 4, s.y - r + 4, 4, r * 2 - 8);
     // Merlons on top
     for (let bx = -r + 2; bx < r; bx += 10) {
       graphics.fillStyle(dark, 0.9);
       graphics.fillRect(s.x + bx, s.y - r - 6, 6, 8);
     }
-    // Gold trim
-    graphics.lineStyle(1.5, gold, 0.5);
+    // Gold trim (brighter for visibility)
+    graphics.lineStyle(2, gold, 0.75);
     graphics.strokeRect(s.x - r, s.y - r, r * 2, r * 2);
+    // Top beacon — faction-colored glowing orb makes towers pop
+    const beaconP = 0.6 + Math.sin(t * 0.08 + s.y * 0.02) * 0.4;
+    graphics.fillStyle(primary, 0.3 * beaconP);
+    graphics.fillCircle(s.x, s.y - r - 10, 7);
+    graphics.fillStyle(isA ? 0x88BBFF : 0xFFAA66, beaconP);
+    graphics.fillCircle(s.x, s.y - r - 10, 3);
     // Tier indicator
     if (s.tier === 2) {
-      graphics.fillStyle(gold, 0.4);
+      graphics.fillStyle(gold, 0.55);
       graphics.fillCircle(s.x, s.y, 5);
     }
-    drawHPBar(s.x - r, s.y - r - 14, r * 2, 4, s.hp, s.maxHp, primary);
+    drawHPBar(s.x - r, s.y - r - 20, r * 2, 4, s.hp, s.maxHp, primary);
   }
 }
 
@@ -6476,6 +6503,12 @@ function updatePlayerControls() {
         const isWide = (t === 'ballista' || t === 'colossus');
         const sz = isLarge ? us * 1.6 : us;
 
+        // Ground shadow under unit (adds depth against lane floor)
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(x, cy + 6*sz, (isWide ? 8 : 5)*sz, (isLarge ? 2.4 : 1.8)*sz, 0, 0, Math.PI*2);
+        ctx.fill();
+
         if (t === 'ballista') {
           // Ballista — wide mechanical
           ctx.fillStyle = '#6A6A6A'; ctx.fillRect(x-6*sz, cy-3*sz, 12*sz, 6*sz);
@@ -6568,6 +6601,12 @@ function updatePlayerControls() {
       // mage/priest idle handled in the sprite drawing (orb pulse / aura flicker)
       const drawX = x + idleX;
       const drawY = y + idleY;
+
+      // Ground shadow under hero (depth against lane floor)
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath();
+      ctx.ellipse(drawX, drawY + 16*s, 10*s, 3.2*s, 0, 0, Math.PI*2);
+      ctx.fill();
 
       // Player hero — gold pulse ring at feet
       if (isMine) {

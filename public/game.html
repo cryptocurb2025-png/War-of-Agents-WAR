@@ -2308,6 +2308,7 @@ function sfxAbilityHit() { playTone(350, 0.1, 0.07, 'square'); playTone(500, 0.0
 function sfxHeal() { playTone(800, 0.15, 0.06, 'sine'); setTimeout(() => playTone(1000, 0.12, 0.05, 'sine'), 80); setTimeout(() => playTone(1200, 0.1, 0.04, 'sine'), 160); }
 function sfxTower() { playTone(80, 0.5, 0.12, 'sawtooth'); playTone(140, 0.4, 0.1, 'square'); setTimeout(() => playTone(60, 0.3, 0.09, 'sawtooth'), 120); }
 function sfxWave()  { playTone(500, 0.1, 0.06, 'triangle'); setTimeout(() => playTone(700, 0.1, 0.06, 'triangle'), 90); setTimeout(() => playTone(900, 0.18, 0.07, 'triangle'), 180); }
+function sfxLevelUp() { playTone(660, 0.12, 0.07, 'triangle'); setTimeout(() => playTone(880, 0.12, 0.07, 'triangle'), 90); setTimeout(() => playTone(1175, 0.25, 0.08, 'triangle'), 180); setTimeout(() => playTone(1320, 0.35, 0.09, 'sine'), 280); }
 
 // ─── Phaser 3 Sprite-Based Renderer ─────────────────────────────
 
@@ -6493,6 +6494,9 @@ function updatePlayerControls() {
   };
   const _pendingGold = [];
 
+  // Player level-up full-screen gold wash
+  let _playerLevelFlash = 0;
+
   // Tower destruction full-screen flash
   let _towerFlash = 0;
   const _origQueueTowerExplosion = window._queueTowerExplosion;
@@ -6594,6 +6598,11 @@ function updatePlayerControls() {
     for (const h of gameState.heroes) {
       if (_prevLevels[h.id] && h.level > _prevLevels[h.id]) {
         _levelUpFX.push({ x: h.x * scaleX, y: h.y * scaleY, age: 0 });
+        // If it's the player, play chime + brief gold screen wash
+        if (playerAgentId && h.agentId === playerAgentId) {
+          if (typeof sfxLevelUp === 'function') sfxLevelUp();
+          _playerLevelFlash = 18;
+        }
       }
       _prevLevels[h.id] = h.level;
     }
@@ -7358,6 +7367,18 @@ function updatePlayerControls() {
       ctx.fillStyle = `rgba(255,245,200,${Math.min(0.55, tfp * 0.5)})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       _towerFlash--;
+    }
+
+    // Player level-up — subtle gold radial wash (you, not everyone else)
+    if (_playerLevelFlash > 0) {
+      const lfp = _playerLevelFlash / 18;
+      const grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 40, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height) * 0.7);
+      grad.addColorStop(0, `rgba(255,215,80,${0.35 * lfp})`);
+      grad.addColorStop(0.6, `rgba(255,180,60,${0.12 * lfp})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      _playerLevelFlash--;
     }
 
     // Ultimate flash — DEVASTATING multi-phase effect

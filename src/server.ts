@@ -341,6 +341,15 @@ const DB_SCHEMA = `
     timestamp INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
   );
+  CREATE TABLE IF NOT EXISTS agent_meta (
+    agent_id TEXT PRIMARY KEY,
+    war_balance INTEGER DEFAULT 0,
+    meta_dmg INTEGER DEFAULT 0,
+    meta_hp INTEGER DEFAULT 0,
+    meta_gold INTEGER DEFAULT 0,
+    meta_xp INTEGER DEFAULT 0,
+    unlocked_classes TEXT DEFAULT 'knight,ranger'
+  );
   CREATE TABLE IF NOT EXISTS missions (
     agent_id TEXT NOT NULL,
     mission_id TEXT NOT NULL,
@@ -355,6 +364,8 @@ const DB_SCHEMA = `
 `;
 
 // Prepared statements — initialized after DB is ready
+let stmtGetMeta: any;
+let stmtUpsertMeta: any;
 let stmtUpsertMission: any;
 let stmtGetMissionsByAgent: any;
 let stmtDeleteDailyMissionsForAgent: any;
@@ -388,6 +399,8 @@ function initStatements() {
   stmtInsertSnapshot = prepareStmt(`INSERT INTO replay_snapshots (match_id, tick, snapshot, timestamp) VALUES (?, ?, ?, ?)`);
   stmtGetMatches = prepareStmt(`SELECT * FROM matches ORDER BY started_at DESC LIMIT 50`);
   stmtGetReplaySnapshots = prepareStmt(`SELECT tick, snapshot, timestamp FROM replay_snapshots WHERE match_id=? ORDER BY tick ASC`);
+  stmtGetMeta = prepareStmt(`SELECT * FROM agent_meta WHERE agent_id=?`);
+  stmtUpsertMeta = prepareStmt(`INSERT OR REPLACE INTO agent_meta (agent_id, war_balance, meta_dmg, meta_hp, meta_gold, meta_xp, unlocked_classes) VALUES (?, ?, ?, ?, ?, ?, ?)`);
   stmtUpsertMission = prepareStmt(`INSERT INTO missions (agent_id, mission_id, progress, target, completed, daily, assigned_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(agent_id, mission_id) DO UPDATE SET progress=excluded.progress, completed=excluded.completed, completed_at=excluded.completed_at`);
   stmtGetMissionsByAgent = prepareStmt(`SELECT mission_id, progress, target, completed, daily, assigned_at, completed_at FROM missions WHERE agent_id=?`);
   stmtDeleteDailyMissionsForAgent = prepareStmt(`DELETE FROM missions WHERE agent_id=? AND daily=1`);
@@ -420,6 +433,94 @@ function updateEloOnKill(killerAgentId: string, victimAgentId: string) {
   stmtUpdateElo.run(newWinner, killerAgentId);
   stmtUpdateElo.run(Math.max(0, newLoser), victimAgentId);
 }
+
+// ─── Meta Progression ───────────────────────────────────────────────────────
+// Persistent token-spend upgrades, hero unlocks, and per-match rerolls.
+// Balanced so active play generates ~10-80 $WAR/day from missions + wins;
+// meaningful upgrades cost hundreds to thousands — net spend >> earn late.
+
+const META_STATS = ['dmg', 'hp', 'gold', 'xp'] as const;
+type MetaStat = typeof META_STATS[number];
+const META_MAX_LEVEL = 10;
+
+// Cost curve per level: 100 × 1.5^(level-1) rounded — 100, 150, 225, 340 … 3847
+function metaStatCost(currentLevel: number): number {
+  if (currentLevel >= META_MAX_LEVEL) return Infinity;
+  return Math.round(100 * Math.pow(1.5, currentLevel));
+}
+// Per-level bonus: +1% per rank. L10 = +10% of the stat.
+function metaBonusPercent(level: number): number { return level * 0.01; }
+
+// Hero unlock costs (0 = starter, always free)
+const HERO_UNLOCK_COSTS: Record<HeroClass, number> = {
+  knight: 0, ranger: 0,
+  mage: 2000, priest: 3000, siegemaster: 5000,
+};
+
+// Reroll costs within a single match — escalates
+const REROLL_COSTS = [50, 100, 200]; // 1st / 2nd / 3rd; caps at 3 per run
+
+interface MetaProfile {
+  agent_id: string;
+  war_balance: number;
+  meta_dmg: number;
+  meta_hp: number;
+  meta_gold: number;
+  meta_xp: number;
+  unlocked_classes: string[];
+}
+
+function getMeta(agentId: string): MetaProfile {
+  if (!stmtGetMeta) {
+    return { agent_id: agentId, war_balance: 0, meta_dmg: 0, meta_hp: 0, meta_gold: 0, meta_xp: 0, unlocked_classes: ['knight', 'ranger'] };
+  }
+  const row = stmtGetMeta.get(agentId) as any;
+  if (!row) {
+    const fresh: MetaProfile = { agent_id: agentId, war_balance: 0, meta_dmg: 0, meta_hp: 0, meta_gold: 0, meta_xp: 0, unlocked_classes: ['knight', 'ranger'] };
+    try { stmtUpsertMeta.run(agentId, 0, 0, 0, 0, 0, 'knight,ranger'); } catch {}
+    return fresh;
+  }
+  return {
+    agent_id: row.agent_id,
+    war_balance: row.war_balance || 0,
+    meta_dmg: row.meta_dmg || 0,
+    meta_hp: row.meta_hp || 0,
+    meta_gold: row.meta_gold || 0,
+    meta_xp: row.meta_xp || 0,
+    unlocked_classes: (row.unlocked_classes || 'knight,ranger').split(','),
+  };
+}
+
+function saveMeta(m: MetaProfile) {
+  if (!stmtUpsertMeta) return;
+  try {
+    stmtUpsertMeta.run(m.agent_id, m.war_balance, m.meta_dmg, m.meta_hp, m.meta_gold, m.meta_xp, m.unlocked_classes.join(','));
+  } catch {}
+}
+
+function grantWar(agentId: string, amount: number, reason: string) {
+  if (!agentId || amount <= 0) return;
+  const m = getMeta(agentId);
+  m.war_balance += amount;
+  saveMeta(m);
+  broadcastToAgent(agentId, { type: 'war_granted', amount, balance: m.war_balance, reason });
+}
+
+// Apply permanent meta bonuses to a hero at spawn time
+function applyMetaBonuses(hero: HeroEntity, agentId: string) {
+  const m = getMeta(agentId);
+  const dmgBonus  = metaBonusPercent(m.meta_dmg);
+  const hpBonus   = metaBonusPercent(m.meta_hp);
+  hero.damage = Math.round(hero.damage * (1 + dmgBonus));
+  hero.maxHp  = Math.round(hero.maxHp  * (1 + hpBonus));
+  hero.hp     = hero.maxHp;
+  // gold / xp bonuses applied at earn time (see hooks)
+  (hero as any)._metaGoldMult = 1 + metaBonusPercent(m.meta_gold);
+  (hero as any)._metaXpMult   = 1 + metaBonusPercent(m.meta_xp);
+}
+
+// Per-match reroll counter: agentId → number of rerolls used this match
+const matchRerolls = new Map<string, number>();
 
 // ─── Mission System ──────────────────────────────────────────────────────────
 type MissionKind =
@@ -582,6 +683,10 @@ function bumpMission(agentId: string | undefined, id: MissionKind, delta: number
     if (hero) {
       hero.gold += totalGold;
       (hero as any).xp = ((hero as any).xp || 0) + totalXp;
+    }
+    // Mission $WAR reward — credits the persistent meta balance
+    if (def.rewardToken && def.rewardToken > 0) {
+      grantWar(agentId, def.rewardToken, `Mission: ${def.label}`);
     }
     persistMission(agentId, s); // durability for completed mission
     broadcastToAgent(agentId, {
@@ -1222,6 +1327,7 @@ function claimHeroSlot(agentId: string, name: string, faction: Faction, heroClas
   if (!bot) return null;
   state.heroes.delete(bot.id);
   const playerHero = createHero(faction, heroClass, agentId, 'mid', name);
+  applyMetaBonuses(playerHero, agentId); // permanent upgrades from $WAR spend
   state.heroes.set(playerHero.id, playerHero);
   bumpHeartbeat(agentId);
   return playerHero;
@@ -1431,6 +1537,12 @@ function onKill(killerId: string, victim: Entity) {
     for (const h of state.heroes.values()) {
       if (h.agentId && h.faction === state.winner && h.deaths === 0) {
         bumpMission(h.agentId, 'no_deaths', 1);
+      }
+    }
+    // $WAR victory bonus to every player on the winning faction
+    for (const h of state.heroes.values()) {
+      if (h.agentId && h.faction === state.winner) {
+        grantWar(h.agentId, 50, 'Match victory');
       }
     }
     try {
@@ -2597,6 +2709,17 @@ app.post('/api/agents/register', (req, res) => {
   if (!['knight', 'ranger', 'mage', 'priest', 'siegemaster'].includes(heroClass)) {
     return res.status(400).json({ error: 'Invalid heroClass' });
   }
+  // Hero unlock gate — premium classes require $WAR via /api/meta/unlock_hero
+  {
+    const meta = getMeta(agentId);
+    if (!meta.unlocked_classes.includes(heroClass)) {
+      const cost = HERO_UNLOCK_COSTS[heroClass as HeroClass];
+      return res.status(402).json({
+        error: `Hero "${heroClass}" is locked. Unlock for ${cost} $WAR via POST /api/meta/unlock_hero.`,
+        locked: true, cost,
+      });
+    }
+  }
 
   // Already in the active match? Return the existing hero.
   const existing = [...state.heroes.values()].find(h => h.agentId === agentId);
@@ -2941,6 +3064,100 @@ app.get('/api/shop', (_req, res) => {
 });
 
 // ─── Betting API ──────────────────────────────────────────────────────────────
+// ─── Meta Progression Endpoints ──────────────────────────────────────────────
+app.get('/api/meta/profile', (req, res) => {
+  const agentId = String(req.query.agentId || '').trim();
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  const m = getMeta(agentId);
+  res.json({
+    agentId: m.agent_id,
+    warBalance: m.war_balance,
+    stats: {
+      dmg:  { level: m.meta_dmg,  bonusPct: Math.round(metaBonusPercent(m.meta_dmg) * 100),  nextCost: metaStatCost(m.meta_dmg) },
+      hp:   { level: m.meta_hp,   bonusPct: Math.round(metaBonusPercent(m.meta_hp)  * 100),  nextCost: metaStatCost(m.meta_hp) },
+      gold: { level: m.meta_gold, bonusPct: Math.round(metaBonusPercent(m.meta_gold)* 100),  nextCost: metaStatCost(m.meta_gold) },
+      xp:   { level: m.meta_xp,   bonusPct: Math.round(metaBonusPercent(m.meta_xp)  * 100),  nextCost: metaStatCost(m.meta_xp) },
+    },
+    unlockedClasses: m.unlocked_classes,
+    unlockCosts: HERO_UNLOCK_COSTS,
+    maxLevel: META_MAX_LEVEL,
+  });
+});
+
+app.post('/api/meta/buy_stat', (req, res) => {
+  const { agentId, stat } = req.body || {};
+  if (!agentId || !META_STATS.includes(stat)) {
+    return res.status(400).json({ error: 'agentId and valid stat required' });
+  }
+  const m = getMeta(agentId);
+  const key = `meta_${stat}` as 'meta_dmg' | 'meta_hp' | 'meta_gold' | 'meta_xp';
+  const curr = m[key];
+  if (curr >= META_MAX_LEVEL) return res.status(400).json({ error: 'Max level reached' });
+  const cost = metaStatCost(curr);
+  if (m.war_balance < cost) return res.status(400).json({ error: `Need ${cost} $WAR (have ${m.war_balance})` });
+  m.war_balance -= cost;
+  m[key] = curr + 1;
+  saveMeta(m);
+  res.json({
+    success: true, stat, newLevel: m[key],
+    nextCost: metaStatCost(m[key]), warBalance: m.war_balance,
+  });
+});
+
+app.post('/api/meta/unlock_hero', (req, res) => {
+  const { agentId, heroClass } = req.body || {};
+  if (!agentId || !heroClass) return res.status(400).json({ error: 'agentId and heroClass required' });
+  if (!['knight','ranger','mage','priest','siegemaster'].includes(heroClass)) {
+    return res.status(400).json({ error: 'Invalid heroClass' });
+  }
+  const m = getMeta(agentId);
+  if (m.unlocked_classes.includes(heroClass)) return res.status(400).json({ error: 'Already unlocked' });
+  const cost = HERO_UNLOCK_COSTS[heroClass as HeroClass];
+  if (cost === 0) {
+    // Starter — nothing to pay, just record
+    m.unlocked_classes.push(heroClass);
+    saveMeta(m);
+    return res.json({ success: true, unlocked: m.unlocked_classes, warBalance: m.war_balance });
+  }
+  if (m.war_balance < cost) return res.status(400).json({ error: `Need ${cost} $WAR (have ${m.war_balance})` });
+  m.war_balance -= cost;
+  m.unlocked_classes.push(heroClass);
+  saveMeta(m);
+  res.json({ success: true, unlocked: m.unlocked_classes, warBalance: m.war_balance, spent: cost });
+});
+
+app.post('/api/meta/reroll_upgrade', (req, res) => {
+  const { agentId } = req.body || {};
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  const hero = [...state.heroes.values()].find(h => h.agentId === agentId && h.alive);
+  if (!hero) return res.status(404).json({ error: 'No active hero' });
+  const offer = pendingUpgradeOffers.get(hero.id);
+  if (!offer) return res.status(400).json({ error: 'No pending upgrade offer' });
+  const used = matchRerolls.get(agentId) || 0;
+  if (used >= REROLL_COSTS.length) return res.status(400).json({ error: 'Max rerolls this match' });
+  const cost = REROLL_COSTS[used];
+  const m = getMeta(agentId);
+  if (m.war_balance < cost) return res.status(400).json({ error: `Need ${cost} $WAR (have ${m.war_balance})` });
+  m.war_balance -= cost;
+  saveMeta(m);
+  matchRerolls.set(agentId, used + 1);
+  // Re-roll the offered choices
+  const newChoices = rollUpgradeChoices();
+  offer.choices = newChoices;
+  offer.deadline = Date.now() + 8000; // refresh timer too
+  broadcastToAgent(agentId, {
+    type: 'wave_upgrade_offer',
+    heroId: hero.id,
+    choices: newChoices.map(id => ({ id, label: UPGRADE_POOL.find(u => u.id === id)?.label || id })),
+    deadline: offer.deadline,
+    rerolled: true,
+  });
+  res.json({
+    success: true, rerolled: true, nextCost: REROLL_COSTS[used + 1] ?? null,
+    warBalance: m.war_balance, rerollsUsed: used + 1,
+  });
+});
+
 // ─── Missions endpoint ───────────────────────────────────────────────────────
 app.get('/api/missions', (req, res) => {
   const agentId = String(req.query.agentId || '').trim();
@@ -3044,6 +3261,7 @@ app.get('/api/matches/:id/replay', (req, res) => {
 function resetGame() {
   // Reset session-scoped mission progress (dailies persist)
   resetSessionMissions();
+  matchRerolls.clear(); // per-match reroll counters reset
   // Capture player heroes still in the active match — they should persist
   // across the reset rather than being silently dropped back into the void.
   const carryOverPlayers = [...state.heroes.values()]

@@ -3059,6 +3059,65 @@ function pUpdate() {
     graphics.fillCircle(tx + 20, midLane.y + midLane.h - 7 + Math.sin(t * 0.1 + tx + 50) * 3, 4);
   }
 
+  // ═══ ATMOSPHERE — Alliance god rays + Horde embers ═══
+  // Alliance side: subtle god rays from top-left
+  const rayPhase = (t * 0.5) % 100;
+  for (let r = 0; r < 5; r++) {
+    const rx = 400 + r * 280 + Math.sin(t * 0.02 + r) * 30;
+    if (rx > halfW - 200) continue;
+    graphics.fillStyle(0xFFFFCC, 0.03 + Math.sin(t * 0.03 + r * 1.5) * 0.015);
+    // Triangular ray from top
+    graphics.fillTriangle(rx - 40, 0, rx + 40, 0, rx + 80, 600);
+    graphics.fillStyle(0xFFFFFF, 0.015);
+    graphics.fillTriangle(rx - 30, 0, rx + 30, 0, rx + 50, 400);
+  }
+
+  // Alliance side: birds flying (3 birds traveling right)
+  for (let b = 0; b < 3; b++) {
+    const birdX = ((t * 2 + b * 1800) % (halfW + 200)) - 100;
+    const birdY = 200 + b * 80 + Math.sin(t * 0.04 + b) * 15;
+    if (birdX < 50 || birdX > halfW - 50) continue;
+    graphics.fillStyle(0x2A2A1A, 0.6);
+    // V-shape bird
+    const flap = Math.sin(t * 0.2 + b * 3) * 3;
+    graphics.fillTriangle(birdX - 6, birdY, birdX, birdY - flap, birdX, birdY + 1);
+    graphics.fillTriangle(birdX + 6, birdY, birdX, birdY - flap, birdX, birdY + 1);
+  }
+
+  // Horde side: rising ember particles
+  for (let e = 0; e < 18; e++) {
+    const emberSeed = e * 137 + Math.floor(t / 80);
+    const ex = halfW + 100 + ((emberSeed * 31) % (halfW - 200));
+    const ey = MAP_H - ((t * 1.5 + e * 40) % 800);
+    const emberAge = ((t * 1.5 + e * 40) % 800) / 800;
+    graphics.fillStyle(0xFF6600, (1 - emberAge) * 0.5);
+    graphics.fillCircle(ex + Math.sin(t * 0.06 + e) * 8, ey, 2);
+    graphics.fillStyle(0xFFAA00, (1 - emberAge) * 0.3);
+    graphics.fillCircle(ex + Math.sin(t * 0.06 + e) * 8, ey, 1);
+  }
+
+  // Horde side: heat shimmer at bottom
+  graphics.fillStyle(0xFF4400, 0.04 + Math.sin(t * 0.05) * 0.02);
+  graphics.fillRect(halfW, MAP_H - 300, halfW, 300);
+  // Distant fire glow on horizon
+  graphics.fillStyle(0xFF2200, 0.06);
+  graphics.fillRect(halfW, 0, halfW, 80);
+  graphics.fillStyle(0xFF4400, 0.04);
+  graphics.fillRect(halfW, 40, halfW, 60);
+
+  // Animated grass sway patches (Alliance side)
+  const grassBlades = [
+    {x:300,y:300},{x:600,y:450},{x:900,y:350},{x:1400,y:550},{x:1800,y:400},
+    {x:500,y:1800},{x:1200,y:1900},{x:1800,y:2000},
+  ];
+  for (const gb of grassBlades) {
+    const sway = Math.sin(t * 0.03 + gb.x * 0.01) * 2;
+    graphics.fillStyle(0x4A8A2A, 0.4);
+    graphics.fillRect(gb.x - 1, gb.y - 8, 2, 8);
+    graphics.fillStyle(0x66AA44, 0.3);
+    graphics.fillRect(gb.x - 1 + sway, gb.y - 10, 1, 6);
+  }
+
   // === FACTION BANNERS at tower positions ===
   const bannerPositions = [
     {x:900, faction:'alliance'}, {x:1500, faction:'alliance'},
@@ -5601,7 +5660,9 @@ if (playerAgentId) {
         const myH = getMyHero();
         if (myH) {
           const isA = myH.faction === 'alliance';
-          window._ultimateFlash = { age: 0, color: isA ? 'rgba(255,215,0,0.3)' : 'rgba(200,0,0,0.3)' };
+          window._ultimateFlash = { age: 0, color: isA ? 'rgba(255,215,0,0.7)' : 'rgba(220,40,0,0.7)' };
+          // Massive screen shake for ultimate
+          if (typeof triggerEntityShake === 'function') triggerEntityShake(8);
           // Announce in chat
           addSystemChat((myH.displayName || myH.heroClass) + ' unleashes their ULTIMATE!');
         }
@@ -6069,7 +6130,7 @@ function updatePlayerControls() {
 
   // Screen shake
   let _shakeX = 0, _shakeY = 0, _shakeTimer = 0;
-  function triggerEntityShake(amount) { _shakeTimer = 4; _shakeX = amount; _shakeY = amount; }
+  function triggerEntityShake(amount) { _shakeTimer = Math.max(_shakeTimer, 10); _shakeX = Math.max(_shakeX, amount); _shakeY = Math.max(_shakeY, amount); }
 
   // Damage flash
   const _dmgFlash = {}; // entityId -> frames remaining
@@ -6185,12 +6246,18 @@ function updatePlayerControls() {
       gameState.units.forEach(u => {
         if (!u.alive) return;
         const x = u.x * scaleX;
-        // HARD CLAMP every unit Y to mid lane (1040-1360) — no exceptions
+        // Clamp unit Y to mid lane (1040-1360) with natural spread
         const rawY = u.y * scaleY;
         const minY = 1040 * scaleY;
         const maxY = 1360 * scaleY;
-        const cy = Math.max(minY, Math.min(maxY, rawY));
-        const y = cy; // ensure any leftover y refs use clamped value
+        // Deterministic variance based on unit id hash — spreads units
+        // within lane so they don't form a conga line
+        let hash = 0;
+        const idStr = String(u.id || '');
+        for (let h = 0; h < idStr.length; h++) hash = ((hash << 5) - hash + idStr.charCodeAt(h)) | 0;
+        const spread = ((Math.abs(hash) % 100) - 50) * scaleY * 1.8; // -90 to +90 in map units
+        const cy = Math.max(minY, Math.min(maxY, rawY + spread));
+        const y = cy;
         const isA = u.faction === 'alliance';
         const t = u.unitType;
         const isLarge = (t === 'colossus' || t === 'gryphon');
@@ -6248,9 +6315,13 @@ function updatePlayerControls() {
     gameState.heroes.forEach(hero => {
       if (!hero.alive) return;
       const x = hero.x * scaleX;
-      // HARD CLAMP hero Y to mid lane (1040-1360)
+      // Clamp hero Y to mid lane with slight deterministic variance
       const rawY = hero.y * scaleY;
-      const y = Math.max(1040 * scaleY, Math.min(1360 * scaleY, rawY));
+      let hHash = 0;
+      const hIdStr = String(hero.id || hero.agentId || '');
+      for (let hi = 0; hi < hIdStr.length; hi++) hHash = ((hHash << 5) - hHash + hIdStr.charCodeAt(hi)) | 0;
+      const hSpread = ((Math.abs(hHash) % 60) - 30) * scaleY;
+      const y = Math.max(1040 * scaleY, Math.min(1360 * scaleY, rawY + hSpread));
       const isA = hero.faction === 'alliance';
       const isMine = playerAgentId && hero.agentId === playerAgentId;
       const s = (1 + (hero.level - 1) * 0.05) * Math.max(scaleX / 0.15, 0.6); // 5% bigger per level
@@ -6535,20 +6606,52 @@ function updatePlayerControls() {
       ctx.fillText('LEVEL UP!', lf.x, lf.y - 20 - lf.age);
     }
 
-    // Ultimate flash effect
+    // Ultimate flash — DEVASTATING multi-phase effect
     if (window._ultimateFlash) {
       const uf = window._ultimateFlash;
       uf.age++;
-      if (uf.age > 15) { window._ultimateFlash = null; }
+      const maxAge = 50;
+      if (uf.age > maxAge) { window._ultimateFlash = null; }
       else {
-        ctx.fillStyle = uf.color;
-        ctx.globalAlpha = 1 - uf.age/15;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const p = uf.age / maxAge;
+        // Phase 1 (0-15%): freeze flash bright white
+        if (p < 0.15) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.globalAlpha = 0.9 * (p / 0.15);
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        // Phase 2 (15-50%): color flash
+        else if (p < 0.5) {
+          ctx.fillStyle = uf.color;
+          const fp = (p - 0.15) / 0.35;
+          ctx.globalAlpha = 0.8 * (1 - fp) * 0.8;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // Expanding ring from center
+          const cx = canvas.width / 2, cy = canvas.height / 2;
+          ctx.strokeStyle = uf.color;
+          ctx.lineWidth = 6 - fp * 4;
+          ctx.globalAlpha = 1 - fp;
+          ctx.beginPath(); ctx.arc(cx, cy, fp * Math.max(canvas.width, canvas.height), 0, Math.PI*2); ctx.stroke();
+        }
+        // Phase 3 (50-100%): fade out with lingering edge glow
+        else {
+          const fp = (p - 0.5) / 0.5;
+          ctx.fillStyle = uf.color;
+          ctx.globalAlpha = 0.3 * (1 - fp);
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // Edge vignette
+          const grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.width/3, canvas.width/2, canvas.height/2, canvas.width/1.5);
+          grd.addColorStop(0, 'rgba(0,0,0,0)');
+          grd.addColorStop(1, uf.color.replace(/[\d.]+\)$/, (0.6 * (1 - fp)) + ')'));
+          ctx.fillStyle = grd;
+          ctx.globalAlpha = 1;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
         ctx.globalAlpha = 1;
       }
     }
 
-    // Ability visual effects
+    // Ability visual effects — BIG and flashy
     for (let i = _abilityFX.length - 1; i >= 0; i--) {
       const fx = _abilityFX[i];
       fx.age++;
@@ -6557,20 +6660,56 @@ function updatePlayerControls() {
       const sx = fx.x * scaleX, sy = fx.y * scaleY;
       ctx.globalAlpha = 1 - p;
       if (fx.type === 'expand_ring') {
-        ctx.strokeStyle = fx.color; ctx.lineWidth = 3 - p*2;
-        ctx.beginPath(); ctx.arc(sx, sy, 10 + p*50, 0, Math.PI*2); ctx.stroke();
+        // Triple ring burst
+        for (let r = 0; r < 3; r++) {
+          ctx.strokeStyle = fx.color; ctx.lineWidth = 5 - p*3;
+          ctx.globalAlpha = (1 - p) * (0.8 - r * 0.2);
+          ctx.beginPath(); ctx.arc(sx, sy, 20 + p*80 + r * 15, 0, Math.PI*2); ctx.stroke();
+        }
+        // Burst particles
+        for (let pt = 0; pt < 8; pt++) {
+          const ang = (pt / 8) * Math.PI * 2;
+          const pr = 20 + p * 60;
+          ctx.fillStyle = fx.color;
+          ctx.globalAlpha = (1 - p) * 0.7;
+          ctx.beginPath(); ctx.arc(sx + Math.cos(ang)*pr, sy + Math.sin(ang)*pr, 4 * (1-p), 0, Math.PI*2); ctx.fill();
+        }
       } else if (fx.type === 'targeted') {
-        ctx.fillStyle = fx.color;
-        ctx.beginPath(); ctx.arc(sx + 30*(1-p), sy, 5, 0, Math.PI*2); ctx.fill();
+        // Targeted shot with glow trail
+        for (let tr = 0; tr < 4; tr++) {
+          const tp = Math.max(0, p - tr * 0.08);
+          ctx.fillStyle = fx.color;
+          ctx.globalAlpha = (1 - p) * (1 - tr * 0.2);
+          ctx.beginPath(); ctx.arc(sx + 100*(1-tp), sy, 8 - tr * 1.5, 0, Math.PI*2); ctx.fill();
+        }
       } else if (fx.type === 'aura') {
-        ctx.fillStyle = fx.color; ctx.globalAlpha = (1-p) * 0.2;
-        ctx.beginPath(); ctx.arc(sx, sy, 20 + p*30, 0, Math.PI*2); ctx.fill();
+        // Pulsing aura with layers
+        for (let a = 0; a < 4; a++) {
+          ctx.fillStyle = fx.color;
+          ctx.globalAlpha = (1 - p) * (0.3 - a * 0.07);
+          ctx.beginPath(); ctx.arc(sx, sy, 30 + p*60 + a * 20, 0, Math.PI*2); ctx.fill();
+        }
       } else if (fx.type === 'ground') {
-        ctx.fillStyle = fx.color; ctx.globalAlpha = (1-p) * 0.3;
-        ctx.fillRect(sx - 20 - p*20, sy + 10, 40 + p*40, 6);
+        // Ground slam — expanding crack + particles
+        ctx.fillStyle = fx.color; ctx.globalAlpha = (1-p) * 0.5;
+        ctx.fillRect(sx - 40 - p*40, sy + 20, 80 + p*80, 10);
+        // Dust particles
+        for (let d = 0; d < 10; d++) {
+          const dx = sx + (d - 5) * 15 * (1 + p);
+          ctx.fillStyle = fx.color;
+          ctx.globalAlpha = (1 - p) * 0.6;
+          ctx.beginPath(); ctx.arc(dx, sy + 25 - p * 30, 3 * (1-p), 0, Math.PI*2); ctx.fill();
+        }
       } else if (fx.type === 'projectile') {
-        ctx.fillStyle = fx.color;
-        ctx.beginPath(); ctx.arc(sx + p*80, sy, 4, 0, Math.PI*2); ctx.fill();
+        // Projectile with arc + flame trail
+        const arcY = Math.sin(p * Math.PI) * -30;
+        for (let tr = 0; tr < 6; tr++) {
+          const tp = Math.max(0, p - tr * 0.06);
+          const arcY2 = Math.sin(tp * Math.PI) * -30;
+          ctx.fillStyle = fx.color;
+          ctx.globalAlpha = (1 - p) * (1 - tr * 0.15);
+          ctx.beginPath(); ctx.arc(sx + tp*120, sy + arcY2, 6 - tr, 0, Math.PI*2); ctx.fill();
+        }
       }
       ctx.globalAlpha = 1;
     }

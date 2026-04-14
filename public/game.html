@@ -2209,10 +2209,12 @@ ws.onmessage = (e) => {
         const victim = gameState.heroes.find(h => h.id === k.victimId);
         if (killer && victim) {
           addSystemChat(killer.heroClass + ' slew ' + victim.heroClass + '!');
-          // Highlight killer + show +XP above them
+          // Highlight killer + show +XP and +Gold above them
           if (window._flashKiller) window._flashKiller(killer.id);
           const xpGain = k.xp || (60 + (victim.level || 1) * 20);
-          if (window._pushXPFloat) window._pushXPFloat(killer.x, killer.y - 40, xpGain);
+          const goldGain = k.bounty || 100;
+          if (window._pushXPFloat) window._pushXPFloat(killer.x, killer.y - 48, xpGain);
+          if (window._pushKillGold) window._pushKillGold(killer.x, killer.y - 28, goldGain);
         }
       }
       if (_announcedKills.size > 200) _announcedKills = new Set([...Array.from(_announcedKills).slice(-100)]);
@@ -6480,10 +6482,23 @@ function updatePlayerControls() {
 
   // XP floats (reuses _dmgFloats with kind='xp')
   window._pushXPFloat = (mx, my, amount) => {
-    // Map coords — convert at render time via current scale
     _pendingXP.push({ mx, my, amount });
   };
   const _pendingXP = [];
+
+  // Kill-gold floats (reuses _dmgFloats with kind='gold')
+  window._pushKillGold = (mx, my, amount) => {
+    _pendingGold.push({ mx, my, amount });
+  };
+  const _pendingGold = [];
+
+  // Tower destruction full-screen flash
+  let _towerFlash = 0;
+  const _origQueueTowerExplosion = window._queueTowerExplosion;
+  window._queueTowerExplosion = (mx, my, faction, mag) => {
+    _origQueueTowerExplosion(mx, my, faction, mag);
+    _towerFlash = Math.max(_towerFlash, 10 + (mag || 1) * 6);
+  };
 
   // Wave-cleared banner state
   let _prevWaveCount = -1;
@@ -7092,6 +7107,10 @@ function updatePlayerControls() {
       const q = _pendingXP.shift();
       _dmgFloats.push({ x: q.mx * scaleX, y: q.my * scaleY, kind: 'xp', text: '+' + q.amount + ' XP', age: 0, bounce: 4 });
     }
+    while (_pendingGold.length) {
+      const q = _pendingGold.shift();
+      _dmgFloats.push({ x: q.mx * scaleX, y: q.my * scaleY, kind: 'gold', text: '+' + q.amount + ' G', age: 0, bounce: 3 });
+    }
 
     // ─── Floating combat text (tiered: normal/crit/heal) ───
     for (let i = _dmgFloats.length - 1; i >= 0; i--) {
@@ -7270,19 +7289,59 @@ function updatePlayerControls() {
       }
     }
 
-    // Level-up burst effects
+    // Level-up burst effects — bright flash + dual rings + text
     for (let i = _levelUpFX.length - 1; i >= 0; i--) {
       const lf = _levelUpFX[i];
       lf.age++;
-      if (lf.age > 30) { _levelUpFX.splice(i, 1); continue; }
-      const p = lf.age / 30;
-      ctx.strokeStyle = `rgba(255,215,0,${1-p})`;
-      ctx.lineWidth = 3 - p*2;
-      ctx.beginPath(); ctx.arc(lf.x, lf.y, 10 + p * 40, 0, Math.PI*2); ctx.stroke();
-      ctx.fillStyle = `rgba(255,215,0,${1-p})`;
-      ctx.font = 'bold 14px Cinzel, sans-serif';
+      const MAX = 36;
+      if (lf.age > MAX) { _levelUpFX.splice(i, 1); continue; }
+      const p = lf.age / MAX;
+      // Phase 1 (0-25%): bright white core flash
+      if (p < 0.25) {
+        const fp = p / 0.25;
+        ctx.fillStyle = `rgba(255,255,220,${0.9 * (1 - fp)})`;
+        ctx.beginPath(); ctx.arc(lf.x, lf.y, 45 * (1 - fp) + 10, 0, Math.PI*2); ctx.fill();
+      }
+      // Outer ring — fast expansion, fades early
+      const ringP = Math.min(1, p * 1.8);
+      ctx.strokeStyle = `rgba(255,215,0,${(1 - ringP) * 0.9})`;
+      ctx.lineWidth = 4 - ringP * 3;
+      ctx.beginPath(); ctx.arc(lf.x, lf.y, 10 + ringP * 70, 0, Math.PI*2); ctx.stroke();
+      // Secondary inner ring — delayed
+      if (p > 0.15) {
+        const rp2 = (p - 0.15) / 0.85;
+        ctx.strokeStyle = `rgba(255,240,160,${(1 - rp2) * 0.7})`;
+        ctx.lineWidth = 2.5 - rp2 * 2;
+        ctx.beginPath(); ctx.arc(lf.x, lf.y, 6 + rp2 * 45, 0, Math.PI*2); ctx.stroke();
+      }
+      // Upward particle sparks
+      for (let k = 0; k < 6; k++) {
+        const angle = (k / 6) * Math.PI * 2 + lf.age * 0.12;
+        const r = 20 + p * 30;
+        ctx.fillStyle = `rgba(255,230,140,${1 - p})`;
+        ctx.beginPath();
+        ctx.arc(lf.x + Math.cos(angle) * r, lf.y + Math.sin(angle) * r * 0.6 - p * 30, 2.5 * (1 - p * 0.4), 0, Math.PI*2);
+        ctx.fill();
+      }
+      // Floating text with bounce rise
+      const tyOff = -24 - lf.age * 1.4;
+      const textAlpha = Math.min(1, (1 - p) * 1.4);
+      ctx.font = 'bold 18px Cinzel, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('LEVEL UP!', lf.x, lf.y - 20 - lf.age);
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = `rgba(40,20,0,${textAlpha})`;
+      ctx.lineWidth = 4;
+      ctx.strokeText('LEVEL UP!', lf.x, lf.y + tyOff);
+      ctx.fillStyle = `rgba(255,215,0,${textAlpha})`;
+      ctx.fillText('LEVEL UP!', lf.x, lf.y + tyOff);
+    }
+
+    // Tower-destruction full-screen flash (brief white wash)
+    if (_towerFlash > 0) {
+      const tfp = _towerFlash / 22;
+      ctx.fillStyle = `rgba(255,245,200,${Math.min(0.55, tfp * 0.5)})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      _towerFlash--;
     }
 
     // Ultimate flash — DEVASTATING multi-phase effect

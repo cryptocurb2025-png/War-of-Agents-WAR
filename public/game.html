@@ -4665,50 +4665,50 @@ function updateUI() {
     const prevLvl = window._prevHeroLevels[h.id] || h.level;
     const justLeveled = h.level > prevLvl;
     window._prevHeroLevels[h.id] = h.level;
-    card.className = `hero-card ${h.faction} ${h.alive?'':'dead'} ${isMine?'mine':''} ${justLeveled?'levelup':''}`;
-    card.style.cssText = 'background:#0d0d1a !important;background-color:#0d0d1a !important';
-    const streak = (h.killStreak>=3) ? `<span class="streak-badge">\uD83D\uDD25${h.killStreak}x</span>` : '';
-    const deadIcon = !h.alive ? '\u2620 ' : '';
-    const icon = CLASS_ICONS[h.heroClass]||'';
-    const clr = CLASS_CARD_COLORS[h.heroClass]||'#aaa';
-    const hpPct = h.alive?(h.hp/h.maxHp*100):0;
-    const manaPct = (h.alive && h.maxMana>0)?(h.mana/h.maxMana*100):0;
-    const agentLabel = h.agentId ? String(h.agentId).substring(0,10) : 'AI';
+    // Fully inline styling to bypass ALL CSS class conflicts
+    const factionColor = h.faction === 'alliance' ? '#4A8FE0' : '#CC3322';
+    const borderColor = isMine ? '#FFD700' : factionColor;
+    card.style.cssText = `background:#0d0d1a !important;min-width:152px;max-width:152px;padding:6px;font-size:10px;display:flex;flex-direction:column;gap:2px;border:1px solid ${borderColor};border-left:3px solid ${factionColor};border-radius:4px;flex-shrink:0;color:#D4C9A8;font-family:'Cinzel',serif;${!h.alive?'opacity:0.6;':''}${isMine?'box-shadow:0 0 8px rgba(255,215,0,0.3);':''}`;
+    const streak = (h.killStreak>=3) ? ` 🔥${h.killStreak}x` : '';
+    const deadIcon = !h.alive ? '☠ ' : '';
+    const icon = CLASS_ICONS[h.heroClass]||'?';
+    const hpPct = h.alive?Math.round((h.hp/h.maxHp)*100):0;
+    const manaPct = (h.alive && h.maxMana>0)?Math.round((h.mana/h.maxMana)*100):0;
+    const hpColor = hpPct>50?'#66CC66':hpPct>25?'#DDCC66':'#DD6666';
+    const agentLabel = h.agentId ? String(h.agentId).substring(0,8) : 'AI';
     const items = Array.isArray(h.items) ? h.items : [];
-    const pills = items.length>0
-      ? items.map(i=>`<span class="item-pill">${i}</span>`).join('')
-      : '<span style="color:#1a2a3a;font-size:8px">No items</span>';
-    const abilities = Array.isArray(h.abilities) ? h.abilities : [];
-    const abs = abilities.map(a=>
-      `<span style="color:${(a.cd||0)>0?'#1a2a3a':'#3A5A7A'}" title="${a.name||''} T${a.tier||1}">${(a.name||'').split(' ')[0]}</span>`
-    ).join(' ');
+    const itemsText = items.length>0 ? items.slice(0,3).join(',') : '—';
+    const nameColor = isMine ? '#FFD700' : factionColor;
 
-    const hpNum = Math.round(hpPct);
-    const mpNum = Math.round(manaPct);
     card.innerHTML = `
-      <div class="hero-header">
-        <div class="class-icon" style="background:${clr}18;border:1px solid ${clr}66">${icon}</div>
-        <div>
-          <div class="name">${deadIcon}${h.heroClass} ${streak}</div>
-          <div class="agent-label">${agentLabel} <span class="level-badge">LV ${h.level}</span></div>
-          <div class="faction-label ${h.faction}">${h.faction==='alliance'?'Alliance':'Horde'}</div>
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+        <div style="width:22px;height:22px;background:${factionColor}22;border:1px solid ${factionColor}66;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${icon}</div>
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="color:${nameColor};font-weight:700;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${deadIcon}${h.heroClass}${streak}</div>
+          <div style="color:#8A7A5A;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${agentLabel} · Lv${h.level}</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:3px"><span style="color:#C8960C;font-size:8px;min-width:14px">HP</span><div class="hp-bar" style="flex:1"><div class="hp-bar-fill hp-${h.faction}" style="width:${hpPct}%"></div></div><span style="color:#66BB6A;font-size:9px;min-width:28px;text-align:right">${hpNum}%</span></div>
-      <div style="display:flex;align-items:center;gap:3px"><span style="color:#C8960C;font-size:8px;min-width:14px">MP</span><div class="hp-bar" style="flex:1"><div class="mana-bar-fill" style="width:${manaPct}%"></div></div><span style="color:#42A5F5;font-size:9px;min-width:28px;text-align:right">${mpNum}%</span></div>
-      <div class="kda">K: ${h.kills} / D: ${h.deaths} / A: ${h.assists}</div>
-      <div class="stats">${h.hp}/${h.maxHp} HP | ${h.gold}g | DMG:${h.damage}</div>
-      <div class="items-row">${pills}</div>
-      ${!h.alive?`<div style="color:#E24B4A;font-size:10px;font-weight:700;text-align:center;padding:2px 0;background:rgba(180,30,30,0.15);border-radius:3px;margin-top:2px">\u2620 DEAD &mdash; respawn ${Math.ceil((h.respawnIn||100)/20)}s</div>`:''}
+      <div style="display:flex;align-items:center;gap:3px">
+        <span style="color:#C8960C;font-size:8px;width:12px">HP</span>
+        <div style="flex:1;height:6px;background:#0A0804;border:1px solid #2A2218;border-radius:2px;overflow:hidden"><div style="width:${hpPct}%;height:100%;background:linear-gradient(90deg,#1A6A1A,${hpColor})"></div></div>
+        <span style="color:${hpColor};font-size:9px;min-width:22px;text-align:right">${hpPct}%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:3px">
+        <span style="color:#C8960C;font-size:8px;width:12px">MP</span>
+        <div style="flex:1;height:5px;background:#0A0804;border:1px solid #2A2218;border-radius:2px;overflow:hidden"><div style="width:${manaPct}%;height:100%;background:linear-gradient(90deg,#0A3A8A,#4488EE)"></div></div>
+        <span style="color:#42A5F5;font-size:9px;min-width:22px;text-align:right">${manaPct}%</span>
+      </div>
+      <div style="color:#AAA080;font-weight:700;font-size:10px">K ${h.kills} · D ${h.deaths} · A ${h.assists}</div>
+      <div style="color:#F0C040;font-size:9px">${h.gold||0}g · DMG ${h.damage||0}</div>
+      <div style="color:#8A7A5A;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📦 ${itemsText}</div>
+      ${!h.alive?`<div style="color:#E24B4A;font-size:9px;font-weight:700;text-align:center;padding:1px;background:rgba(180,30,30,0.15);border-radius:2px;margin-top:1px">☠ ${Math.ceil((h.respawnIn||100)/20)}s</div>`:''}
     `;
     panel.appendChild(card);
     } catch(err) {
-      console.warn('Hero card render error:', err, h);
-      // Fallback card so slot still shows
+      console.warn('Hero card error:', err, h);
       const fallback = document.createElement('div');
-      fallback.className = 'hero-card';
-      fallback.style.cssText = 'background:#0d0d1a !important;min-width:152px;padding:8px;color:#666;font-size:10px';
-      fallback.textContent = (h.heroClass || 'hero') + ' (render error)';
+      fallback.style.cssText = 'background:#0d0d1a !important;min-width:152px;padding:8px;color:#666;font-size:10px;border:1px solid #1a1a2a;border-radius:4px;flex-shrink:0';
+      fallback.textContent = (h?.heroClass || 'hero') + ' error';
       panel.appendChild(fallback);
     }
   }
@@ -4717,9 +4717,8 @@ function updateUI() {
   const totalSlots = Math.max(6, sorted.length);
   for (let i = sorted.length; i < totalSlots; i++) {
     const empty = document.createElement('div');
-    empty.className = 'hero-card empty-slot';
-    empty.style.cssText = 'background:#0d0d1a !important;border:1px solid #1a1a24;min-width:152px;min-height:80px;display:flex;align-items:center;justify-content:center;border-radius:6px;flex-shrink:0';
-    empty.innerHTML = '<div style="color:#2A2A3A;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-family:Cinzel,serif">WAITING...</div>';
+    empty.style.cssText = 'background:#0d0d1a !important;border:1px dashed #1a1a2a;min-width:152px;max-width:152px;min-height:120px;display:flex;align-items:center;justify-content:center;border-radius:4px;flex-shrink:0;color:#2A2A3A;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-family:Cinzel,serif';
+    empty.textContent = 'EMPTY SLOT';
     panel.appendChild(empty);
   }
 

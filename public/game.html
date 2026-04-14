@@ -1705,7 +1705,8 @@
 <!-- ─── EVENT ANNOUNCEMENT ────────────────────────────── -->
 <div id="event-announce"></div>
 <div id="missions-panel" style="position:fixed;top:70px;left:12px;z-index:90;background:linear-gradient(180deg,rgba(14,10,4,0.9),rgba(8,4,2,0.94));border:1px solid rgba(200,150,12,0.5);border-radius:4px;padding:8px 10px;min-width:220px;max-width:260px;font-family:'Cinzel',serif;color:#C8B070;font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,0.6);display:none">
-  <div style="color:#FACC15;font-size:12px;font-weight:900;letter-spacing:2px;margin-bottom:6px;text-align:center;border-bottom:1px solid rgba(200,150,12,0.3);padding-bottom:4px">MISSIONS</div>
+  <div style="color:#FACC15;font-size:12px;font-weight:900;letter-spacing:2px;margin-bottom:2px;text-align:center;border-bottom:1px solid rgba(200,150,12,0.3);padding-bottom:4px">MISSIONS</div>
+  <div id="daily-reset-timer" style="color:#F97316;font-size:9px;text-align:center;letter-spacing:1px;margin-bottom:6px">Dailies reset in <span id="reset-countdown">—</span></div>
   <div id="missions-list" style="display:flex;flex-direction:column;gap:6px"></div>
 </div>
 <div id="upgrade-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:180;background:linear-gradient(180deg,rgba(16,10,4,0.96),rgba(8,4,2,0.98));border:2px solid #C8960C;border-radius:6px;padding:20px 24px 16px;min-width:480px;box-shadow:0 0 80px rgba(200,150,12,0.4),0 6px 24px rgba(0,0,0,0.9);font-family:'Cinzel',serif">
@@ -2452,6 +2453,27 @@ function renderMissions() {
 }
 // Poll on load + every 30s as fallback (WS push handles live updates)
 setInterval(fetchMissions, 30000);
+
+// Daily reset countdown ticker — resets at UTC 00:00
+function updateResetCountdown() {
+  const el = document.getElementById('reset-countdown');
+  if (!el) return;
+  const now = new Date();
+  const nextUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+  let ms = nextUTC.getTime() - now.getTime();
+  if (ms < 0) ms = 0;
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  el.textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  // When the timer ticks into a new day, force a mission re-fetch so the
+  // client picks up the fresh daily roll without waiting for the 30s poll
+  const lastDay = el.getAttribute('data-day');
+  const todayKey = now.toISOString().slice(0, 10);
+  if (lastDay && lastDay !== todayKey) fetchMissions();
+  el.setAttribute('data-day', todayKey);
+}
+setInterval(updateResetCountdown, 30000);
+setTimeout(updateResetCountdown, 600);
 
 // ─── Wave upgrade modal ──────────────────────────────────────────────────────
 let _upgradeTimer = null;

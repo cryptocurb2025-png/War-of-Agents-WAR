@@ -892,11 +892,18 @@
   #chat-panel {
     position: fixed;
     bottom: 196px;
-    left: 170px; /* to the right of the betting panel */
+    left: 170px;
     width: 240px;
-    background: rgba(13,13,26,0.92);
-    border: 1px solid #c8941a33;
+    background: rgba(13,13,26,0.55);
+    border: 1px solid #c8941a22;
     border-radius: 6px;
+    opacity: 0.55;
+    transition: opacity 0.3s, background 0.3s, border-color 0.3s;
+  }
+  #chat-panel:hover, #chat-panel:focus-within {
+    opacity: 1;
+    background: rgba(13,13,26,0.92);
+    border-color: #c8941a;
     z-index: 140;
     display: flex;
     flex-direction: column;
@@ -1470,19 +1477,19 @@
     <div class="hk-slot ult" id="hk-t" data-key="T"><div class="hk-key">T</div><div class="hk-name" id="hk-t-name">-</div><div class="hk-cd" id="hk-t-cd"></div></div>
     <div style="width:8px"></div>
     <!-- Lane switch slots -->
-    <div class="hk-slot hk-item" id="hk-1" data-key="1" style="border-color:#4A8FE033"><div class="hk-key">1</div><div class="hk-name" id="hk-1-name" style="color:#4A8FE0">TOP</div></div>
-    <div class="hk-slot hk-item" id="hk-2" data-key="2" style="border-color:#C8960C33"><div class="hk-key">2</div><div class="hk-name" id="hk-2-name" style="color:#C8960C">MID</div></div>
-    <div class="hk-slot hk-item" id="hk-3" data-key="3" style="border-color:#E24B4A33"><div class="hk-key">3</div><div class="hk-name" id="hk-3-name" style="color:#E24B4A">BOT</div></div>
+    <div class="hk-slot hk-item" id="hk-1" data-key="1" data-tooltip="Top Lane&#10;Move to the top corridor" style="border-color:#4A8FE033"><div class="hk-key">1</div><div class="hk-name" id="hk-1-name" style="color:#4A8FE0">TOP</div></div>
+    <div class="hk-slot hk-item" id="hk-2" data-key="2" data-tooltip="Mid Lane&#10;Move to the middle corridor" style="border-color:#C8960C33"><div class="hk-key">2</div><div class="hk-name" id="hk-2-name" style="color:#C8960C">MID</div></div>
+    <div class="hk-slot hk-item" id="hk-3" data-key="3" data-tooltip="Bot Lane&#10;Move to the bottom corridor" style="border-color:#E24B4A33"><div class="hk-key">3</div><div class="hk-name" id="hk-3-name" style="color:#E24B4A">BOT</div></div>
     <div style="width:4px"></div>
-    <div class="hk-slot hk-item" id="hk-b" data-key="B" style="border-color:#F0C04044"><div class="hk-key">B</div><div class="hk-name" style="color:#F0C040">SHOP</div></div>
+    <div class="hk-slot hk-item" id="hk-b" data-key="B" data-tooltip="Open Shop&#10;Buy items with gold" style="border-color:#F0C04044"><div class="hk-key">B</div><div class="hk-name" style="color:#F0C040">SHOP</div></div>
     <div style="width:4px"></div>
-    <div class="hk-slot hk-item" data-key="V" style="border-color:#FF660044"><div class="hk-key">V</div><div class="hk-name" style="color:#FF6600">TURRET</div></div>
+    <div class="hk-slot hk-item" data-key="V" data-tooltip="Base Turret&#10;Click to fire from base&#10;200+ AOE damage&#10;CD: 10s" style="border-color:#FF660044"><div class="hk-key">V</div><div class="hk-name" style="color:#FF6600">TURRET</div></div>
     <div style="width:4px"></div>
-    <div class="hk-slot hk-item" data-key="F1" style="border-color:#44AA4433"><div class="hk-key" style="font-size:8px">F1</div><div class="hk-name" style="color:#44AA44;font-size:7px">MELEE</div></div>
-    <div class="hk-slot hk-item" data-key="F2" style="border-color:#4488CC33"><div class="hk-key" style="font-size:8px">F2</div><div class="hk-name" style="color:#4488CC;font-size:7px">RANGE</div></div>
-    <div class="hk-slot hk-item" data-key="F3" style="border-color:#CC884433"><div class="hk-key" style="font-size:8px">F3</div><div class="hk-name" style="color:#CC8844;font-size:7px">HEAVY</div></div>
+    <div class="hk-slot hk-item" data-key="F1" data-tooltip="Vote Melee Wave&#10;Next wave: more footmen" style="border-color:#44AA4433"><div class="hk-key" style="font-size:8px">F1</div><div class="hk-name" style="color:#44AA44;font-size:7px">MELEE</div></div>
+    <div class="hk-slot hk-item" data-key="F2" data-tooltip="Vote Ranged Wave&#10;Next wave: more archers" style="border-color:#4488CC33"><div class="hk-key" style="font-size:8px">F2</div><div class="hk-name" style="color:#4488CC;font-size:7px">RANGE</div></div>
+    <div class="hk-slot hk-item" data-key="F3" data-tooltip="Vote Heavy Wave&#10;Next wave: siege units" style="border-color:#CC884433"><div class="hk-key" style="font-size:8px">F3</div><div class="hk-name" style="color:#CC8844;font-size:7px">HEAVY</div></div>
     <div style="width:6px"></div>
-    <div class="hk-slot ult" data-key=" " style="border-color:#FFD70066;background:linear-gradient(135deg,#1A1408,#0A0804)"><div class="hk-key" style="color:#FFD700;font-size:9px">SPC</div><div class="hk-name" style="color:#FFD700;font-size:7px">ULTIMATE</div></div>
+    <div class="hk-slot ult" data-key=" " data-tooltip="ULTIMATE ABILITY&#10;Class-specific game-changing&#10;Long cooldown" style="border-color:#FFD70066;background:linear-gradient(135deg,#1A1408,#0A0804)"><div class="hk-key" style="color:#FFD700;font-size:9px">SPC</div><div class="hk-name" style="color:#FFD700;font-size:7px">ULTIMATE</div></div>
   </div>
   <!-- Hero stats bar — stone plaque -->
   <div id="pc-stats-bar" style="position:fixed;bottom:240px;left:50%;transform:translateX(-50%);z-index:150;font-family:'Cinzel',serif;font-size:11px;color:#C8B890;background:#0d0d1aee;border:1px solid #C8960C44;border-radius:4px;padding:5px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.6)">
@@ -1496,7 +1503,7 @@
 
 <style>
 .hk-slot {
-  width:60px;height:60px;
+  width:74px;height:74px; /* +23% bigger for readability */
   background:
     linear-gradient(180deg, #2A1A08 0%, #1A1208 50%, #080402 100%),
     radial-gradient(circle at 30% 20%, rgba(200,150,12,0.12), transparent 60%);
@@ -1529,9 +1536,41 @@
   border-image: linear-gradient(180deg, #5A8B3A, #3A5A2A, #1A2A12) 1;
   background:linear-gradient(180deg,#1A2A0A,#0A1404);
 }
-.hk-key{font-size:15px;font-weight:900;color:#F0C040;text-shadow:0 0 8px rgba(240,192,64,0.6), 0 1px 1px #000;font-family:'MedievalSharp',serif}
-.hk-name{font-size:8px;color:#8A7A5A;margin-top:3px;text-align:center;line-height:1.1;max-width:56px;overflow:hidden;letter-spacing:0.3px}
+.hk-key{font-size:18px;font-weight:900;color:#F0C040;text-shadow:0 0 8px rgba(240,192,64,0.6), 0 1px 1px #000;font-family:'MedievalSharp',serif}
+.hk-name{font-size:9px;color:#8A7A5A;margin-top:3px;text-align:center;line-height:1.1;max-width:70px;overflow:hidden;letter-spacing:0.3px}
 .hk-cd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#FF6644;text-shadow:0 0 10px rgba(255,100,60,0.7), 0 2px 2px #000;pointer-events:none;font-family:'Cinzel',serif}
+/* Hotkey tooltip — appears above slot on hover */
+.hk-slot[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0a0a14;
+  border: 1px solid #C8960C;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  color: #D4C9A8;
+  white-space: pre-line;
+  width: 180px;
+  text-align: left;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+}
+.hk-slot[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #C8960C;
+  pointer-events: none;
+  z-index: 1000;
+}
 .hk-item .hk-key{color:#88DD88;font-size:13px}
 .hk-item .hk-name{color:#88DD88}
 .hk-slot.ult{
@@ -4974,30 +5013,36 @@ function updateUI() {
     }
   }
 
+  // Ally/enemy color based on player's faction (clearer than blue/red factions)
+  const myFac = localStorage.getItem('woa_faction') || 'alliance';
+  const allyC = '#44CC88', enemyC = '#FF4444';
+
   // Units as dots
   for (const u of gs.units) {
     if (!u.alive) continue;
-    ctx.fillStyle = u.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
-    ctx.globalAlpha = 0.6;
-    ctx.fillRect(u.x*sx-2, u.y*sy-2, 4, 4);
+    const isAlly = u.faction === myFac;
+    ctx.fillStyle = isAlly ? allyC : enemyC;
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.arc(u.x*sx, u.y*sy, 2.5, 0, Math.PI*2); ctx.fill();
   }
   ctx.globalAlpha = 1;
 
-  // Heroes as larger dots — highlight player hero
+  // Heroes as larger icons (bumped from 5/6 to 7/9)
   const myAgentId = localStorage.getItem('woa_agentId');
   for (const h of gs.heroes) {
     if (!h.alive) continue;
     const isMe = h.agentId === myAgentId;
-    ctx.fillStyle = h.faction==='alliance' ? '#4A8FE0' : '#E24B4A';
-    ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, isMe ? 6 : 5, 0, Math.PI*2); ctx.fill();
+    const isAlly = h.faction === myFac;
+    const heroC = isAlly ? allyC : enemyC;
+    // Black border for visibility
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, isMe ? 9 : 7, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = heroC;
+    ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, isMe ? 7 : 5.5, 0, Math.PI*2); ctx.fill();
     if (isMe) {
-      // Pulsing gold ring around your hero
-      ctx.strokeStyle = '#F0C040';
+      ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 8 + Math.sin(Date.now()/200) * 2, 0, Math.PI*2); ctx.stroke();
-    } else {
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 1, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(h.x*sx, h.y*sy, 11 + Math.sin(Date.now()/200) * 2, 0, Math.PI*2); ctx.stroke();
     }
   }
 
@@ -6168,13 +6213,19 @@ function updatePlayerControls() {
         slot.dataset.abilityTier = ab.tier || 1;
       }
     });
-    // Radial cooldown overlay + ready-pulse for ability slots
+    // Radial cooldown overlay + ready-pulse + tooltips for ability slots
     if (!window._prevAbilityCd) window._prevAbilityCd = {};
     hero.abilities.forEach((a, i) => {
       const key = ABILITY_KEYS[i];
       const slotEl = document.getElementById('hk-' + key);
       if (!slotEl) return;
       slotEl.style.position = 'relative';
+      // Set tooltip text (name + brief description)
+      const cdSec = Math.ceil((a.cooldown || 0) / 20);
+      const dmgTxt = a.damage ? `\nDmg: ${a.damage}` : '';
+      const rangeTxt = a.range ? `\nRange: ${a.range}` : '';
+      const manaTxt = a.manaCost ? `\nMana: ${a.manaCost}` : '';
+      slotEl.dataset.tooltip = `${a.name || key}${dmgTxt}${rangeTxt}${manaTxt}\nCD: ${cdSec}s`;
       // Detect ability becoming ready: trigger ready-pulse
       const prevCd = window._prevAbilityCd[a.id] || 0;
       if (prevCd > 0 && a.cd === 0) {

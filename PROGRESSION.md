@@ -62,7 +62,21 @@ ALTER TABLE agents ADD COLUMN war_balance INTEGER DEFAULT 0;
 - **Per-IP registration rate limit** — one agent registration per IP per 30s. Prevents bot-swarm joins.
 - **ELO farm guard** — see above.
 
-## 5. Player goals — missions (SHIPPED)
+## 5. Player goals — missions (SHIPPED — single source of truth)
+
+### Contract summary
+- **5 session missions** are always active each match. Reset on match end via `resetSessionMissions()` in `resetGame()`.
+- **3 daily missions** are rolled per player per UTC day from a pool of 5.
+- **Reset cadence**: UTC 00:00 daily for dailies. Session missions reset at match end.
+- **No mid-day replacement**: completed dailies stay visible (green, strikethrough) until UTC 00:00. Deliberate — instant replacement invites grinding.
+- **Duplicate prevention**: daily roll picks *without replacement* from the pool, so no duplicate dailies for the same player. Session set is fixed.
+- **Rewards** (difficulty-scaled: easy → medium 1.5× → hard 2.25×):
+  - Gold + XP applied directly to the active hero on completion
+  - `$WAR` amount surfaced in payload for dailies (awaits on-chain contract)
+  - 15% bonus roll: +40-120g or +20-60 XP, multiplied ×1.4 medium, ×2 hard
+- **Feedback on completion**: `mission_completed` WS → banner (`✓ ★★★ LABEL COMPLETE`) + floating `+N GOLD` + `+N XP` above the hero + `sfxLevelUp` + system chat summary. Bonus beats 250ms later with `sfxGold`.
+
+
 
 ### Session missions (reset every match)
 | Mission | Target | Reward |
@@ -106,6 +120,58 @@ ALTER TABLE agents ADD COLUMN war_balance INTEGER DEFAULT 0;
 | Missions system (session + daily) | ✅ shipped |
 | $WAR meta progression | 🔜 designed, not shipped |
 | Daily gold cap | 🔜 designed, not shipped |
+
+## Mission system audit (2026-04-14 finalization)
+
+### Data model
+```
+missionProgress: Map<agentId, Map<MissionKind, MissionState>>
+  MissionState { id, progress, target, completed, daily }
+
+dailyAssigned: Map<agentId, { ids: MissionKind[]; day: 'YYYY-MM-DD' }>
+```
+Both are **in-memory only**. `missions` SQLite table is provisioned in schema (columns: `agent_id, mission_id, progress, target, completed, daily, assigned_at, completed_at`) but no writes are wired yet — known limitation documented below.
+
+### Reset logic (server-authoritative)
+- `ensureAgentMissions(agentId)` is called by:
+  - `bumpMission(agentId, ...)` — so any progress event guarantees fresh state
+  - `missionsForAgent(agentId)` — so GET /api/missions guarantees fresh state
+- Inside `ensureAgentMissions`:
+  - **Session**: if a mission id isn't present for the agent, create it with progress=0. Doesn't re-roll. `resetSessionMissions()` in `resetGame()` zeroes them per match.
+  - **Daily**: if `dailyAssigned.day` ≠ `utcDay()`, pick 3 random ids from `DAILY_POOL_IDS` (without replacement), delete any prior daily entries not in the new set, and for each new id re-create entry if absent or previously completed. Same-ID roll two days in a row preserves progress only if the mission wasn't completed (rare, benign).
+- Timezone: reset is strictly on UTC boundary, identical for every player globally. `utcDay()` uses `getUTC{Full,Month,Date}` so DST or local TZ cannot shift it.
+
+### Endpoints
+- `GET /api/missions?agentId=<id>` — returns array of `{ id, label, description, progress, target, completed, daily, difficulty, rewardGold, rewardXp, rewardToken }`
+- Progress / completion pushed via WS (`mission_progress`, `mission_completed`) using `broadcastToAgent` which tags `targetAgentId` so other clients filter out.
+
+### Client sync
+- `#missions-panel` HUD shows all current missions with live progress bar
+- `fetchMissions()` GETs on player load + 30s poll as fallback
+- WS push patches rows in-place without refetch
+- `#reset-countdown` ticks every 30s showing `Xh Ym` to UTC 00:00
+- On client-side midnight crossing, auto re-fetches missions so new dailies land immediately
+
+### Validation
+| Concern | Status |
+|---|---|
+| Duplicate missions on reroll | Pool sampled without replacement — impossible |
+| Duplicate daily completions after server restart | **Possible** — in-memory state lost. Mitigation: persist `missionProgress` to the SQLite `missions` table on completion (next patch) |
+| Timezone drift | None — all resets on UTC midnight |
+| Client clock skew | Client countdown is cosmetic; server is authoritative. If client clock is wrong, they see wrong countdown but real reroll happens correctly on next server interaction after UTC midnight |
+| Mission reward double-claim | Guarded by `if (!s.completed)` check before applying; completion is atomic within the `bumpMission` call |
+| Farm exploit (retrigger completed mission) | Not possible — `bumpMission` early-returns if `s.completed` |
+| Daily slot exhaustion (complete all 3 then farm new ones) | Prevented — no mid-day replacement by design |
+| Agent without agentId (bot heroes) | `bumpMission` early-returns on undefined agentId, so bots never accrue mission state |
+
+### Known limitations (tracked, not blocking)
+- **In-memory persistence only.** Server restart loses daily progress and completion. Medium-priority fix: write to `missions` table on completion and rehydrate on startup. Low risk currently given Railway rolling restarts are rare.
+- **$WAR rewards are payload-only.** No on-chain transfer until contract deploys. Client shows the amount so players understand the incentive.
+
+### Reconnect / reload safety
+- Client: `playerAgentId` rehydrates from `localStorage` on load; `fetchMissions()` fires ~500ms after connect and repopulates the HUD from server state. WS reconnect automatic (existing ws.onclose retry).
+- Server: state survives within process lifetime. A process restart drops in-memory daily progress — noted as known limitation. Session-within-match state naturally refreshes on next `bumpMission` event.
+- No duplicate-reward path on reconnect: completion is authoritative server-side, already-completed missions reject further `bumpMission` increments.
 
 ## Open questions
 - Should upgrade offers be SHARED across teammates to encourage coordination? (No for v1)

@@ -4959,8 +4959,10 @@ function drawStructure(s, t, isNight) {
   } else {
     // TOWERS — draw as square tower shapes, NOT circles
     const r = s.tier === 2 ? 28 : 22;
-    // Ground shadow under tower
-    graphics.fillStyle(0x000000, 0.45);
+    // Ground shadow under tower — soft layered (outer 12% + inner 28%)
+    graphics.fillStyle(0x000000, 0.12);
+    graphics.fillEllipse(s.x, s.y + r + 4, r * 2.6, r * 0.9);
+    graphics.fillStyle(0x000000, 0.28);
     graphics.fillEllipse(s.x, s.y + r + 4, r * 2.2, r * 0.7);
     // Pulsing faction glow halo (distinguishes towers from units)
     const towerPulse = 0.5 + Math.sin(t * 0.04 + s.x * 0.01) * 0.5;
@@ -6789,9 +6791,9 @@ function updatePlayerControls() {
         const shadowW = (isWide ? 9 : 5.5) * sz;
         const shadowH = (isLarge ? 2.6 : 2.0) * sz;
         const shadowY = cy + 6.5 * sz; // slight downward offset from sprite base
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.beginPath(); ctx.ellipse(x, shadowY, shadowW * 1.35, shadowH * 1.35, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = 'rgba(0,0,0,0.38)';
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.beginPath(); ctx.ellipse(x, shadowY, shadowW * 1.4, shadowH * 1.4, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.28)';
         ctx.beginPath(); ctx.ellipse(x, shadowY, shadowW, shadowH, 0, 0, Math.PI*2); ctx.fill();
 
         // ── Team-colored outline silhouette (behind sprite) ──
@@ -6925,11 +6927,13 @@ function updatePlayerControls() {
       const drawX = x + idleX;
       const drawY = y + idleY;
 
-      // Ground shadow under hero (depth against lane floor)
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      // Ground shadow under hero — soft layered (12% outer + 28% inner)
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
       ctx.beginPath();
-      ctx.ellipse(drawX, drawY + 16*s, 10*s, 3.2*s, 0, 0, Math.PI*2);
-      ctx.fill();
+      ctx.ellipse(drawX, drawY + 16*s, 13*s, 4.2*s, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath();
+      ctx.ellipse(drawX, drawY + 16*s, 10*s, 3.2*s, 0, 0, Math.PI*2); ctx.fill();
 
       // Killer highlight flash — golden expanding halo after a kill
       if (_killerFlash[hero.id]) {

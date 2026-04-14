@@ -6546,7 +6546,7 @@ function updatePlayerControls() {
       if (prev !== undefined && e.hp < prev) {
         const dmg = prev - e.hp;
         const isCrit = dmg > (e.maxHp || 100) * 0.15;
-        _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, dmg, kind: isCrit ? 'crit' : 'normal', age: 0, bounce: isCrit ? 8 : 0 });
+        _dmgFloats.push({ x: e.x * scaleX + (Math.random()-0.5) * 24, y: e.y * scaleY - 20, dmg, kind: isCrit ? 'crit' : 'normal', age: 0, bounce: isCrit ? 8 : 0 });
         _dmgFlash[e.id] = 4;
         _hitFlash[e.id] = 2;          // white sprite flash on hit (~100ms)
         _hitScale[e.id] = 4;          // target scale bounce 1 → 1.05 → 1 (~200ms)
@@ -6555,7 +6555,7 @@ function updatePlayerControls() {
         const myF = localStorage.getItem('woa_faction');
         const isAlly = e.faction === myF;
         const partColor = isAlly ? '#88CCFF' : '#FFAA88';
-        const nParts = isCrit ? 12 : 10;
+        const nParts = isCrit ? 15 : 12;
         for (let i = 0; i < nParts; i++) {
           const a = Math.random() * Math.PI * 2;
           const sp = 2 + Math.random() * (isCrit ? 3.5 : 2);
@@ -6667,7 +6667,7 @@ function updatePlayerControls() {
         let uHitMult = 1.0;
         if (_hitScale[u.id]) {
           const hp = 1 - _hitScale[u.id] / 4;
-          uHitMult = 1 + Math.sin(hp * Math.PI) * 0.05;
+          uHitMult = 1 + Math.sin(hp * Math.PI) * 0.08;
           _hitScale[u.id]--;
         }
         const sz = (isLarge ? us * 1.6 : us) * uHitMult;
@@ -6790,7 +6790,7 @@ function updatePlayerControls() {
       let hitMult = 1.0;
       if (_hitScale[hero.id]) {
         const hp = 1 - _hitScale[hero.id] / 4;
-        hitMult = 1 + Math.sin(hp * Math.PI) * 0.05;
+        hitMult = 1 + Math.sin(hp * Math.PI) * 0.08;
         _hitScale[hero.id]--;
       }
       const s = (1 + (hero.level - 1) * 0.05) * classScale * playerScale * castMult * hitMult * Math.max(scaleX / 0.15, 0.6);
@@ -7148,12 +7148,12 @@ function updatePlayerControls() {
       let text, fillColor, font, scalePop = 1;
       if (d.kind === 'crit') {
         text = '-' + d.dmg; fillColor = '#FF2828';
-        font = 'bold 40px sans-serif';
+        font = 'bold 48px sans-serif';
         // Bounce-scale: pop to 1.3x in first 3 frames, settle to 1.0
         scalePop = 1 + Math.max(0, 0.3 - p * 1.2);
       } else if (d.kind === 'heal') {
         text = '+' + d.dmg; fillColor = '#44FF66';
-        font = 'bold 26px sans-serif';
+        font = 'bold 16px sans-serif';
       } else if (d.kind === 'gold') {
         text = d.text || '+GOLD'; fillColor = '#FFD700';
         font = 'bold 22px sans-serif';
@@ -7162,7 +7162,7 @@ function updatePlayerControls() {
         font = 'bold 22px Cinzel, sans-serif';
       } else {
         text = '-' + d.dmg; fillColor = '#FFFFFF';
-        font = 'bold 26px sans-serif';
+        font = 'bold 32px sans-serif';
       }
       ctx.font = font;
       ctx.textAlign = 'center';

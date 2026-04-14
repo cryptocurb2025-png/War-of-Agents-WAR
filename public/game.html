@@ -6402,7 +6402,7 @@ function updatePlayerControls() {
 
   // Screen shake
   let _shakeX = 0, _shakeY = 0, _shakeTimer = 0;
-  function triggerEntityShake(amount) { _shakeTimer = Math.max(_shakeTimer, 10); _shakeX = Math.max(_shakeX, amount); _shakeY = Math.max(_shakeY, amount); }
+  function triggerEntityShake(amount, frames) { _shakeTimer = Math.max(_shakeTimer, frames || 10); _shakeX = Math.max(_shakeX, amount); _shakeY = Math.max(_shakeY, amount); }
   window._triggerEntityShake = triggerEntityShake;
 
   // Combat clarity systems
@@ -6483,12 +6483,15 @@ function updatePlayerControls() {
         const myF = localStorage.getItem('woa_faction');
         const isAlly = e.faction === myF;
         const partColor = isAlly ? '#88CCFF' : '#FFAA88';
-        for (let i = 0; i < 6; i++) {
+        const nParts = isCrit ? 10 : 8;
+        for (let i = 0; i < nParts; i++) {
           const a = Math.random() * Math.PI * 2;
-          const sp = 2 + Math.random() * 2;
-          _hitParticles.push({ x: e.x * scaleX, y: e.y * scaleY, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 1, age: 0, maxAge: 10, color: partColor });
+          const sp = 2 + Math.random() * (isCrit ? 3.5 : 2);
+          _hitParticles.push({ x: e.x * scaleX, y: e.y * scaleY, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 1, age: 0, maxAge: isCrit ? 14 : 10, color: partColor });
         }
-        if (playerAgentId && e.agentId === playerAgentId) triggerEntityShake(3);
+        // Screen shake: player-scale for own-hero hits, small shake for every crit
+        if (playerAgentId && e.agentId === playerAgentId) triggerEntityShake(isCrit ? 6 : 3);
+        else if (isCrit) triggerEntityShake(2.5, 2); // tiny 100ms shake on crit
       } else if (prev !== undefined && e.hp > prev && e.alive) {
         const heal = e.hp - prev;
         _dmgFloats.push({ x: e.x * scaleX, y: e.y * scaleY - 20, dmg: heal, kind: 'heal', age: 0, bounce: 0 });
@@ -6626,6 +6629,13 @@ function updatePlayerControls() {
             ctx.fillStyle = '#888'; ctx.fillRect(x+4*sz, cy-4*sz, 1*sz, 6*sz);
           }
         }
+        // White hit flash overlay (50-100ms on damage)
+        if (_hitFlash[u.id] > 0) {
+          ctx.fillStyle = `rgba(255,255,255,${_hitFlash[u.id] / 2 * 0.6})`;
+          ctx.fillRect(x - (isWide ? 10 : 6)*sz, cy - (isLarge ? 10 : 6)*sz, (isWide ? 20 : 12)*sz, (isLarge ? 20 : 14)*sz);
+          _hitFlash[u.id]--;
+        }
+
         // HP bar (only if damaged)
         if (u.hp < u.maxHp) {
           const pct = u.hp / u.maxHp;
@@ -7013,30 +7023,43 @@ function updatePlayerControls() {
       const p = d.age / 12;
       ctx.globalAlpha = Math.min(1, 1.5 - p * 1.5);
       const yOff = -p * 30 - (d.bounce || 0) * Math.sin(p * Math.PI);
-      let text, fillColor, font;
+      let text, fillColor, font, scalePop = 1;
       if (d.kind === 'crit') {
-        text = '-' + d.dmg; fillColor = '#FF3333';
-        font = 'bold 19px sans-serif';
+        text = '-' + d.dmg; fillColor = '#FF2828';
+        font = 'bold 28px sans-serif';
+        // Bounce-scale: pop to 1.25x in first 3 frames, settle to 1.0
+        scalePop = 1 + Math.max(0, 0.25 - p * 1.1);
       } else if (d.kind === 'heal') {
         text = '+' + d.dmg; fillColor = '#44FF66';
-        font = 'bold 13px sans-serif';
+        font = 'bold 18px sans-serif';
       } else if (d.kind === 'gold') {
         text = d.text || '+GOLD'; fillColor = '#FFD700';
-        font = 'bold 12px sans-serif';
+        font = 'bold 16px sans-serif';
       } else if (d.kind === 'xp') {
         text = d.text || '+XP'; fillColor = '#8AD8FF';
-        font = 'bold 14px Cinzel, sans-serif';
+        font = 'bold 18px Cinzel, sans-serif';
       } else {
         text = '-' + d.dmg; fillColor = '#FFFFFF';
-        font = 'bold 13px sans-serif';
+        font = 'bold 18px sans-serif';
       }
       ctx.font = font;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
-      ctx.strokeText(text, d.x, d.y + yOff);
-      ctx.fillStyle = fillColor;
-      ctx.fillText(text, d.x, d.y + yOff);
+      if (scalePop !== 1) {
+        ctx.save();
+        ctx.translate(d.x, d.y + yOff);
+        ctx.scale(scalePop, scalePop);
+        ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
+        ctx.strokeText(text, 0, 0);
+        ctx.fillStyle = fillColor;
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
+        ctx.strokeText(text, d.x, d.y + yOff);
+        ctx.fillStyle = fillColor;
+        ctx.fillText(text, d.x, d.y + yOff);
+      }
       ctx.globalAlpha = 1;
     }
     while (_dmgFloats.length > 60) _dmgFloats.shift();
